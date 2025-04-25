@@ -1,0 +1,149 @@
+.browserContainer {
+  width: 80%;
+  height: 85vh;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 9999;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.networkTabs {
+  padding: 1rem 1rem 0;
+  border-bottom: 1px solid #3977b4;
+  background-color: #ffffff;
+}
+
+.networkTab {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: none;
+  font-size: 1rem;
+  color: #495057;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.networkTab.active {
+  color: #228be6;
+  border-bottom-color: #228be6;
+}
+
+.contentArea {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+  background-color: #228be6;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #868e96;
+  gap: 0.5rem;
+}
+
+.emptyState code {
+  background-color: #f1f3f5;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.hint {
+  font-size: 0.875rem;
+  color: #adb5bd;
+}
+
+.containersGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.node {
+  background-color: #f8f9fa;
+  border: 2px solid #228be6;
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  border-color: #339af0;
+}
+
+.nodeIcon {
+  font-size: 2rem;
+  text-align: center;
+}
+
+.nodeName {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #1c7ed6;
+  text-align: center;
+}
+
+.nodeImage {
+  font-size: 0.875rem;
+  color: #495057;
+  font-family: monospace;
+  background-color: #f1f3f5;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  text-align: center;
+  word-break: break-all;
+}
+
+.nodeStatus {
+  font-size: 0.875rem;
+  color: #2b8a3e;
+  background-color: #d3f9d8;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 500;
+  text-align: center;
+  align-self: center;
+}
+
+.nodeDetails {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.detailsTitle {
+  font-size: 0.875rem;
+  color: #868e96;
+  margin-bottom: 0.5rem;
+}
+
+.detailItem {
+  font-size: 0.875rem;
+  color: #495057;
+  font-family: monospace;
+  background-color: #f1f3f5;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.25rem;
+  word-break: break-all;
+}
+
+.connection {
+  position: absolute;
+  background-color: #569cd6;
+  height: 2px;
+} 
