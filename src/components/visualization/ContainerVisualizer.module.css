@@ -1,0 +1,917 @@
+.containerVisualizer {
+  padding: 1.5rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  .row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.containerWrapper {
+  position: relative;
+}
+
+.container {
+  background-color: #ffffff;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  z-index: 2;
+}
+
+.container:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-color: #228be6;
+}
+
+.container.running {
+  border-color: #40c057;
+}
+
+.container.stopped {
+  border-color: #fa5252;
+}
+
+.containerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.name {
+  font-weight: 500;
+  color: #495057;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.statusDot.running {
+  background-color: #40c057;
+}
+
+.statusDot.stopped {
+  background-color: #fa5252;
+}
+
+.ports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.port {
+  background-color: #e7f5ff;
+  color: #228be6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.volumeConnection {
+  position: absolute;
+  left: 50%;
+  bottom: -2rem;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+}
+
+.line {
+  width: 2px;
+  height: 1.5rem;
+  background-color: #adb5bd;
+}
+
+.volume {
+  background-color: #f1f3f5;
+  border: 1px solid #adb5bd;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+}
+
+.volumeName {
+  font-size: 0.875rem;
+  color: #495057;
+}
+
+/* 모달 스타일 */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.closeButton {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 4px;
+  line-height: 1;
+}
+
+.closeButton:hover {
+  color: #333;
+}
+
+.modalTitle {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+  padding-right: 32px;
+}
+
+.detailRow {
+  display: flex;
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+
+.detailLabel {
+  width: 120px;
+  font-weight: 500;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.detailValue {
+  flex: 1;
+  color: #333;
+  word-break: break-all;
+}
+
+.portBadge {
+  display: inline-block;
+  background: #e9ecef;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.volumeBadge {
+  display: inline-flex;
+  align-items: center;
+  background: #e7f5ff;
+  color: #1971c2;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.volumeIcon {
+  margin-right: 6px;
+  width: 16px;
+  height: 16px;
+}
+
+.infoGroup {
+  margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.infoGroup label {
+  color: #868e96;
+  font-size: 0.875rem;
+}
+
+.infoGroup span {
+  color: #495057;
+}
+
+.status {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.status.running {
+  background-color: #d3f9d8;
+  color: #2b8a3e;
+}
+
+.status.stopped {
+  background-color: #ffe3e3;
+  color: #c92a2a;
+}
+
+.modalFooter {
+  padding: 1rem;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.actionButton {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.actionButton.start {
+  background-color: #40c057;
+  color: white;
+}
+
+.actionButton.start:hover {
+  background-color: #37b24d;
+}
+
+.actionButton.stop {
+  background-color: #f59f00;
+  color: white;
+}
+
+.actionButton.stop:hover {
+  background-color: #f08c00;
+}
+
+.actionButton.remove {
+  background-color: #fa5252;
+  color: white;
+}
+
+.actionButton.remove:hover {
+  background-color: #f03e3e;
+}
+
+.visualizer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #f8f9fa;
+}
+
+.chromeBrowser {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.chromeToolbar {
+  background: #f1f3f5;
+  padding: 0 4px;
+  display: flex;
+  align-items: flex-end;
+  height: 40px;
+}
+
+.networkTabs {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  gap: 0;
+  padding-top: 8px;
+}
+
+.chromeTab {
+  height: 32px;
+  padding: 0 10px 0 16px;
+  background: #e9ecef;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+  max-width: 180px;
+  position: relative;
+  cursor: pointer;
+  font-size: 12px;
+  color: #495057;
+  border-radius: 8px 8px 0 0;
+  margin-right: -10px;
+  transition: background 0.15s;
+}
+
+.chromeTab::before,
+.chromeTab::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  bottom: 0;
+  background: transparent;
+}
+
+.chromeTab::before {
+  left: -10px;
+  border-bottom-right-radius: 8px;
+  box-shadow: 5px 5px 0 5px #e9ecef;
+}
+
+.chromeTab::after {
+  right: -10px;
+  border-bottom-left-radius: 8px;
+  box-shadow: -5px 5px 0 5px #e9ecef;
+}
+
+.chromeTab:hover {
+  background: #f1f3f5;
+}
+
+.chromeTab:hover::before {
+  box-shadow: 5px 5px 0 5px #f1f3f5;
+}
+
+.chromeTab:hover::after {
+  box-shadow: -5px 5px 0 5px #f1f3f5;
+}
+
+.chromeTab.activeTab {
+  background: white;
+  z-index: 2;
+}
+
+.chromeTab.activeTab::before {
+  box-shadow: 5px 5px 0 5px white;
+}
+
+.chromeTab.activeTab::after {
+  box-shadow: -5px 5px 0 5px white;
+}
+
+.tabIcon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+.tabTitle {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tabClose {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: #868e96;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-right: -4px;
+  opacity: 0.8;
+  transition: all 0.15s;
+}
+
+.tabClose:hover {
+  background: #dee2e6;
+  color: #495057;
+}
+
+.newTab {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #868e96;
+  font-size: 20px;
+  cursor: pointer;
+  margin-bottom: 2px;
+  border-radius: 4px;
+}
+
+.newTab:hover {
+  background: #dee2e6;
+  color: #495057;
+}
+
+.chromeContent {
+  flex: 1;
+  position: relative;
+  background: white;
+}
+
+.networkContent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: white;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s;
+}
+
+.networkContent.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.networkInfo {
+  padding: 16px;
+  color: #495057;
+  font-size: 14px;
+}
+
+/* 새 탭 애니메이션 */
+@keyframes slideIn {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.chromeTab.new {
+  animation: slideIn 0.2s ease-out;
+}
+
+/* 빈 상태 */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #868e96;
+  text-align: center;
+  padding: 2rem;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.emptyState p {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.emptyState small {
+  font-size: 0.8rem;
+  color: #adb5bd;
+}
+
+/* 네트워크 컨텐츠 */
+.networkContainer {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.containerGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+/* 이미지 저장소 스타일 */
+.imageRepository {
+  background: white;
+  border-top: 1px solid #dee2e6;
+  margin: 0 1rem 1rem;
+  border-radius: 0 0 8px 8px;
+}
+
+.repoHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.repoHeader:hover {
+  background: #f8f9fa;
+}
+
+.repoIcon {
+  font-size: 1.25rem;
+}
+
+.repoArrow {
+  margin-left: auto;
+  transition: transform 0.2s;
+}
+
+.repoArrow.open {
+  transform: rotate(180deg);
+}
+
+.imageList {
+  padding: 1rem;
+  border-top: 1px solid #dee2e6;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.imageItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.imageItem:hover {
+  background: #e9ecef;
+}
+
+.imageIcon {
+  font-size: 1.25rem;
+}
+
+.imageInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.imageName {
+  font-weight: 500;
+  color: #495057;
+}
+
+.imageSize {
+  font-size: 0.875rem;
+  color: #868e96;
+}
+
+/* 모달 스타일 */
+.chromeModal {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.chromeHeader {
+  background: #f1f3f5;
+  border-bottom: 1px solid #dee2e6;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tabSection {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.chromeClose {
+  background: none;
+  border: none;
+  color: #495057;
+  font-size: 1.5rem;
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.chromeClose:hover {
+  background: #e9ecef;
+  color: #212529;
+}
+
+.modalContent {
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.infoSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.infoGroup {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.infoGroup label {
+  color: #868e96;
+  font-size: 0.875rem;
+}
+
+.portList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.portTag {
+  background: #e7f5ff;
+  color: #228be6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.volumeInfo {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 1rem;
+}
+
+.volumeInfo label {
+  color: #868e96;
+  font-size: 0.875rem;
+}
+
+.volumePath {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #495057;
+}
+
+.modalFooter {
+  padding: 1rem;
+  border-top: 1px solid #dee2e6;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.actionButton {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.actionButton.start {
+  background: #40c057;
+  color: white;
+}
+
+.actionButton.start:hover {
+  background: #37b24d;
+}
+
+.actionButton.stop {
+  background: #f59f00;
+  color: white;
+}
+
+.actionButton.stop:hover {
+  background: #f08c00;
+}
+
+.actionButton.remove {
+  background: #fa5252;
+  color: white;
+}
+
+.actionButton.remove:hover {
+  background: #f03e3e;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.statusText {
+  font-size: 0.75rem;
+  color: #868e96;
+}
+
+.commandBadge {
+  background: #e7f5ff;
+  color: #228be6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.volumeIndicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.volumeIcon {
+  font-size: 1rem;
+}
+
+.volumeBox {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.volumeDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #495057;
+}
+
+.volumeDetail small {
+  color: #868e96;
+}
+
+.networkView {
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.containersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.containerCard {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.containerCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.containerCard h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.portsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.port {
+  background: #f0f0f0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.volumeConnection {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 20px;
+  background: #ddd;
+}
+
+.volumeIndicator {
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4a90e2;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 삭제할 스타일 */
+.browserHeader,
+.browserActions,
+.browserAction,
+.browserClose,
+.browserMinimize,
+.browserMaximize,
+.browserUrl {
+  display: none;
+} 
