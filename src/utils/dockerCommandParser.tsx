@@ -44,14 +44,3 @@ export const parseDockerRunCommand = (command: string): DockerRunOptions | null 
 
   return options;
 };
-
-// 사용 예시:
-// const command = 'docker run -d --name my-nginx -p 8080:80 nginx';
-// const options = parseDockerRunCommand(command);
-// console.log(options);
-// {
-//   name: 'my-nginx',
-//   ports: ['8080:80'],
-//   image: 'nginx',
-//   detach: true
-// } 

@@ -16,6 +16,7 @@ interface Volume {
   id: string;
   name: string;
   mountPath?: string;
+  hostPath?: string;
   createdAt: Date;
 }
 
@@ -23,65 +24,159 @@ interface Container {
   id: string;
   name: string;
   image: string;
-  ports: Port[];
+  ports: Array<{
+    hostPort: string;
+    containerPort: string;
+  }>;
   status: 'running' | 'stopped';
   createdAt: Date;
-  volumes: string[];  // Volume IDs
+  volume?: Volume;
   network?: string;
+  lastCommand?: string;
 }
 
 interface Network {
   id: string;
   name: string;
   containers: Container[];
+  isNew?: boolean;
+}
+
+interface Image {
+  id: string;
+  name: string;
+  tag: string;
+  size: string;
+  created: Date;
+  isOfficial: boolean;
+}
+
+interface Props {
+  containers?: Container[];
+  networks?: Network[];
+  images?: Image[];
+  onNetworkCreate?: (networkName: string) => void;
 }
 
 interface ModalProps {
   onClose: () => void;
 }
 
+const ContainerCard = ({ container, onClick }: { container: Container; onClick: () => void }) => (
+  <div className={styles.containerCard} onClick={onClick}>
+    <h3>{container.name}</h3>
+    <div className={styles.portsList}>
+      {container.ports.map((port, index) => (
+        <span key={index} className={styles.port}>
+          {port.hostPort}:{port.containerPort}
+        </span>
+      ))}
+    </div>
+    {container.volume && (
+      <div className={styles.volumeConnection}>
+        <div className={styles.volumeIndicator} />
+      </div>
+    )}
+  </div>
+);
+
+const NetworkView = ({ network }: { network: Network }) => {
+  const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
+
+  return (
+    <div className={styles.networkView}>
+      <div className={styles.containersGrid}>
+        {network.containers.map((container) => (
+          <ContainerCard
+            key={container.id}
+            container={container}
+            onClick={() => setSelectedContainer(container)}
+          />
+        ))}
+      </div>
+      {selectedContainer && (
+        <ContainerModal
+          container={selectedContainer}
+          onClose={() => setSelectedContainer(null)}
+        />
+      )}
+    </div>
+  );
+};
+
 const ContainerModal: React.FC<{ container: Container } & ModalProps> = ({ container, onClose }) => {
   return (
-    <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>컨테이너 상세 정보</h2>
-          <button className={styles.closeButton} onClick={onClose}>&times;</button>
-        </div>
-        
-        <div className={styles.modalSection}>
-          <div className={styles.infoGrid}>
-            <div className={styles.infoLabel}>이름</div>
-            <div className={styles.infoValue}>{container.name}</div>
-            
-            <div className={styles.infoLabel}>이미지</div>
-            <div className={styles.infoValue}>{container.image}</div>
-            
-            <div className={styles.infoLabel}>상태</div>
-            <div className={styles.infoValue}>
-              <span className={`${styles.statusDot} ${styles[container.status]}`} />
-              {container.status === 'running' ? '실행 중' : '중지됨'}
-            </div>
-            
-            <div className={styles.infoLabel}>생성 시간</div>
-            <div className={styles.infoValue}>
-              {container.createdAt.toLocaleString()}
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.chromeModal} onClick={e => e.stopPropagation()}>
+        <div className={styles.chromeHeader}>
+          <div className={styles.tabSection}>
+            <div className={styles.activeTab}>
+              <span className={styles.tabIcon}>📦</span>
+              {container.name}
             </div>
           </div>
+          <button className={styles.chromeClose} onClick={onClose}>×</button>
         </div>
-
-        {container.ports.length > 0 && (
-          <div className={styles.modalSection}>
-            <h3 className={styles.sectionTitle}>포트 매핑</h3>
-            <div className={styles.tagList}>
-              {container.ports.map((port, index) => (
-                <span key={index} className={styles.tag}>
-                  {port.hostPort}:{port.containerPort}
+        <div className={styles.modalContent}>
+          <div className={styles.infoSection}>
+            <div className={styles.infoCard}>
+              <div className={styles.infoHeader}>
+                <span className={`${styles.status} ${styles[container.status]}`}>
+                  {container.status === 'running' ? '실행 중' : '중지됨'}
                 </span>
-              ))}
+              </div>
+              <div className={styles.infoBody}>
+                <div className={styles.infoGroup}>
+                  <label>이미지</label>
+                  <span className={styles.imageTag}>{container.image}</span>
+                </div>
+                <div className={styles.infoGroup}>
+                  <label>컨테이너 ID</label>
+                  <span className={styles.idTag}>{container.id.slice(0, 12)}</span>
+                </div>
+                <div className={styles.infoGroup}>
+                  <label>네트워크</label>
+                  <span className={styles.networkTag}>{container.network || '없음'}</span>
+                </div>
+                <div className={styles.infoGroup}>
+                  <label>생성 시간</label>
+                  <span>{container.createdAt.toLocaleString()}</span>
+                </div>
+                {container.ports.length > 0 && (
+                  <div className={styles.infoGroup}>
+                    <label>포트 매핑</label>
+                    <div className={styles.portList}>
+                      {container.ports.map((port, idx) => (
+                        <span key={idx} className={styles.portTag}>
+                          {port.hostPort}:{port.containerPort}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {container.volume && (
+                  <div className={styles.infoGroup}>
+                    <label>볼륨</label>
+                    <div className={styles.volumeInfo}>
+                      <span className={styles.volumeTag}>{container.volume.name}</span>
+                      <span className={styles.mountPath}>{container.volume.mountPath}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        )}
+        </div>
+        <div className={styles.modalFooter}>
+          <button 
+            className={`${styles.actionButton} ${container.status === 'running' ? styles.stop : styles.start}`}
+          >
+            {container.status === 'running' ? '중지' : '시작'}
+          </button>
+          <button className={`${styles.actionButton} ${styles.remove}`}>
+            삭제
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -89,28 +184,36 @@ const ContainerModal: React.FC<{ container: Container } & ModalProps> = ({ conta
 
 const VolumeModal: React.FC<{ volume: Volume } & ModalProps> = ({ volume, onClose }) => {
   return (
-    <div className={styles.modal} onClick={onClose}>
-      <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>볼륨 상세 정보</h2>
-          <button className={styles.closeButton} onClick={onClose}>&times;</button>
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.chromeModal} onClick={e => e.stopPropagation()}>
+        <div className={styles.chromeHeader}>
+          <div className={styles.tabSection}>
+            <div className={styles.activeTab}>
+              <span className={styles.tabIcon}>💾</span>
+              {volume.name}
+            </div>
+          </div>
+          <button className={styles.chromeClose} onClick={onClose}>×</button>
         </div>
-        
-        <div className={styles.modalSection}>
-          <div className={styles.infoGrid}>
-            <div className={styles.infoLabel}>이름</div>
-            <div className={styles.infoValue}>{volume.name}</div>
-            
-            {volume.mountPath && (
-              <>
-                <div className={styles.infoLabel}>마운트 경로</div>
-                <div className={styles.infoValue}>{volume.mountPath}</div>
-              </>
-            )}
-            
-            <div className={styles.infoLabel}>생성 시간</div>
-            <div className={styles.infoValue}>
-              {volume.createdAt.toLocaleString()}
+        <div className={styles.modalContent}>
+          <div className={styles.infoSection}>
+            <div className={styles.infoCard}>
+              <div className={styles.infoBody}>
+                <div className={styles.infoGroup}>
+                  <label>볼륨 이름</label>
+                  <span className={styles.volumeTag}>{volume.name}</span>
+                </div>
+                {volume.mountPath && (
+                  <div className={styles.infoGroup}>
+                    <label>마운트 경로</label>
+                    <span className={styles.mountPath}>{volume.mountPath}</span>
+                  </div>
+                )}
+                <div className={styles.infoGroup}>
+                  <label>생성 시간</label>
+                  <span>{volume.createdAt.toLocaleString()}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -197,37 +300,33 @@ const Terminal: React.FC = () => {
         const options = parseDockerRunCommand(trimmedCommand);
         
         if (options && activeNetwork) {
+          const portMappings = trimmedCommand.match(/-p\s+(\d+:\d+)/g) || [];
+          const ports = portMappings.map(mapping => {
+            const [host, container] = mapping.replace('-p', '').trim().split(':');
+            return { hostPort: host, containerPort: container };
+          });
+
           const container: Container = {
             id: Date.now().toString(),
             name: options.name || `container_${Date.now().toString().slice(-6)}`,
             image: options.image,
-            ports: options.ports.map(port => ({
-              hostPort: port.host,
-              containerPort: port.container
-            })),
+            ports: ports,
             status: 'running',
             createdAt: new Date(),
-            volumes: [],
             network: activeNetwork
           };
 
           if (options.volumes && options.volumes.length > 0) {
-            const volumeIds = options.volumes
-              .map(vol => {
-                const volume = volumes.find(v => v.name === vol.name);
-                if (volume) {
-                  setVolumes(prev => prev.map(v => 
-                    v.id === volume.id 
-                      ? { ...v, mountPath: vol.mountPath }
-                      : v
-                  ));
-                  return volume.id;
-                }
-                return null;
-              })
-              .filter((id): id is string => id !== null);
-
-            container.volumes = volumeIds;
+            const volumeOption = options.volumes[0];
+            const volume = volumes.find(v => v.name === volumeOption.name);
+            if (volume) {
+              setVolumes(prev => prev.map(v => 
+                v.id === volume.id 
+                  ? { ...v, mountPath: volumeOption.mountPath }
+                  : v
+              ));
+              container.volume = volume;
+            }
           }
 
           setNetworks(prev => prev.map(network => 
@@ -243,8 +342,8 @@ const Terminal: React.FC = () => {
             ...(container.ports.length > 0 
               ? [`포트: ${container.ports.map(p => `${p.hostPort}:${p.containerPort}`).join(', ')}`]
               : []),
-            ...(container.volumes.length > 0
-              ? [`볼륨: ${container.volumes.length}개의 볼륨이 연결되었습니다.`]
+            ...(container.volume
+              ? [`볼륨: ${container.volume.name}`]
               : [])
           ]);
         } else if (!activeNetwork) {
@@ -354,39 +453,37 @@ const Terminal: React.FC = () => {
               style={{ display: activeNetwork === network.id ? 'block' : 'none' }}
             >
               <div className={styles.networkContainer}>
-                {network.containers.map(container => (
-                  <div key={container.id} className={styles.containerWrapper}>
-                    <div 
-                      className={styles.containerCard}
-                      onClick={() => setSelectedContainer(container)}
-                    >
-                      <div className={styles.containerTitle}>{container.name}</div>
-                      <div className={styles.containerPorts}>
-                        포트 번호: {container.ports.map(port => `${port.hostPort}:${port.containerPort}`).join(', ')}
+                <div className={styles.containersSection}>
+                  {network.containers.map(container => (
+                    <div key={container.id} className={styles.containerWrapper}>
+                      <div 
+                        className={styles.containerCard}
+                        onClick={() => setSelectedContainer(container)}
+                      >
+                        <div className={styles.containerTitle}>{container.name}</div>
+                        <div className={styles.containerPorts}>
+                          {container.ports.map((port, idx) => (
+                            <span key={idx} className={styles.portBadge}>
+                              {port.hostPort}:{port.containerPort}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                    {container.volumes.map(volumeId => {
-                      const volume = volumes.find(v => v.id === volumeId);
-                      if (volume) {
-                        return (
-                          <React.Fragment key={volume.id}>
-                            <div className={styles.connectionLine} />
-                            <div 
-                              className={styles.volumeNode}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedVolume(volume);
-                              }}
-                            >
-                              <div className={styles.volumeName}>{volume.name}</div>
-                            </div>
-                          </React.Fragment>
-                        );
-                      }
-                      return null;
-                    })}
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className={styles.volumesSection}>
+                  {volumes.map((volume, index) => (
+                    <div
+                      key={volume.id}
+                      className={styles.volumeCircle}
+                      style={{ left: `${index * 120}px` }}
+                      onClick={() => setSelectedVolume(volume)}
+                    >
+                      <div className={styles.volumeName}>{volume.name}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           ))}

@@ -37,5 +37,3 @@ const BrowserTab: React.FC<Props> = ({ name, isActive, onClick, onClose }) => {
     </div>
   );
 };
-
-export default BrowserTab; 
