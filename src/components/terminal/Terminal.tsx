@@ -130,7 +130,7 @@ const NetworkView = ({ network }: { network: Network }) => {
   );
 };
 
-const ContainerModal: React.FC<{ container: Container } & ModalProps> = ({ container, onClose }) => {
+const ContainerModal: React.FC<{ container: Container, onStart?: (id: string) => void, onStop?: (id: string) => void, onRemove?: (id: string) => void } & ModalProps> = ({ container, onClose, onStart, onStop, onRemove }) => {
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.chromeModal} onClick={e => e.stopPropagation()}>
@@ -196,10 +196,24 @@ const ContainerModal: React.FC<{ container: Container } & ModalProps> = ({ conta
         <div className={styles.modalFooter}>
           <button 
             className={`${styles.actionButton} ${container.status === 'running' ? styles.stop : styles.start}`}
+            onClick={() => {
+              if (container.status === 'running') {
+                onStop && onStop(container.id);
+              } else {
+                onStart && onStart(container.id);
+              }
+              onClose();
+            }}
           >
             {container.status === 'running' ? '중지' : '시작'}
           </button>
-          <button className={`${styles.actionButton} ${styles.remove}`}>
+          <button 
+            className={`${styles.actionButton} ${styles.remove}`}
+            onClick={() => {
+              onRemove && onRemove(container.id);
+              onClose();
+            }}
+          >
             삭제
           </button>
         </div>
@@ -373,6 +387,9 @@ const Terminal: React.FC = () => {
   const [newContainerId, setNewContainerId] = useState<string | null>(null);
   const [newVolumeId, setNewVolumeId] = useState<string | null>(null);
   const [connectingVolume, setConnectingVolume] = useState<boolean>(false);
+  const [containers, setContainers] = useState<Container[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [commandHistory, setCommandHistory] = useState<string[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -471,7 +488,7 @@ const Terminal: React.FC = () => {
                 : [options.image, 'latest'];
               
               const newImage: Image = {
-                id: Date.now().toString(),
+            id: Date.now().toString(),
                 name,
                 tag: tag || 'latest',
                 size: `${Math.floor(Math.random() * 200) + 10}MB`,
@@ -541,6 +558,28 @@ const Terminal: React.FC = () => {
             'REPOSITORY   TAG       IMAGE ID       CREATED         SIZE',
             ...images.map(img => 
               `${img.name}   ${img.tag}       ${img.id.substring(0, 12)}       ${img.created.toLocaleDateString()}       ${img.size}`
+            )
+          ]);
+        }
+      }
+      else if (trimmedCommand === 'docker ps' || trimmedCommand === 'docker ps -a') {
+        const showAll = trimmedCommand === 'docker ps -a';
+        const filteredContainers = showAll 
+          ? containers 
+          : containers.filter(c => c.status === 'running');
+        
+        if (filteredContainers.length === 0) {
+          setOutput(prev => [
+            ...prev, 
+            'CONTAINER ID   IMAGE          COMMAND   CREATED          STATUS          PORTS           NAMES',
+            '컨테이너를 찾을 수 없습니다.'
+          ]);
+        } else {
+          setOutput(prev => [
+            ...prev, 
+            'CONTAINER ID   IMAGE          COMMAND   CREATED          STATUS          PORTS           NAMES',
+            ...filteredContainers.map(c => 
+              `${c.id.substring(0, 12)}   ${c.image}   "-"   ${c.createdAt.toLocaleString()}   ${c.status}   ${c.ports.map(p => `${p.hostPort}:${p.containerPort}`).join(', ')}   ${c.name}`
             )
           ]);
         }
@@ -676,6 +715,8 @@ const Terminal: React.FC = () => {
             : network
         ));
         
+        setContainers(prev => [...prev, container]);
+        
         setNewContainerId(container.id);
 
         setOutput(prev => [
@@ -710,6 +751,294 @@ const Terminal: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [newVolumeId]);
+
+  const handleStartContainer = async (containerId: string) => {
+    try {
+      setIsProcessing(true);
+      
+      addProcessStep({
+        type: 'start',
+        message: `컨테이너 시작 중...`,
+        details: `컨테이너 ID: ${containerId}`,
+      });
+      
+      const container = containers.find(c => c.id === containerId);
+      if (!container) {
+        throw new Error('컨테이너를 찾을 수 없습니다.');
+      }
+      
+      // 상태 업데이트된 컨테이너 생성
+      const updatedContainer = { ...container, status: 'running' as const };
+      
+      // 전체 컨테이너 목록 업데이트
+      const updatedContainers = containers.map(c => 
+        c.id === containerId ? updatedContainer : c
+      );
+      setContainers(updatedContainers);
+      
+      // 네트워크 내 컨테이너도 업데이트
+      const updatedNetworks = networks.map(network => ({
+        ...network,
+        containers: network.containers.map(c => 
+          c.id === containerId ? updatedContainer : c
+        )
+      }));
+      setNetworks(updatedNetworks);
+      
+      const startCommand = `docker start ${container.name}`;
+      setCommandHistory(prev => [...prev, startCommand]);
+      setOutput(prev => [...prev, `$ ${startCommand}`, `컨테이너 ${container.name}을(를) 시작했습니다.`]);
+      
+      setIsProcessing(false);
+    } catch (error) {
+      console.error('컨테이너 시작 오류:', error);
+      addProcessStep({
+        type: 'error',
+        message: '컨테이너 시작 실패',
+        details: `오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+      });
+      setIsProcessing(false);
+    }
+  };
+
+  const handleStopContainer = async (containerId: string) => {
+    try {
+      setIsProcessing(true);
+      
+      addProcessStep({
+        type: 'start',
+        message: `컨테이너 중지 중...`,
+        details: `컨테이너 ID: ${containerId}`,
+      });
+      
+      const container = containers.find(c => c.id === containerId);
+      if (!container) {
+        throw new Error('컨테이너를 찾을 수 없습니다.');
+      }
+      
+      // 상태 업데이트된 컨테이너 생성
+      const updatedContainer = { ...container, status: 'stopped' as const };
+      
+      // 전체 컨테이너 목록 업데이트
+      const updatedContainers = containers.map(c => 
+        c.id === containerId ? updatedContainer : c
+      );
+      setContainers(updatedContainers);
+      
+      // 네트워크 내 컨테이너도 업데이트
+      const updatedNetworks = networks.map(network => ({
+        ...network,
+        containers: network.containers.map(c => 
+          c.id === containerId ? updatedContainer : c
+        )
+      }));
+      setNetworks(updatedNetworks);
+      
+      const stopCommand = `docker stop ${container.name}`;
+      setCommandHistory(prev => [...prev, stopCommand]);
+      setOutput(prev => [...prev, `$ ${stopCommand}`, `컨테이너 ${container.name}을(를) 중지했습니다.`]);
+      
+      setIsProcessing(false);
+    } catch (error) {
+      console.error('컨테이너 중지 오류:', error);
+      addProcessStep({
+        type: 'error',
+        message: '컨테이너 중지 실패',
+        details: `오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+      });
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRemoveContainer = async (containerId: string) => {
+    try {
+      setIsProcessing(true);
+      
+      addProcessStep({
+        type: 'start',
+        message: `컨테이너 삭제 중...`,
+        details: `컨테이너 ID: ${containerId}`,
+      });
+      
+      const container = containers.find(c => c.id === containerId);
+      if (!container) {
+        throw new Error('컨테이너를 찾을 수 없습니다.');
+      }
+      
+      if (container.status === 'running') {
+        await handleStopContainer(containerId);
+      }
+      
+      const updatedContainers = containers.filter(c => c.id !== containerId);
+      setContainers(updatedContainers);
+      
+      const updatedNetworks = networks.map(n => ({
+        ...n,
+        containers: n.containers.filter(c => c.id !== containerId)
+      }));
+      setNetworks(updatedNetworks);
+      
+      const rmCommand = `docker rm ${container.name}`;
+      setCommandHistory(prev => [...prev, rmCommand]);
+      setOutput(prev => [...prev, `$ ${rmCommand}`, `컨테이너 ${container.name}을(를) 삭제했습니다.`]);
+      
+      setIsProcessing(false);
+    } catch (error) {
+      console.error('컨테이너 삭제 오류:', error);
+      addProcessStep({
+        type: 'error',
+        message: '컨테이너 삭제 실패',
+        details: `오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+      });
+      setIsProcessing(false);
+    }
+  };
+
+  const handleContainerClick = (container: Container) => {
+    setIsContainerListModalOpen(false);
+    setSelectedContainer(container);
+  };
+
+  // 컨테이너 상태 동기화 함수 추가
+  const syncContainersWithNetworks = () => {
+    // 모든 컨테이너 ID들
+    const allContainerIds = new Set([
+      ...containers.map(c => c.id),
+      ...networks.flatMap(n => n.containers.map(c => c.id))
+    ]);
+    
+    // 모든 컨테이너를 통합한 맵 생성
+    const containerMap = new Map<string, Container>();
+    
+    // 컨테이너 배열에서 추가
+    containers.forEach(container => {
+      containerMap.set(container.id, container);
+    });
+    
+    // 네트워크에서 추가 (동일 ID 있으면 덮어씀)
+    networks.forEach(network => {
+      network.containers.forEach(container => {
+        // 이미 맵에 있는 경우, network 정보 추가/업데이트
+        if (containerMap.has(container.id)) {
+          const existing = containerMap.get(container.id)!;
+          containerMap.set(container.id, {
+            ...existing,
+            network: network.name
+          });
+        } else {
+          containerMap.set(container.id, {
+            ...container,
+            network: network.name
+          });
+        }
+      });
+    });
+    
+    // 최종 통합된 컨테이너 배열
+    const uniqueContainers = Array.from(containerMap.values());
+    
+    // 컨테이너 배열 업데이트
+    setContainers(uniqueContainers);
+    
+    // 네트워크 배열의 컨테이너도 업데이트
+    const updatedNetworks = networks.map(network => ({
+      ...network,
+      containers: network.containers.map(container => {
+        const updatedContainer = containerMap.get(container.id);
+        return updatedContainer || container;
+      })
+    }));
+    
+    setNetworks(updatedNetworks);
+  };
+
+  // 컴포넌트 마운트 시 초기 테스트 데이터 생성
+  useEffect(() => {
+    // 초기 네트워크 생성
+    const defaultNetworks: Network[] = [
+      {
+        id: '1001',
+        name: 'net-front',
+        containers: [],
+        isNew: false
+      },
+      {
+        id: '1002',
+        name: 'net-back',
+        containers: [],
+        isNew: false
+      }
+    ];
+    setNetworks(defaultNetworks);
+    
+    // 초기 컨테이너 생성
+    const defaultContainers: Container[] = [
+      {
+        id: '101',
+        name: 'web1',
+        image: 'nginx:latest',
+        ports: [{ hostPort: '80', containerPort: '80' }],
+        status: 'running',
+        createdAt: new Date(),
+        network: 'net-front'
+      },
+      {
+        id: '102',
+        name: 'web2',
+        image: 'nginx:latest',
+        ports: [{ hostPort: '81', containerPort: '80' }],
+        status: 'running',
+        createdAt: new Date(),
+        network: 'net-front'
+      },
+      {
+        id: '103',
+        name: 'web3',
+        image: 'nginx:latest',
+        ports: [{ hostPort: '82', containerPort: '80' }],
+        status: 'running',
+        createdAt: new Date(),
+        network: 'net-front'
+      },
+      {
+        id: '104',
+        name: 'db1',
+        image: 'mysql:8',
+        ports: [{ hostPort: '3306', containerPort: '3306' }],
+        status: 'stopped',
+        createdAt: new Date(),
+        network: 'net-back'
+      }
+    ];
+    setContainers(defaultContainers);
+    
+    // 초기 이미지 생성
+    const defaultImages: Image[] = [
+      {
+        id: '201',
+        name: 'nginx',
+        tag: 'latest',
+        size: '133MB',
+        created: new Date(),
+        isOfficial: true
+      },
+      {
+        id: '202',
+        name: 'mysql',
+        tag: '8',
+        size: '545MB',
+        created: new Date(),
+        isOfficial: true
+      }
+    ];
+    setImages(defaultImages);
+    
+    // 각 네트워크에 컨테이너 추가
+    defaultNetworks[0].containers = defaultContainers.filter(c => c.network === 'net-front');
+    defaultNetworks[1].containers = defaultContainers.filter(c => c.network === 'net-back');
+    
+    setActiveNetwork(defaultNetworks[0].id);
+  }, []);
 
   return (
     <div className={styles.terminalContainer}>
@@ -825,7 +1154,11 @@ const Terminal: React.FC = () => {
           </button>
           <button 
             className={styles.actionButton}
-            onClick={() => setIsContainerListModalOpen(true)}
+            onClick={() => {
+              // 상태 동기화
+              syncContainersWithNetworks();
+              setIsContainerListModalOpen(true);
+            }}
           >
             컨테이너 리스트
           </button>
@@ -842,9 +1175,18 @@ const Terminal: React.FC = () => {
         isOpen={isLevelModalOpen}
         onClose={() => setIsLevelModalOpen(false)}
       />
-      <ContainerListModal 
+      <ContainerListModal
         isOpen={isContainerListModalOpen}
-        onClose={() => setIsContainerListModalOpen(false)}
+        onClose={() => {
+          // 모달 닫을 때도 상태 동기화
+          syncContainersWithNetworks();
+          setIsContainerListModalOpen(false);
+        }}
+        containers={containers} 
+        onStart={handleStartContainer}
+        onStop={handleStopContainer}
+        onRemove={handleRemoveContainer}
+        onContainerClick={handleContainerClick}
       />
       <CommandDictionaryModal 
         isOpen={isCommandDictModalOpen}
@@ -885,6 +1227,9 @@ const Terminal: React.FC = () => {
         <ContainerModal 
           container={selectedContainer} 
           onClose={() => setSelectedContainer(null)} 
+          onStart={handleStartContainer}
+          onStop={handleStopContainer}
+          onRemove={handleRemoveContainer}
         />
       )}
       
