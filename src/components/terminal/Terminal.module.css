@@ -279,7 +279,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 100px;
+  margin-bottom: 120px;
 }
 
 .containerWrapper:hover {
@@ -397,21 +397,34 @@
   padding-top: 30px;
 }
 
+/* 볼륨 연결 컨테이너 영역 */
+.volumesContainer {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  margin-top: 0;
+  z-index: 3;
+}
+
 /* 볼륨 연결 컨테이너 스타일 */
 .volumeConnectionContainer {
   position: absolute;
-  bottom: -30px;
+  top: 0;
   left: 0;
   right: 0;
-  height: 70px;
-  z-index: 1;
+  height: 100px;
+  z-index: 2;
   pointer-events: none;
+  overflow: visible;
 }
 
 /* 연결 경로 스타일 */
 .connectionPath {
   width: 100%;
   height: 100%;
+  overflow: visible;
+  position: absolute;
+  top: 0;
 }
 
 /* 기존 볼륨 연결선 스타일 (호환성) */
@@ -428,14 +441,14 @@
 
 /* 연결된 상태 스타일 */
 .volumeConnectionContainer.connected path {
-  opacity: 0.7;
+  opacity: 1;
 }
 
 /* 강조 연결 스타일 */
 .volumeConnectionContainer.highlighted path {
-  opacity: 0.9;
+  opacity: 1;
   stroke: #1971c2;
-  stroke-width: 4px;
+  stroke-width: 5px;
 }
 
 /* 애니메이션 효과 */
@@ -443,6 +456,7 @@
   animation: dashConnect 1.5s ease infinite;
   stroke-dasharray: 5;
   stroke-dashoffset: 10;
+  opacity: 1;
 }
 
 /* 대시 커넥트 애니메이션 */
@@ -469,14 +483,12 @@
 /* 펄스 효과 위치 조정 */
 .pulseDot {
   position: absolute;
-  bottom: 15px;
-  left: 50%;
-  transform: translateX(-50%);
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: #1c7ed6;
   z-index: 5;
+  transform: translate(-50%, 0);
 }
 
 .chromeModal {
@@ -1041,15 +1053,16 @@
 /* 볼륨 연결 점 스타일 */
 .volumeConnectionDot {
   position: absolute;
-  top: -8px;
+  top: -5px;
   left: 50%;
-  width: 16px;
-  height: 16px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #1c7ed6;
   transform: translateX(-50%);
-  border: 3px solid white;
-  z-index: 2;
+  border: 2px solid white;
+  z-index: 5;
+  box-shadow: 0 0 0 1px rgba(28, 126, 214, 0.3);
 }
 
 /* 볼륨 원 스타일 */
@@ -1065,7 +1078,7 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 3;
+  z-index: 4;
 }
 
 .volumeCircle:hover {
@@ -1077,11 +1090,12 @@
 .connectionPathSvg {
   stroke-width: 3px;
   transition: stroke-width 0.3s ease, opacity 0.3s ease;
+  position: relative;
 }
 
 /* 볼륨 이름 스타일 */
 .volumeName {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 500;
   text-align: center;
   color: white;
@@ -1093,9 +1107,9 @@
 
 /* 연결된 볼륨 스타일 */
 .attachedVolume {
-  width: 80px;
-  height: 80px;
-  margin-top: 25px;
+  width: 70px;
+  height: 70px;
+  margin-top: 95px;
   background: #4dabf7;
   border-radius: 50%;
   display: flex;
@@ -1113,14 +1127,16 @@
   box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
 }
 
-/* 연결된 볼륨 컨테이너 래퍼 */
+/* 볼륨 연결 컨테이너 래퍼 */
 .volumeConnectionWrapper {
-  position: relative;
-  width: 100%;
-  margin-top: -5px;
+  position: absolute;
+  width: 80px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  overflow: visible;
+  z-index: 3;
+  transform-origin: center top;
 }
 
 /* 볼륨 정보 아이템 스타일 */
@@ -1140,3 +1156,4 @@
   color: #495057;
   margin-top: 0.25rem;
 }
+

@@ -512,10 +512,10 @@ const VolumeConnection: React.FC<{
   volume: Volume;
   isConnecting: boolean;
   index?: number;
-  containerCount: number;
-}> = ({ container, volume, isConnecting, index = 0, containerCount }) => {
-  // 컨테이너에서 볼륨으로 내려가는 간단한 경로
-  const path = `M50,0 C50,30 50,50 50,80`;
+  containerCount?: number;
+}> = ({ container, volume, isConnecting, index = 0, containerCount = 1 }) => {
+  // 컨테이너에서 볼륨 상단에 직접 연결되는 경로 (정확한 높이로 조정)
+  const path = `M50,0 L50,95`;
   
   const connectionClass = isConnecting 
     ? styles.connecting 
@@ -542,7 +542,7 @@ const VolumeConnection: React.FC<{
       </svg>
       
       {isConnecting && (
-        <div className={styles.pulseDot}></div>
+        <div className={styles.pulseDot} style={{ left: '50%', bottom: '5px' }}></div>
       )}
     </div>
   );
@@ -1659,26 +1659,44 @@ const Terminal: React.FC = () => {
                         onClick={() => setSelectedContainer(container)}
                         isCreating={newContainerId === container.id}
                       />
-                      {container.volumes && container.volumes.map((volume, volumeIdx) => (
-                        <div key={`${container.id}-${volume.id}`} className={styles.volumeConnectionWrapper}>
-                          <VolumeConnection 
-                            container={container}
-                            volume={volume}
-                            isConnecting={connectingVolume && container.id === newContainerId}
-                            index={volumeIdx}
-                            containerCount={container.volumes?.length || 1}
-                          />
-                          <div 
-                            className={`${styles.volumeCircle} ${styles.attachedVolume} ${newVolumeId === volume.id ? styles.highlight : ''}`}
-                            style={{ 
-                              transform: `translateX(${(volumeIdx - (container.volumes?.length || 1) / 2 + 0.5) * 60}px)` 
-                            }}
-                            onClick={() => setSelectedVolume(volume)}
-                          >
-                            <div className={styles.volumeName}>{volume.name}</div>
-                          </div>
+                      {container.volumes && container.volumes.length > 0 ? (
+                        <div className={styles.volumesContainer}>
+                          {container.volumes.map((volume, volumeIdx) => {
+                            // 볼륨 간 간격 계산 - 적절한 간격으로 조정
+                            const volumeCount = container.volumes?.length || 0;
+                            const offset = volumeCount > 1
+                              ? (volumeIdx - (volumeCount - 1) / 2) * 100
+                              : 0;
+                            
+                            return (
+                              <div 
+                                key={`${container.id}-${volume.id}`} 
+                                className={styles.volumeConnectionWrapper}
+                                style={{ 
+                                  transform: `translateX(${offset}px)`,
+                                  position: 'absolute', 
+                                  left: '50%',
+                                  marginLeft: '-35px', // 볼륨 너비의 절반 (70px/2)
+                                  top: '0'
+                                }}
+                              >
+                                <VolumeConnection 
+                                  container={container}
+                                  volume={volume}
+                                  isConnecting={connectingVolume && container.id === newContainerId}
+                                />
+                                <div 
+                                  className={`${styles.volumeCircle} ${styles.attachedVolume} ${newVolumeId === volume.id ? styles.highlight : ''}`}
+                                  onClick={() => setSelectedVolume(volume)}
+                                >
+                                  <div className={styles.volumeConnectionDot}></div>
+                                  <div className={styles.volumeName}>{volume.name}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
+                      ) : null}
                     </div>
                   ))}
                 </div>
