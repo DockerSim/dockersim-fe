@@ -18,6 +18,7 @@ interface Volume {
   mountPath?: string;
   hostPath?: string;
   createdAt: Date;
+  networkId?: string;
 }
 
 interface Container {
@@ -30,7 +31,7 @@ interface Container {
   }>;
   status: 'running' | 'stopped';
   createdAt: Date;
-  volume?: Volume;
+  volumes?: Volume[];
   network?: string;
   lastCommand?: string;
 }
@@ -51,13 +52,18 @@ interface Image {
   isOfficial: boolean;
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
 interface ProcessStep {
   id: string;
   type: 'pull' | 'create' | 'start' | 'connect' | 'error' | 'search';
   message: string;
   details?: string;
   targetId?: string;
-  position?: { x: number; y: number };
+  position?: Position;
   completed?: boolean;
 }
 
@@ -98,9 +104,13 @@ const ContainerCard = ({
         </span>
       ))}
     </div>
-    {container.volume && (
+    {container.volumes && container.volumes.length > 0 && (
       <div className={styles.volumeConnection}>
-        <span className={styles.volumeBadge}>{container.volume.name}</span>
+        {container.volumes.map((volume, index) => (
+          <span key={index} className={styles.volumeBadge}>
+            {volume.name}
+          </span>
+        ))}
       </div>
     )}
   </div>
@@ -180,12 +190,16 @@ const ContainerModal: React.FC<{ container: Container, onStart?: (id: string) =>
                     </div>
                   </div>
                 )}
-                {container.volume && (
+                {container.volumes && container.volumes.length > 0 && (
                   <div className={styles.infoGroup}>
                     <label>볼륨</label>
                     <div className={styles.volumeInfo}>
-                      <span className={styles.volumeTag}>{container.volume.name}</span>
-                      <span className={styles.mountPath}>{container.volume.mountPath}</span>
+                      {container.volumes.map((volume, idx) => (
+                        <div key={idx} className={styles.volumeItem}>
+                          <span className={styles.volumeTag}>{volume.name}</span>
+                          <span className={styles.mountPath}>{volume.mountPath}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -321,18 +335,15 @@ const ImageModal: React.FC<{ onClose: () => void, images: Image[] }> = ({ onClos
 };
 
 const ProcessVisualization: React.FC<{ 
-  processes: ProcessStep[] 
-}> = React.memo(({ processes }) => {
+  processes: ProcessStep[]
+}> = ({ processes }) => {
   return (
     <div className={styles.processVisualization}>
       {processes.map(process => (
         <div 
           key={process.id} 
           className={`${styles.processBubble} ${process.completed ? styles.completed : ''} ${styles[process.type]}`}
-          style={process.position ? {
-            left: process.position.x,
-            top: process.position.y
-          } : undefined}
+          style={process.position ? { left: process.position.x, top: process.position.y } : {}}
         >
           <div className={styles.processIcon}>
             {process.type === 'pull' && '⬇️'}
@@ -352,7 +363,48 @@ const ProcessVisualization: React.FC<{
       ))}
     </div>
   );
-});
+};
+
+const VolumeConnection: React.FC<{
+  container: Container;
+  volume: Volume;
+  isConnecting: boolean;
+  index?: number;
+  containerCount: number;
+}> = ({ container, volume, isConnecting, index = 0, containerCount }) => {
+  // 컨테이너에서 볼륨으로 내려가는 간단한 경로
+  const path = `M50,0 C50,30 50,50 50,80`;
+  
+  const connectionClass = isConnecting 
+    ? styles.connecting 
+    : container.id.slice(-4) === volume.id.slice(-4)
+      ? styles.highlighted 
+      : styles.connected;
+  
+  return (
+    <div 
+      className={`${styles.volumeConnectionContainer} ${connectionClass}`}
+      data-container-id={container.id}
+      data-volume-id={volume.id}
+    >
+      <svg className={styles.connectionPath} width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+        <path 
+          d={path}
+          stroke="#1c7ed6" 
+          strokeWidth="3" 
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={isConnecting ? "5,5" : "none"}
+          className={styles.connectionPathSvg}
+        />
+      </svg>
+      
+      {isConnecting && (
+        <div className={styles.pulseDot}></div>
+      )}
+    </div>
+  );
+};
 
 const Terminal: React.FC = () => {
   const [command, setCommand] = useState('');
@@ -379,11 +431,6 @@ const Terminal: React.FC = () => {
   const [containers, setContainers] = useState<Container[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
-  const [processIdCounter, setProcessIdCounter] = useState(0);
-
-  // 공통 사용되는 위치 값을 상수로 정의
-  const POSITION_CENTER_X = 400;
-  const POSITION_CENTER_Y = 300;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -423,7 +470,8 @@ const Terminal: React.FC = () => {
           const newVolume: Volume = {
             id: Date.now().toString(),
             name: volumeName,
-            createdAt: new Date()
+            createdAt: new Date(),
+            networkId: activeNetwork || undefined
           };
           
           setVolumes(prev => [...prev, newVolume]);
@@ -455,6 +503,122 @@ const Terminal: React.FC = () => {
             return { hostPort: host, containerPort: container };
           });
 
+          // -v 또는 --volume 옵션으로 볼륨 마운트
+          // 정규식 패턴 개선: "확장자" 부분을 제외하고 볼륨 이름만 정확히 추출하도록 수정
+          const volumeMappings = trimmedCommand.match(/(-v|--volume)\s+([^\s]+)/g) || [];
+          
+          // --mount 옵션도 지원
+          const mountMappings = trimmedCommand.match(/--mount\s+([^\s]+)/g) || [];
+          
+          // 볼륨 옵션을 담을 배열
+          const volumeOptions: Array<{name: string, mountPath: string}> = [];
+          
+          // --mount 옵션 파싱
+          if (mountMappings.length > 0) {
+            for (const mountMapping of mountMappings) {
+              const mountItem = mountMapping;
+              if (mountItem) {
+                const mountStr = mountItem.replace('--mount', '').trim();
+                // source=vol1,target=/data 형식 파싱
+                const mountParts = mountStr.split(',');
+                
+                let volumeName = '';
+                let mountPath = '/data'; // 기본값
+                
+                // source와 target 추출
+                mountParts.forEach(part => {
+                  if (part.startsWith('source=')) {
+                    volumeName = part.replace('source=', '');
+                  } else if (part.startsWith('target=')) {
+                    mountPath = part.replace('target=', '');
+                  }
+                });
+                
+                if (volumeName) {
+                  // 볼륨 옵션 배열에 추가
+                  volumeOptions.push({
+                    name: volumeName,
+                    mountPath: mountPath
+                  });
+                  
+                  // 볼륨이 존재하지 않으면 생성
+                  if (!volumes.find(v => v.name === volumeName)) {
+                    addProcessStep({
+                      type: 'create',
+                      message: '볼륨 자동 생성 중',
+                      details: `볼륨 '${volumeName}'이 존재하지 않아 자동으로 생성합니다.`,
+                      position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 150 }
+                    });
+                    
+                    const newVolume: Volume = {
+                      id: `vol_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                      name: volumeName,
+                      mountPath: mountPath,
+                      createdAt: new Date(),
+                      networkId: activeNetwork || undefined
+                    };
+                    
+                    setVolumes(prev => [...prev, newVolume]);
+                    setNewVolumeId(newVolume.id);
+                    
+                    setOutput(prev => [...prev, `볼륨 '${volumeName}'이 생성되었습니다.`]);
+                  }
+                }
+              }
+            }
+          }
+          
+          // -v 옵션 파싱
+          if (volumeMappings.length > 0) {
+            // 원본 형식 추출을 위해 정규식 파싱 개선
+            for (const volumeMapping of volumeMappings) {
+              const volumeItem = volumeMapping.trim();
+              if (volumeItem) {
+                // -v 또는 --volume 제거
+                const volumeStr = volumeItem.replace(/-v|--volume/, '').trim();
+                const volumeParts = volumeStr.split(':');
+                const volumeName = volumeParts[0];
+                const mountPath = volumeParts.length > 1 ? volumeParts[1] : '/data';
+                
+                console.log(`볼륨 마운트 파싱: ${volumeName} -> ${mountPath}`);
+                
+                // 볼륨 옵션 배열에 추가
+                volumeOptions.push({
+                  name: volumeName,
+                  mountPath: mountPath
+                });
+                
+                // 볼륨이 존재하지 않으면 생성
+                if (!volumes.find(v => v.name === volumeName)) {
+                  addProcessStep({
+                    type: 'create',
+                    message: '볼륨 자동 생성 중',
+                    details: `볼륨 '${volumeName}'이 존재하지 않아 자동으로 생성합니다.`,
+                    position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 150 }
+                  });
+                  
+                  const newVolume: Volume = {
+                    id: `vol_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                    name: volumeName,
+                    mountPath: mountPath,
+                    createdAt: new Date(),
+                    networkId: activeNetwork || undefined
+                  };
+                  
+                  setVolumes(prev => [...prev, newVolume]);
+                  setNewVolumeId(newVolume.id);
+                  
+                  setOutput(prev => [...prev, `볼륨 '${volumeName}'이 생성되었습니다.`]);
+                }
+              }
+            }
+          }
+          
+          // 최종적으로 모든 볼륨 옵션을 컨테이너 생성에 전달
+          if (volumeOptions.length > 0) {
+            options.volumes = volumeOptions;
+          }
+
           const imageExists = images.some(img => {
             const fullImageName = `${img.name}:${img.tag}`;
             return fullImageName === options.image || 
@@ -466,14 +630,14 @@ const Terminal: React.FC = () => {
               type: 'search',
               message: '이미지 검색 중',
               details: `${options.image} 이미지를 검색합니다.`,
-              position: { x: POSITION_CENTER_X - 150, y: POSITION_CENTER_Y - 100 }
+              position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 100 }
             });
             
             addProcessStep({
               type: 'pull',
               message: '이미지 다운로드 중',
               details: `${options.image} 이미지를 다운로드합니다.`,
-              position: { x: POSITION_CENTER_X - 100, y: POSITION_CENTER_Y - 50 }
+              position: { x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 50 }
             });
             
             setTimeout(() => {
@@ -482,7 +646,7 @@ const Terminal: React.FC = () => {
                 : [options.image, 'latest'];
               
               const newImage: Image = {
-            id: Date.now().toString(),
+                id: Date.now().toString(),
                 name,
                 tag: tag || 'latest',
                 size: `${Math.floor(Math.random() * 200) + 10}MB`,
@@ -491,7 +655,6 @@ const Terminal: React.FC = () => {
               };
               
               setImages(prev => [...prev, newImage]);
-              
               createContainerWithAnimation(options, ports, activeNetwork);
             }, 3000);
           } else {
@@ -511,7 +674,7 @@ const Terminal: React.FC = () => {
             type: 'search',
             message: '이미지 검색 중',
             details: `${imageName} 이미지를 검색합니다.`,
-            position: { x: POSITION_CENTER_X - 150, y: POSITION_CENTER_Y - 100 }
+            position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 100 }
           });
           
           setTimeout(() => {
@@ -519,7 +682,7 @@ const Terminal: React.FC = () => {
               type: 'pull',
               message: '이미지 다운로드 중',
               details: `${imageName} 이미지를 다운로드합니다.`,
-              position: { x: POSITION_CENTER_X - 100, y: POSITION_CENTER_Y - 50 }
+              position: { x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 50 }
             });
             
             setTimeout(() => {
@@ -618,49 +781,35 @@ const Terminal: React.FC = () => {
   };
 
   const handleProcessComplete = (id: string) => {
-    setProcesses(prev => {
-      const updatedProcesses = prev.map(p => p.id === id ? { ...p, completed: true } : p);
-      
-      const completedCount = updatedProcesses.filter(p => p.completed).length;
-      
-      if (completedCount === updatedProcesses.length && updatedProcesses.length > 0) {
-        setTimeout(() => {
-          setAnimating(false);
-          setProcesses([]);
-        }, 1000);
-      }
-      
-      return updatedProcesses;
-    });
+    setProcesses(prev => 
+      prev.map(p => p.id === id ? { ...p, completed: true } : p)
+    );
+    
+    const completedCount = processes.filter(p => p.completed || p.id === id).length;
+    if (completedCount === processes.length) {
+      setTimeout(() => {
+        setAnimating(false);
+        setProcesses([]);
+      }, 1000);
+    }
   };
 
   const addProcessStep = (step: Omit<ProcessStep, 'id'>) => {
-    const newId = `process-${Date.now()}-${processIdCounter}`;
-    setProcessIdCounter(prevCounter => prevCounter + 1);
-    
-    // position이 없는 경우 기본 위치 제공
     const newStep = {
       ...step,
-      id: newId,
-      completed: false,
-      position: step.position || { x: POSITION_CENTER_X, y: POSITION_CENTER_Y }
+      id: Date.now().toString(),
+      completed: false
     };
     
-    setProcesses(prev => {
-      const newProcesses = [...prev, newStep];
-      
-      const timeoutDelay = newProcesses.length * 1500 + 1500;
-      
-      setTimeout(() => {
-        handleProcessComplete(newStep.id);
-      }, timeoutDelay);
-      
-      return newProcesses;
-    });
+    setProcesses(prev => [...prev, newStep]);
     
     if (!animating) {
       setAnimating(true);
     }
+    
+    setTimeout(() => {
+      handleProcessComplete(newStep.id);
+    }, processes.length * 1500 + 1500);
   };
 
   const createContainerWithAnimation = (
@@ -672,7 +821,7 @@ const Terminal: React.FC = () => {
       type: 'create',
       message: '컨테이너 생성 중',
       details: `${options.name || '컨테이너'}를 생성합니다.`,
-      position: { x: POSITION_CENTER_X - 150, y: POSITION_CENTER_Y }
+      position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 }
     });
     
     setTimeout(() => {
@@ -683,29 +832,43 @@ const Terminal: React.FC = () => {
         ports: ports,
         status: 'running',
         createdAt: new Date(),
-        network: networkId
+        network: networkId,
+        volumes: [] // 빈 배열로 초기화
       };
 
       if (options.volumes && options.volumes.length > 0) {
-        const volumeOption = options.volumes[0];
-        const volume = volumes.find(v => v.name === volumeOption.name);
+        // 모든 볼륨을 처리
+        const volumesToConnect: Volume[] = [];
         
-        if (volume) {
-          addProcessStep({
-            type: 'connect',
-            message: '볼륨 연결 중',
-            details: `${volume.name} 볼륨을 컨테이너에 연결합니다.`,
-            position: { x: POSITION_CENTER_X - 100, y: POSITION_CENTER_Y + 50 }
-          });
+        for (const volumeOption of options.volumes) {
+          const volume = volumes.find(v => v.name === volumeOption.name);
           
-          setConnectingVolume(true);
-          
-          setVolumes(prev => prev.map(v => 
-            v.id === volume.id 
-              ? { ...v, mountPath: volumeOption.mountPath }
-              : v
-          ));
-          container.volume = volume;
+          if (volume) {
+            addProcessStep({
+              type: 'connect',
+              message: '볼륨 연결 중',
+              details: `${volume.name} 볼륨을 컨테이너에 연결합니다.`,
+              position: { x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 + 50 }
+            });
+            
+            setConnectingVolume(true);
+            
+            setVolumes(prev => prev.map(v => 
+              v.id === volume.id 
+                ? { ...v, mountPath: volumeOption.mountPath, networkId: networkId }
+                : v
+            ));
+            
+            volumesToConnect.push({
+              ...volume,
+              mountPath: volumeOption.mountPath,
+              networkId: networkId
+            });
+          }
+        }
+        
+        if (volumesToConnect.length > 0) {
+          container.volumes = volumesToConnect;
           
           setTimeout(() => {
             setConnectingVolume(false);
@@ -717,7 +880,7 @@ const Terminal: React.FC = () => {
         type: 'start',
         message: '컨테이너 시작 중',
         details: `${container.name} 컨테이너를 시작합니다.`,
-        position: { x: POSITION_CENTER_X - 150, y: POSITION_CENTER_Y + 100 }
+        position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 + 100 }
       });
 
       setTimeout(() => {
@@ -738,8 +901,8 @@ const Terminal: React.FC = () => {
           ...(container.ports.length > 0 
             ? [`포트: ${container.ports.map(p => `${p.hostPort}:${p.containerPort}`).join(', ')}`]
             : []),
-          ...(container.volume
-            ? [`볼륨: ${container.volume.name}`]
+          ...(container.volumes && container.volumes.length > 0
+            ? [`볼륨: ${container.volumes.map(v => v.name).join(', ')}`]
             : [])
         ]);
       }, 1500);
@@ -779,16 +942,13 @@ const Terminal: React.FC = () => {
         throw new Error('컨테이너를 찾을 수 없습니다.');
       }
       
-      // 상태 업데이트된 컨테이너 생성
       const updatedContainer = { ...container, status: 'running' as const };
       
-      // 전체 컨테이너 목록 업데이트
       const updatedContainers = containers.map(c => 
         c.id === containerId ? updatedContainer : c
       );
       setContainers(updatedContainers);
       
-      // 네트워크 내 컨테이너도 업데이트
       const updatedNetworks = networks.map(network => ({
         ...network,
         containers: network.containers.map(c => 
@@ -828,16 +988,13 @@ const Terminal: React.FC = () => {
         throw new Error('컨테이너를 찾을 수 없습니다.');
       }
       
-      // 상태 업데이트된 컨테이너 생성
       const updatedContainer = { ...container, status: 'stopped' as const };
       
-      // 전체 컨테이너 목록 업데이트
       const updatedContainers = containers.map(c => 
         c.id === containerId ? updatedContainer : c
       );
       setContainers(updatedContainers);
       
-      // 네트워크 내 컨테이너도 업데이트
       const updatedNetworks = networks.map(network => ({
         ...network,
         containers: network.containers.map(c => 
@@ -881,18 +1038,32 @@ const Terminal: React.FC = () => {
         await handleStopContainer(containerId);
       }
       
+      // 컨테이너에 연결된 볼륨 정보 저장
+      const attachedVolumes = container.volumes || [];
+      
+      // 컨테이너 목록에서 삭제
       const updatedContainers = containers.filter(c => c.id !== containerId);
       setContainers(updatedContainers);
       
+      // 네트워크 목록에서 삭제
       const updatedNetworks = networks.map(n => ({
         ...n,
         containers: n.containers.filter(c => c.id !== containerId)
       }));
       setNetworks(updatedNetworks);
       
+      // 컨테이너 삭제 후 처리 로그
       const rmCommand = `docker rm ${container.name}`;
       setCommandHistory(prev => [...prev, rmCommand]);
       setOutput(prev => [...prev, `$ ${rmCommand}`, `컨테이너 ${container.name}을(를) 삭제했습니다.`]);
+      
+      // 볼륨 정보 유지 관련 메시지 추가
+      if (attachedVolumes.length > 0) {
+        setOutput(prev => [
+          ...prev, 
+          `볼륨 ${attachedVolumes.map(v => `'${v.name}'`).join(', ')}은(는) 유지됩니다.`
+        ]);
+      }
       
       setIsProcessing(false);
     } catch (error) {
@@ -911,26 +1082,20 @@ const Terminal: React.FC = () => {
     setSelectedContainer(container);
   };
 
-  // 컨테이너 상태 동기화 함수 추가
   const syncContainersWithNetworks = () => {
-    // 모든 컨테이너 ID들
     const allContainerIds = new Set([
       ...containers.map(c => c.id),
       ...networks.flatMap(n => n.containers.map(c => c.id))
     ]);
     
-    // 모든 컨테이너를 통합한 맵 생성
     const containerMap = new Map<string, Container>();
     
-    // 컨테이너 배열에서 추가
     containers.forEach(container => {
       containerMap.set(container.id, container);
     });
     
-    // 네트워크에서 추가 (동일 ID 있으면 덮어씀)
     networks.forEach(network => {
       network.containers.forEach(container => {
-        // 이미 맵에 있는 경우, network 정보 추가/업데이트
         if (containerMap.has(container.id)) {
           const existing = containerMap.get(container.id)!;
           containerMap.set(container.id, {
@@ -946,13 +1111,10 @@ const Terminal: React.FC = () => {
       });
     });
     
-    // 최종 통합된 컨테이너 배열
     const uniqueContainers = Array.from(containerMap.values());
     
-    // 컨테이너 배열 업데이트
     setContainers(uniqueContainers);
     
-    // 네트워크 배열의 컨테이너도 업데이트
     const updatedNetworks = networks.map(network => ({
       ...network,
       containers: network.containers.map(container => {
@@ -964,9 +1126,7 @@ const Terminal: React.FC = () => {
     setNetworks(updatedNetworks);
   };
 
-  // 컴포넌트 마운트 시 초기 테스트 데이터 생성
   useEffect(() => {
-    // 초기 네트워크 생성
     const defaultNetworks: Network[] = [
       {
         id: '1001',
@@ -983,7 +1143,6 @@ const Terminal: React.FC = () => {
     ];
     setNetworks(defaultNetworks);
     
-    // 초기 컨테이너 생성
     const defaultContainers: Container[] = [
       {
         id: '101',
@@ -992,7 +1151,8 @@ const Terminal: React.FC = () => {
         ports: [{ hostPort: '80', containerPort: '80' }],
         status: 'running',
         createdAt: new Date(),
-        network: 'net-front'
+        network: 'net-front',
+        volumes: [] // 빈 배열로 초기화
       },
       {
         id: '102',
@@ -1001,7 +1161,8 @@ const Terminal: React.FC = () => {
         ports: [{ hostPort: '81', containerPort: '80' }],
         status: 'running',
         createdAt: new Date(),
-        network: 'net-front'
+        network: 'net-front',
+        volumes: []
       },
       {
         id: '103',
@@ -1010,7 +1171,8 @@ const Terminal: React.FC = () => {
         ports: [{ hostPort: '82', containerPort: '80' }],
         status: 'running',
         createdAt: new Date(),
-        network: 'net-front'
+        network: 'net-front',
+        volumes: []
       },
       {
         id: '104',
@@ -1019,12 +1181,12 @@ const Terminal: React.FC = () => {
         ports: [{ hostPort: '3306', containerPort: '3306' }],
         status: 'stopped',
         createdAt: new Date(),
-        network: 'net-back'
+        network: 'net-back',
+        volumes: []
       }
     ];
     setContainers(defaultContainers);
     
-    // 초기 이미지 생성
     const defaultImages: Image[] = [
       {
         id: '201',
@@ -1045,7 +1207,6 @@ const Terminal: React.FC = () => {
     ];
     setImages(defaultImages);
     
-    // 각 네트워크에 컨테이너 추가
     defaultNetworks[0].containers = defaultContainers.filter(c => c.network === 'net-front');
     defaultNetworks[1].containers = defaultContainers.filter(c => c.network === 'net-back');
     
@@ -1115,7 +1276,7 @@ const Terminal: React.FC = () => {
             >
               <div className={styles.networkContainer}>
                 <div className={`${styles.containersSection} ${getContainerLayoutClass(network.containers)}`}>
-                  {network.containers.map(container => (
+                  {network.containers.map((container, idx) => (
                     <div 
                       key={container.id} 
                       className={`${styles.containerWrapper} ${newContainerId === container.id ? styles.creating : ''}`}
@@ -1125,31 +1286,56 @@ const Terminal: React.FC = () => {
                         onClick={() => setSelectedContainer(container)}
                         isCreating={newContainerId === container.id}
                       />
-                      {container.volume && (
-                        <div className={`${styles.volumeConnectionLine} ${connectingVolume && container.id === newContainerId ? styles.connecting : ''}`}
-                             style={{ position: 'absolute', bottom: '-60px', left: '50%', width: '3px', height: '60px', transform: 'translateX(-50%)' }}>
-                          {connectingVolume && container.id === newContainerId && (
-                            <div className={styles.pulseDot}></div>
-                          )}
+                      {container.volumes && container.volumes.map((volume, volumeIdx) => (
+                        <div key={`${container.id}-${volume.id}`} className={styles.volumeConnectionWrapper}>
+                          <VolumeConnection 
+                            container={container}
+                            volume={volume}
+                            isConnecting={connectingVolume && container.id === newContainerId}
+                            index={volumeIdx}
+                            containerCount={container.volumes?.length || 1}
+                          />
+                          <div 
+                            className={`${styles.volumeCircle} ${styles.attachedVolume} ${newVolumeId === volume.id ? styles.highlight : ''}`}
+                            style={{ 
+                              transform: `translateX(${(volumeIdx - (container.volumes?.length || 1) / 2 + 0.5) * 60}px)` 
+                            }}
+                            onClick={() => setSelectedVolume(volume)}
+                          >
+                            <div className={styles.volumeName}>{volume.name}</div>
+                          </div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   ))}
                 </div>
-                <div className={styles.volumesSection} style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', padding: '2rem 0', position: 'relative', zIndex: 2 }}>
-                  {volumes.map((volume, index) => (
-                    <div
-                      key={volume.id}
-                      className={`${styles.volumeCircle} ${newVolumeId === volume.id ? styles.highlight : ''}`}
-                      style={{ margin: '0 10px' }}
-                      onClick={() => setSelectedVolume(volume)}
-                    >
-                      <div className={styles.volumeName}>{volume.name}</div>
-                      {network.containers.some(c => c.volume?.id === volume.id) && (
-                        <div className={styles.volumeConnectionDot}></div>
-                      )}
-                    </div>
-                  ))}
+                <div className={styles.volumesContainerArea}>
+                  <h3 className={styles.volumeSectionTitle}>연결되지 않은 볼륨</h3>
+                  <div className={styles.volumesSection}>
+                    {volumes
+                      .filter(volume => 
+                        (volume.networkId === network.id || !volume.networkId) && 
+                        !network.containers.some(c => c.volumes?.some(v => v.id === volume.id))
+                      )
+                      .map((volume, index) => (
+                        <div
+                          key={`unconnected-${volume.id}`}
+                          className={`${styles.volumeCircle} ${styles.unconnectedVolume} ${newVolumeId === volume.id ? styles.highlight : ''}`}
+                          style={{ 
+                            left: `${(index * 120) + 20}px`,
+                            position: 'relative',
+                            zIndex: 5
+                          }}
+                          onClick={() => setSelectedVolume(volume)}
+                        >
+                          <div className={styles.volumeName}>{volume.name}</div>
+                        </div>
+                      ))}
+                    
+                    {volumes.filter(v => !network.containers.some(c => c.volumes?.some(cv => cv.id === v.id))).length === 0 && (
+                      <div className={styles.emptyVolumeMessage}>연결되지 않은 볼륨이 없습니다</div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1168,7 +1354,6 @@ const Terminal: React.FC = () => {
           <button 
             className={styles.actionButton}
             onClick={() => {
-              // 상태 동기화
               syncContainersWithNetworks();
               setIsContainerListModalOpen(true);
             }}
@@ -1191,7 +1376,6 @@ const Terminal: React.FC = () => {
       <ContainerListModal
         isOpen={isContainerListModalOpen}
         onClose={() => {
-          // 모달 닫을 때도 상태 동기화
           syncContainersWithNetworks();
           setIsContainerListModalOpen(false);
         }}

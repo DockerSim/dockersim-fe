@@ -275,7 +275,11 @@
 
 .containerWrapper {
   position: relative;
-  transition: transform 0.3s ease;
+  margin: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 100px;
 }
 
 .containerWrapper:hover {
@@ -362,6 +366,8 @@
   border-radius: 4px;
   font-size: 0.85rem;
   font-weight: 500;
+  margin-right: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .portBadge {
@@ -394,10 +400,10 @@
 /* 볼륨 연결 컨테이너 스타일 */
 .volumeConnectionContainer {
   position: absolute;
-  bottom: -110px;
+  bottom: -30px;
   left: 0;
   right: 0;
-  height: 130px;
+  height: 70px;
   z-index: 1;
   pointer-events: none;
 }
@@ -1048,4 +1054,72 @@
 .volumeCircle:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 연결선 스타일 수정 */
+.connectionPathSvg {
+  stroke-width: 3px;
+  transition: stroke-width 0.3s ease, opacity 0.3s ease;
+}
+
+/* 볼륨 이름 스타일 */
+.volumeName {
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: center;
+  color: white;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 연결된 볼륨 스타일 */
+.attachedVolume {
+  width: 80px;
+  height: 80px;
+  margin-top: 25px;
+  background: #4dabf7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 3;
+}
+
+.attachedVolume:hover {
+  transform: translateY(-5px) !important;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 연결된 볼륨 컨테이너 래퍼 */
+.volumeConnectionWrapper {
+  position: relative;
+  width: 100%;
+  margin-top: -5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 볼륨 정보 아이템 스타일 */
+.volumeItem {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+/* 볼륨 마운트 경로 스타일 */
+.mountPath {
+  display: block;
+  font-size: 0.75rem;
+  color: #495057;
+  margin-top: 0.25rem;
 }
