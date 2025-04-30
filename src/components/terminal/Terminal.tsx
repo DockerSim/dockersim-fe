@@ -321,19 +321,8 @@ const ImageModal: React.FC<{ onClose: () => void, images: Image[] }> = ({ onClos
 };
 
 const ProcessVisualization: React.FC<{ 
-  processes: ProcessStep[], 
-  onComplete: (id: string) => void 
-}> = ({ processes, onComplete }) => {
-  useEffect(() => {
-    processes.forEach((process, index) => {
-      if (!process.completed) {
-        setTimeout(() => {
-          onComplete(process.id);
-        }, (index + 1) * 1500);
-      }
-    });
-  }, [processes, onComplete]);
-
+  processes: ProcessStep[] 
+}> = React.memo(({ processes }) => {
   return (
     <div className={styles.processVisualization}>
       {processes.map(process => (
@@ -363,7 +352,7 @@ const ProcessVisualization: React.FC<{
       ))}
     </div>
   );
-};
+});
 
 const Terminal: React.FC = () => {
   const [command, setCommand] = useState('');
@@ -390,6 +379,11 @@ const Terminal: React.FC = () => {
   const [containers, setContainers] = useState<Container[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [processIdCounter, setProcessIdCounter] = useState(0);
+
+  // 공통 사용되는 위치 값을 상수로 정의
+  const POSITION_CENTER_X = 400;
+  const POSITION_CENTER_Y = 300;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -472,14 +466,14 @@ const Terminal: React.FC = () => {
               type: 'search',
               message: '이미지 검색 중',
               details: `${options.image} 이미지를 검색합니다.`,
-              position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 100 }
+              position: { x: POSITION_CENTER_X - 150, y: POSITION_CENTER_Y - 100 }
             });
             
             addProcessStep({
               type: 'pull',
               message: '이미지 다운로드 중',
               details: `${options.image} 이미지를 다운로드합니다.`,
-              position: { x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 50 }
+              position: { x: POSITION_CENTER_X - 100, y: POSITION_CENTER_Y - 50 }
             });
             
             setTimeout(() => {
@@ -517,7 +511,7 @@ const Terminal: React.FC = () => {
             type: 'search',
             message: '이미지 검색 중',
             details: `${imageName} 이미지를 검색합니다.`,
-            position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 100 }
+            position: { x: POSITION_CENTER_X - 150, y: POSITION_CENTER_Y - 100 }
           });
           
           setTimeout(() => {
@@ -525,7 +519,7 @@ const Terminal: React.FC = () => {
               type: 'pull',
               message: '이미지 다운로드 중',
               details: `${imageName} 이미지를 다운로드합니다.`,
-              position: { x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 50 }
+              position: { x: POSITION_CENTER_X - 100, y: POSITION_CENTER_Y - 50 }
             });
             
             setTimeout(() => {
@@ -624,27 +618,45 @@ const Terminal: React.FC = () => {
   };
 
   const handleProcessComplete = (id: string) => {
-    setProcesses(prev => 
-      prev.map(p => p.id === id ? { ...p, completed: true } : p)
-    );
-    
-    const lastProcess = processes[processes.length - 1];
-    if (lastProcess && lastProcess.id === id) {
-      setTimeout(() => {
-        setAnimating(false);
-        setProcesses([]);
-      }, 1000);
-    }
+    setProcesses(prev => {
+      const updatedProcesses = prev.map(p => p.id === id ? { ...p, completed: true } : p);
+      
+      const completedCount = updatedProcesses.filter(p => p.completed).length;
+      
+      if (completedCount === updatedProcesses.length && updatedProcesses.length > 0) {
+        setTimeout(() => {
+          setAnimating(false);
+          setProcesses([]);
+        }, 1000);
+      }
+      
+      return updatedProcesses;
+    });
   };
 
   const addProcessStep = (step: Omit<ProcessStep, 'id'>) => {
+    const newId = `process-${Date.now()}-${processIdCounter}`;
+    setProcessIdCounter(prevCounter => prevCounter + 1);
+    
+    // position이 없는 경우 기본 위치 제공
     const newStep = {
       ...step,
-      id: Date.now().toString(),
-      completed: false
+      id: newId,
+      completed: false,
+      position: step.position || { x: POSITION_CENTER_X, y: POSITION_CENTER_Y }
     };
     
-    setProcesses(prev => [...prev, newStep]);
+    setProcesses(prev => {
+      const newProcesses = [...prev, newStep];
+      
+      const timeoutDelay = newProcesses.length * 1500 + 1500;
+      
+      setTimeout(() => {
+        handleProcessComplete(newStep.id);
+      }, timeoutDelay);
+      
+      return newProcesses;
+    });
     
     if (!animating) {
       setAnimating(true);
@@ -660,7 +672,7 @@ const Terminal: React.FC = () => {
       type: 'create',
       message: '컨테이너 생성 중',
       details: `${options.name || '컨테이너'}를 생성합니다.`,
-      position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 }
+      position: { x: POSITION_CENTER_X - 150, y: POSITION_CENTER_Y }
     });
     
     setTimeout(() => {
@@ -683,7 +695,7 @@ const Terminal: React.FC = () => {
             type: 'connect',
             message: '볼륨 연결 중',
             details: `${volume.name} 볼륨을 컨테이너에 연결합니다.`,
-            position: { x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 + 50 }
+            position: { x: POSITION_CENTER_X - 100, y: POSITION_CENTER_Y + 50 }
           });
           
           setConnectingVolume(true);
@@ -705,7 +717,7 @@ const Terminal: React.FC = () => {
         type: 'start',
         message: '컨테이너 시작 중',
         details: `${container.name} 컨테이너를 시작합니다.`,
-        position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 + 100 }
+        position: { x: POSITION_CENTER_X - 150, y: POSITION_CENTER_Y + 100 }
       });
 
       setTimeout(() => {
@@ -1114,7 +1126,8 @@ const Terminal: React.FC = () => {
                         isCreating={newContainerId === container.id}
                       />
                       {container.volume && (
-                        <div className={`${styles.volumeConnectionLine} ${connectingVolume && container.id === newContainerId ? styles.connecting : ''}`}>
+                        <div className={`${styles.volumeConnectionLine} ${connectingVolume && container.id === newContainerId ? styles.connecting : ''}`}
+                             style={{ position: 'absolute', bottom: '-60px', left: '50%', width: '3px', height: '60px', transform: 'translateX(-50%)' }}>
                           {connectingVolume && container.id === newContainerId && (
                             <div className={styles.pulseDot}></div>
                           )}
@@ -1123,12 +1136,12 @@ const Terminal: React.FC = () => {
                     </div>
                   ))}
                 </div>
-                <div className={styles.volumesSection}>
+                <div className={styles.volumesSection} style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', padding: '2rem 0', position: 'relative', zIndex: 2 }}>
                   {volumes.map((volume, index) => (
                     <div
                       key={volume.id}
                       className={`${styles.volumeCircle} ${newVolumeId === volume.id ? styles.highlight : ''}`}
-                      style={{ left: `${(index * 120) + 20}px` }}
+                      style={{ margin: '0 10px' }}
                       onClick={() => setSelectedVolume(volume)}
                     >
                       <div className={styles.volumeName}>{volume.name}</div>
@@ -1250,7 +1263,6 @@ const Terminal: React.FC = () => {
       {animating && (
         <ProcessVisualization 
           processes={processes} 
-          onComplete={handleProcessComplete} 
         />
       )}
     </div>

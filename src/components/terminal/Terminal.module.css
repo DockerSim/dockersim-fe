@@ -256,7 +256,9 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 100px;
+  position: relative;
+  z-index: 3;
 }
 
 .containersSection.single {
@@ -382,46 +384,93 @@
   margin-top: 0.5rem;
 }
 
-.volumeConnectionLine {
-  position: absolute;
-  bottom: -20px;
-  left: 50%;
-  width: 2px;
-  height: 20px;
-  background: #1c7ed6;
-  z-index: 1;
+/* 볼륨 연결 컨테이너 영역 */
+.volumesContainerArea {
+  position: relative;
+  width: 100%;
+  padding-top: 30px;
 }
 
-.volumeConnectionDot {
+/* 볼륨 연결 컨테이너 스타일 */
+.volumeConnectionContainer {
   position: absolute;
-  top: -8px;
+  bottom: -110px;
+  left: 0;
+  right: 0;
+  height: 130px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 연결 경로 스타일 */
+.connectionPath {
+  width: 100%;
+  height: 100%;
+}
+
+/* 기존 볼륨 연결선 스타일 (호환성) */
+.volumeConnectionLine {
+  position: absolute;
+  bottom: -60px;
   left: 50%;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  width: 3px;
+  height: 60px;
   background: #1c7ed6;
+  z-index: 1;
   transform: translateX(-50%);
-  border: 3px solid white;
+}
+
+/* 연결된 상태 스타일 */
+.volumeConnectionContainer.connected path {
+  opacity: 0.7;
+}
+
+/* 강조 연결 스타일 */
+.volumeConnectionContainer.highlighted path {
+  opacity: 0.9;
+  stroke: #1971c2;
+  stroke-width: 4px;
+}
+
+/* 애니메이션 효과 */
+.volumeConnectionContainer.connecting path {
+  animation: dashConnect 1.5s ease infinite;
+  stroke-dasharray: 5;
+  stroke-dashoffset: 10;
+}
+
+/* 대시 커넥트 애니메이션 */
+@keyframes dashConnect {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* 볼륨 섹션 위치 재조정 */
+.volumesSection {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  padding: 2rem 0;
+  margin-top: 0;
+  position: relative;
   z-index: 2;
 }
 
-.volumeCircle {
-  width: 100px;
-  height: 100px;
-  background: #4dabf7;
+/* 펄스 효과 위치 조정 */
+.pulseDot {
+  position: absolute;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  position: relative;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.volumeCircle:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  background: #1c7ed6;
+  z-index: 5;
 }
 
 .chromeModal {
@@ -467,20 +516,6 @@
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-}
-
-.networkContainer {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 1.5rem;
-}
-
-.volumesSection {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  padding: 1rem 0;
 }
 
 .modalOverlay {
@@ -978,4 +1013,39 @@
     transform: translate(-50%, -50%) scale(0.8);
     opacity: 0;
   }
+}
+
+/* 볼륨 연결 점 스타일 */
+.volumeConnectionDot {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #1c7ed6;
+  transform: translateX(-50%);
+  border: 3px solid white;
+  z-index: 2;
+}
+
+/* 볼륨 원 스타일 */
+.volumeCircle {
+  width: 100px;
+  height: 100px;
+  background: #4dabf7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 3;
+}
+
+.volumeCircle:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
 }

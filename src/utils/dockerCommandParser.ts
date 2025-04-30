@@ -86,11 +86,18 @@ export function parseDockerRunCommand(command: string): ParsedContainer | null {
 
     if ((parts[i] === '-v' || parts[i] === '--volume') && parts[i + 1]) {
       const volumeMapping = parts[i + 1].split(':');
-      if (volumeMapping.length === 2) {
+      if (volumeMapping.length >= 2) {
+        const volumeName = volumeMapping[0];
+        const mountPath = volumeMapping.length > 2 
+          ? volumeMapping.slice(1).join(':') 
+          : volumeMapping[1];
+        
         result.volumes.push({
-          name: volumeMapping[0],
-          mountPath: volumeMapping[1]
+          name: volumeName,
+          mountPath: mountPath
         });
+        
+        console.log(`Parsed volume: ${volumeName}:${mountPath}`);
       }
       i += 2;
       continue;
