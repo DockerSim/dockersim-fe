@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import styles from './Terminal.module.css';
 import { parseDockerRunCommand } from '@/utils/dockerCommandParser';
 import LevelSelectModal from '@/components/learn/LevelSelectModal';
@@ -65,6 +65,9 @@ interface ProcessStep {
   targetId?: string;
   position?: Position;
   completed?: boolean;
+  stepNumber?: number;
+  totalSteps?: number;
+  containerId?: string;
 }
 
 interface Props {
@@ -90,6 +93,7 @@ const ContainerCard = ({
   <div 
     className={`${styles.containerCard} ${container.status === 'running' ? styles.running : styles.stopped} ${isCreating ? styles.highlight : ''}`} 
     onClick={onClick}
+    data-container-id={container.id}
   >
     <div className={styles.containerHeader}>
       <span className={styles.containerIcon}>📦</span>
@@ -334,16 +338,141 @@ const ImageModal: React.FC<{ onClose: () => void, images: Image[] }> = ({ onClos
   );
 };
 
+// 프로세스 단계 위치 계산을 개선하는 함수 추가
+const calculateProcessPosition = (type: string, processIndex: number): Position => {
+  // 기본 위치
+  const baseX = window.innerWidth / 2 - 150;
+  const baseY = 150;
+  
+  // 프로세스 타입별 수직 오프셋
+  const typeOffsets = {
+    'search': 0,
+    'pull': 1,
+    'create': 2,
+    'connect': 3,
+    'start': 4,
+    'error': 5
+  };
+  
+  // 타입별 오프셋 계산 (해당 타입이 없으면 기본값 0)
+  const typeOffset = (typeOffsets as any)[type] || 0;
+  
+  // 프로세스 인덱스에 따른 수평 오프셋
+  const horizontalOffset = (processIndex % 3) * 320; // 3개씩 수평 배치, 각 320px 간격
+  
+  // 최종 위치 계산
+  return {
+    x: baseX + horizontalOffset,
+    y: baseY + (typeOffset * 90) // 각 타입별 90px 간격으로 수직 배치
+  };
+};
+
+// 컨테이너 위치를 기반으로 프로세스 말풍선의 위치 조정 함수
+const adjustProcessPositionToContainer = (containerId: string | undefined): Position | undefined => {
+  if (!containerId) return undefined;
+  
+  // 먼저 컨테이너 래퍼 요소 찾기 (더 큰 컨테이너 영역)
+  const containerWrapperElement = document.querySelector(`.${styles.containerWrapper}[data-container-id="${containerId}"]`);
+  if (containerWrapperElement) {
+    const rect = containerWrapperElement.getBoundingClientRect();
+    return {
+      x: rect.left + (rect.width / 2) - 150, // 말풍선 중앙 정렬
+      y: rect.top - 100 // 컨테이너 위쪽에 약간 더 가깝게 배치
+    };
+  }
+  
+  // 래퍼를 찾지 못하면 컨테이너 카드 요소 찾기
+  const containerElement = document.querySelector(`[data-container-id="${containerId}"]`);
+  if (containerElement) {
+    const rect = containerElement.getBoundingClientRect();
+    return {
+      x: rect.left + (rect.width / 2) - 150, // 말풍선 중앙 정렬
+      y: rect.top - 100 // 컨테이너 위쪽에 약간 더 가깝게 배치
+    };
+  }
+  
+  return undefined;
+};
+
 const ProcessVisualization: React.FC<{ 
-  processes: ProcessStep[]
+  processes: ProcessStep[];
 }> = ({ processes }) => {
+  // 컨테이너 ID별로 프로세스 그룹화
+  const groupedProcesses = processes.reduce<Record<string, ProcessStep[]>>((acc, process) => {
+    const key = process.containerId || 'global';
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(process);
+    return acc;
+  }, {});
+
+  // 가장 최신 단계만 표시 (각 그룹별로)
+  const latestProcesses = Object.values(groupedProcesses).map(group => {
+    // 완료되지 않은 프로세스가 있으면 그 중 가장 높은 단계를 표시
+    const incomplete = group.filter(p => !p.completed);
+    if (incomplete.length > 0) {
+      return incomplete.reduce((latest, current) => 
+        (current.stepNumber || 0) > (latest.stepNumber || 0) ? current : latest
+      );
+    }
+    // 모두 완료된 경우 가장 높은 단계를 표시
+    return group.reduce((latest, current) => 
+      (current.stepNumber || 0) > (latest.stepNumber || 0) ? current : latest
+    );
+  });
+
+  // 각 프로세스에 대해, 해당 컨테이너 위치 기반으로 위치 업데이트
+  const [displayProcesses, setDisplayProcesses] = useState<ProcessStep[]>([]);
+  
+  // 위치 업데이트 함수
+  const updateProcessPositions = useCallback(() => {
+    const updatedProcesses = latestProcesses.map(process => {
+      // 컨테이너가 있는 프로세스만 위치 조정
+      if (process.containerId) {
+        const newPosition = adjustProcessPositionToContainer(process.containerId);
+        if (newPosition) {
+          return {
+            ...process,
+            position: newPosition
+          };
+        }
+      }
+      return process;
+    });
+    
+    setDisplayProcesses(updatedProcesses);
+  }, [latestProcesses]);
+  
+  // 컴포넌트 마운트/업데이트 시 위치 계산
+  useEffect(() => {
+    updateProcessPositions();
+    
+    // 창 크기 변경 시 위치 재계산
+    window.addEventListener('resize', updateProcessPositions);
+    
+    // 클린업 함수
+    return () => {
+      window.removeEventListener('resize', updateProcessPositions);
+    };
+  }, [updateProcessPositions]);
+  
+  // processes가 변경될 때마다 displayProcesses 업데이트
+  useEffect(() => {
+    updateProcessPositions();
+  }, [processes, updateProcessPositions]);
+
   return (
     <div className={styles.processVisualization}>
-      {processes.map(process => (
+      {displayProcesses.map((process, index) => (
         <div 
           key={process.id} 
           className={`${styles.processBubble} ${process.completed ? styles.completed : ''} ${styles[process.type]}`}
-          style={process.position ? { left: process.position.x, top: process.position.y } : {}}
+          style={{
+            left: process.position?.x,
+            top: process.position?.y,
+            zIndex: 1000 + index
+          }}
         >
           <div className={styles.processIcon}>
             {process.type === 'pull' && '⬇️'}
@@ -357,6 +486,19 @@ const ProcessVisualization: React.FC<{
             <div className={styles.processMessage}>{process.message}</div>
             {process.details && (
               <div className={styles.processDetails}>{process.details}</div>
+            )}
+            {process.stepNumber !== undefined && process.totalSteps !== undefined && (
+              <div className={styles.processProgress}>
+                <div className={styles.progressBar}>
+                  <div 
+                    className={styles.progressFill} 
+                    style={{width: `${(process.stepNumber / process.totalSteps) * 100}%`}}
+                  ></div>
+                </div>
+                <div className={styles.progressText}>
+                  {process.stepNumber} / {process.totalSteps}
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -547,7 +689,10 @@ const Terminal: React.FC = () => {
                       type: 'create',
                       message: '볼륨 자동 생성 중',
                       details: `볼륨 '${volumeName}'이 존재하지 않아 자동으로 생성합니다.`,
-                      position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 150 }
+                      position: calculateProcessPosition(volumeName, processes.length),
+                      containerId: volumeName,
+                      stepNumber: 1,
+                      totalSteps: 2
                     });
                     
                     const newVolume: Volume = {
@@ -594,7 +739,10 @@ const Terminal: React.FC = () => {
                     type: 'create',
                     message: '볼륨 자동 생성 중',
                     details: `볼륨 '${volumeName}'이 존재하지 않아 자동으로 생성합니다.`,
-                    position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 150 }
+                    position: calculateProcessPosition(volumeName, processes.length),
+                    containerId: volumeName,
+                    stepNumber: 1,
+                    totalSteps: 2
                   });
                   
                   const newVolume: Volume = {
@@ -630,14 +778,20 @@ const Terminal: React.FC = () => {
               type: 'search',
               message: '이미지 검색 중',
               details: `${options.image} 이미지를 검색합니다.`,
-              position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 100 }
+              position: calculateProcessPosition('search', processes.length),
+              containerId: options.image,
+              stepNumber: 1,
+              totalSteps: 3
             });
             
             addProcessStep({
               type: 'pull',
               message: '이미지 다운로드 중',
               details: `${options.image} 이미지를 다운로드합니다.`,
-              position: { x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 50 }
+              position: calculateProcessPosition('pull', processes.length),
+              containerId: options.image,
+              stepNumber: 2,
+              totalSteps: 3
             });
             
             setTimeout(() => {
@@ -674,7 +828,10 @@ const Terminal: React.FC = () => {
             type: 'search',
             message: '이미지 검색 중',
             details: `${imageName} 이미지를 검색합니다.`,
-            position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 - 100 }
+            position: calculateProcessPosition('search', processes.length),
+            containerId: imageName,
+            stepNumber: 1,
+            totalSteps: 3
           });
           
           setTimeout(() => {
@@ -682,7 +839,10 @@ const Terminal: React.FC = () => {
               type: 'pull',
               message: '이미지 다운로드 중',
               details: `${imageName} 이미지를 다운로드합니다.`,
-              position: { x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 - 50 }
+              position: calculateProcessPosition('pull', processes.length),
+              containerId: imageName,
+              stepNumber: 2,
+              totalSteps: 3
             });
             
             setTimeout(() => {
@@ -795,10 +955,17 @@ const Terminal: React.FC = () => {
   };
 
   const addProcessStep = (step: Omit<ProcessStep, 'id'>) => {
+    // 프로세스 인덱스 계산
+    const processIndex = processes.length;
+    
+    // 위치가 명시적으로 지정되지 않은 경우, 계산된 위치 사용
+    const position = step.position || calculateProcessPosition(step.type, processIndex);
+    
     const newStep = {
       ...step,
       id: Date.now().toString(),
-      completed: false
+      completed: false,
+      position
     };
     
     setProcesses(prev => [...prev, newStep]);
@@ -806,10 +973,6 @@ const Terminal: React.FC = () => {
     if (!animating) {
       setAnimating(true);
     }
-    
-    setTimeout(() => {
-      handleProcessComplete(newStep.id);
-    }, processes.length * 1500 + 1500);
   };
 
   const createContainerWithAnimation = (
@@ -817,26 +980,51 @@ const Terminal: React.FC = () => {
     ports: Array<{hostPort: string; containerPort: string}>, 
     networkId: string
   ) => {
+    // 컨테이너 ID 미리 생성
+    const containerId = Date.now().toString();
+    
+    // 회색 박스 효과를 위한 새 컨테이너 객체 생성 (반투명 모드)
+    const previewContainer: Container = {
+      id: containerId,
+      name: options.name || `container_${containerId.slice(-6)}`,
+      image: options.image,
+      ports: ports,
+      status: 'stopped', // 초기에는 중지 상태로 표시
+      createdAt: new Date(),
+      network: networkId,
+      volumes: []
+    };
+    
+    // 네트워크에 미리 추가 (반투명하게 표시)
+    setNetworks(prev => prev.map(network => 
+      network.id === networkId
+        ? { ...network, containers: [...network.containers, previewContainer] }
+        : network
+    ));
+    
+    // 컨테이너 목록에 미리 추가
+    setContainers(prev => [...prev, previewContainer]);
+    
+    // 컨테이너 생성 중임을 표시
+    setNewContainerId(containerId);
+    
+    // 총 단계 수 계산
+    const hasVolumes = options.volumes && options.volumes.length > 0;
+    const totalSteps = hasVolumes ? 3 : 2; // 볼륨이 있으면 3단계, 없으면 2단계
+    
+    // 1단계: 컨테이너 생성 중
     addProcessStep({
       type: 'create',
       message: '컨테이너 생성 중',
-      details: `${options.name || '컨테이너'}를 생성합니다.`,
-      position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 }
+      details: `${previewContainer.name} 컨테이너를 생성하고 있습니다.`,
+      containerId: containerId,
+      stepNumber: 1,
+      totalSteps: totalSteps
     });
     
-    setTimeout(() => {
-      const container: Container = {
-        id: Date.now().toString(),
-        name: options.name || `container_${Date.now().toString().slice(-6)}`,
-        image: options.image,
-        ports: ports,
-        status: 'running',
-        createdAt: new Date(),
-        network: networkId,
-        volumes: [] // 빈 배열로 초기화
-      };
-
-      if (options.volumes && options.volumes.length > 0) {
+    // 볼륨 연결 단계 (있는 경우)
+    if (hasVolumes) {
+      setTimeout(() => {
         // 모든 볼륨을 처리
         const volumesToConnect: Volume[] = [];
         
@@ -844,69 +1032,186 @@ const Terminal: React.FC = () => {
           const volume = volumes.find(v => v.name === volumeOption.name);
           
           if (volume) {
-            addProcessStep({
-              type: 'connect',
-              message: '볼륨 연결 중',
-              details: `${volume.name} 볼륨을 컨테이너에 연결합니다.`,
-              position: { x: window.innerWidth / 2 - 100, y: window.innerHeight / 2 + 50 }
-            });
-            
-            setConnectingVolume(true);
-            
-            setVolumes(prev => prev.map(v => 
-              v.id === volume.id 
-                ? { ...v, mountPath: volumeOption.mountPath, networkId: networkId }
-                : v
-            ));
-            
+            // 이미 존재하는 볼륨 연결
             volumesToConnect.push({
               ...volume,
               mountPath: volumeOption.mountPath,
               networkId: networkId
             });
+            
+            // 볼륨 상태 업데이트
+            setVolumes(prev => prev.map(v => 
+              v.id === volume.id 
+                ? { ...v, mountPath: volumeOption.mountPath, networkId: networkId }
+                : v
+            ));
+          } else {
+            // 새 볼륨 생성 및 연결
+            const newVolume: Volume = {
+              id: `vol_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+              name: volumeOption.name,
+              mountPath: volumeOption.mountPath,
+              createdAt: new Date(),
+              networkId: networkId
+            };
+            
+            setVolumes(prev => [...prev, newVolume]);
+            setNewVolumeId(newVolume.id);
+            volumesToConnect.push(newVolume);
+            
+            setOutput(prev => [...prev, `볼륨 '${volumeOption.name}'이 생성되었습니다.`]);
           }
         }
         
         if (volumesToConnect.length > 0) {
-          container.volumes = volumesToConnect;
+          // 컨테이너에 볼륨 연결
+          setContainers(prev => prev.map(c => 
+            c.id === containerId 
+              ? { ...c, volumes: volumesToConnect }
+              : c
+          ));
+          
+          // 네트워크 내 컨테이너에도 볼륨 연결 업데이트
+          setNetworks(prev => prev.map(network => ({
+            ...network,
+            containers: network.containers.map(c => 
+              c.id === containerId 
+                ? { ...c, volumes: volumesToConnect }
+                : c
+            )
+          })));
+          
+          // 연결 애니메이션 효과
+          setConnectingVolume(true);
+          
+          // 2단계: 볼륨 연결 중
+          addProcessStep({
+            type: 'connect',
+            message: '볼륨 연결 중',
+            details: `${volumesToConnect.map(v => v.name).join(', ')} 볼륨을 컨테이너에 연결하고 있습니다.`,
+            containerId: containerId,
+            stepNumber: 2,
+            totalSteps: totalSteps
+          });
           
           setTimeout(() => {
             setConnectingVolume(false);
-          }, 2000);
+            
+            // 3단계: 컨테이너 시작 중
+            addProcessStep({
+              type: 'start',
+              message: '컨테이너 시작 중',
+              details: `${previewContainer.name} 컨테이너를 시작하고 있습니다.`,
+              containerId: containerId,
+              stepNumber: 3,
+              totalSteps: totalSteps
+            });
+            
+            // 컨테이너 상태를 running으로 변경
+            setTimeout(() => {
+              // 컨테이너 상태 업데이트
+              setContainers(prev => prev.map(c => 
+                c.id === containerId 
+                  ? { ...c, status: 'running' }
+                  : c
+              ));
+              
+              // 네트워크 내 컨테이너 상태 업데이트
+              setNetworks(prev => prev.map(network => ({
+                ...network,
+                containers: network.containers.map(c => 
+                  c.id === containerId 
+                    ? { ...c, status: 'running' }
+                    : c
+                )
+              })));
+              
+              // 프로세스 완료로 표시 (1초 후 말풍선 사라짐)
+              setTimeout(() => {
+                handleAllProcessesComplete(containerId);
+              }, 1000);
+              
+              // 출력 메시지 업데이트
+              setOutput(prev => [
+                ...prev,
+                `컨테이너 '${previewContainer.name}'이 생성되었습니다.`,
+                `이미지: ${previewContainer.image}`,
+                ...(previewContainer.ports.length > 0 
+                  ? [`포트: ${previewContainer.ports.map(p => `${p.hostPort}:${p.containerPort}`).join(', ')}`]
+                  : []),
+                ...(volumesToConnect.length > 0
+                  ? [`볼륨: ${volumesToConnect.map(v => v.name).join(', ')}`]
+                  : [])
+              ]);
+            }, 1500);
+          }, 1500);
         }
-      }
-
-      addProcessStep({
-        type: 'start',
-        message: '컨테이너 시작 중',
-        details: `${container.name} 컨테이너를 시작합니다.`,
-        position: { x: window.innerWidth / 2 - 150, y: window.innerHeight / 2 + 100 }
-      });
-
-      setTimeout(() => {
-        setNetworks(prev => prev.map(network => 
-          network.id === networkId
-            ? { ...network, containers: [...network.containers, container] }
-            : network
-        ));
-        
-        setContainers(prev => [...prev, container]);
-        
-        setNewContainerId(container.id);
-
-        setOutput(prev => [
-          ...prev,
-          `컨테이너 '${container.name}'이 생성되었습니다.`,
-          `이미지: ${container.image}`,
-          ...(container.ports.length > 0 
-            ? [`포트: ${container.ports.map(p => `${p.hostPort}:${p.containerPort}`).join(', ')}`]
-            : []),
-          ...(container.volumes && container.volumes.length > 0
-            ? [`볼륨: ${container.volumes.map(v => v.name).join(', ')}`]
-            : [])
-        ]);
       }, 1500);
-    }, 1500);
+    } else {
+      // 볼륨이 없는 경우, 바로 시작 단계로
+      setTimeout(() => {
+        // 2단계: 컨테이너 시작 중
+        addProcessStep({
+          type: 'start',
+          message: '컨테이너 시작 중',
+          details: `${previewContainer.name} 컨테이너를 시작하고 있습니다.`,
+          containerId: containerId,
+          stepNumber: 2,
+          totalSteps: totalSteps
+        });
+        
+        // 컨테이너 상태를 running으로 변경
+        setTimeout(() => {
+          // 컨테이너 상태 업데이트
+          setContainers(prev => prev.map(c => 
+            c.id === containerId 
+              ? { ...c, status: 'running' }
+              : c
+          ));
+          
+          // 네트워크 내 컨테이너 상태 업데이트
+          setNetworks(prev => prev.map(network => ({
+            ...network,
+            containers: network.containers.map(c => 
+              c.id === containerId 
+                ? { ...c, status: 'running' }
+                : c
+            )
+          })));
+          
+          // 프로세스 완료로 표시 (1초 후 말풍선 사라짐)
+          setTimeout(() => {
+            handleAllProcessesComplete(containerId);
+          }, 1000);
+          
+          // 출력 메시지 업데이트
+          setOutput(prev => [
+            ...prev,
+            `컨테이너 '${previewContainer.name}'이 생성되었습니다.`,
+            `이미지: ${previewContainer.image}`,
+            ...(previewContainer.ports.length > 0 
+              ? [`포트: ${previewContainer.ports.map(p => `${p.hostPort}:${p.containerPort}`).join(', ')}`]
+              : [])
+          ]);
+        }, 1500);
+      }, 1500);
+    }
+  };
+
+  // 특정 컨테이너의 모든 프로세스를 완료로 표시하는 함수
+  const handleAllProcessesComplete = (containerId: string) => {
+    setProcesses(prev => 
+      prev.map(p => p.containerId === containerId ? { ...p, completed: true } : p)
+    );
+    
+    // 모든 프로세스가 완료되었는지 확인
+    setTimeout(() => {
+      const allCompleted = processes.every(p => p.completed);
+      if (allCompleted) {
+        setAnimating(false);
+        setProcesses([]);
+      }
+    }, 1000);
   };
 
   useEffect(() => {
@@ -935,6 +1240,9 @@ const Terminal: React.FC = () => {
         type: 'start',
         message: `컨테이너 시작 중...`,
         details: `컨테이너 ID: ${containerId}`,
+        containerId: containerId,
+        stepNumber: 1,
+        totalSteps: 1
       });
       
       const container = containers.find(c => c.id === containerId);
@@ -961,13 +1269,17 @@ const Terminal: React.FC = () => {
       setCommandHistory(prev => [...prev, startCommand]);
       setOutput(prev => [...prev, `$ ${startCommand}`, `컨테이너 ${container.name}을(를) 시작했습니다.`]);
       
-      setIsProcessing(false);
+      setTimeout(() => {
+        handleAllProcessesComplete(containerId);
+        setIsProcessing(false);
+      }, 1000);
     } catch (error) {
       console.error('컨테이너 시작 오류:', error);
       addProcessStep({
         type: 'error',
         message: '컨테이너 시작 실패',
         details: `오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+        containerId: containerId
       });
       setIsProcessing(false);
     }
@@ -981,6 +1293,9 @@ const Terminal: React.FC = () => {
         type: 'start',
         message: `컨테이너 중지 중...`,
         details: `컨테이너 ID: ${containerId}`,
+        containerId: containerId,
+        stepNumber: 1,
+        totalSteps: 1
       });
       
       const container = containers.find(c => c.id === containerId);
@@ -1007,13 +1322,17 @@ const Terminal: React.FC = () => {
       setCommandHistory(prev => [...prev, stopCommand]);
       setOutput(prev => [...prev, `$ ${stopCommand}`, `컨테이너 ${container.name}을(를) 중지했습니다.`]);
       
-      setIsProcessing(false);
+      setTimeout(() => {
+        handleAllProcessesComplete(containerId);
+        setIsProcessing(false);
+      }, 1000);
     } catch (error) {
       console.error('컨테이너 중지 오류:', error);
       addProcessStep({
         type: 'error',
         message: '컨테이너 중지 실패',
         details: `오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+        containerId: containerId
       });
       setIsProcessing(false);
     }
@@ -1023,36 +1342,70 @@ const Terminal: React.FC = () => {
     try {
       setIsProcessing(true);
       
-      addProcessStep({
-        type: 'start',
-        message: `컨테이너 삭제 중...`,
-        details: `컨테이너 ID: ${containerId}`,
-      });
-      
+      // 먼저 컨테이너 객체 찾기
       const container = containers.find(c => c.id === containerId);
       if (!container) {
         throw new Error('컨테이너를 찾을 수 없습니다.');
       }
       
+      // 1. 먼저 프로세스 말풍선 표시
       if (container.status === 'running') {
-        await handleStopContainer(containerId);
+        // 1-1. 컨테이너가 실행 중이면 중지 메시지 표시
+        addProcessStep({
+          type: 'start',
+          message: `컨테이너 중지 중...`,
+          details: `실행 중인 컨테이너를 먼저 중지합니다.`,
+          containerId: containerId,
+          stepNumber: 1,
+          totalSteps: 2
+        });
+        
+        // 컨테이너 중지 (직접 상태 변경)
+        const updatedContainer = { ...container, status: 'stopped' as const };
+        setContainers(prev => prev.map(c => c.id === containerId ? updatedContainer : c));
+        setNetworks(prev => prev.map(network => ({
+          ...network,
+          containers: network.containers.map(c => 
+            c.id === containerId ? updatedContainer : c
+          )
+        })));
+        
+        // 중지 명령어 출력
+        const stopCommand = `docker stop ${container.name}`;
+        setCommandHistory(prev => [...prev, stopCommand]);
+        setOutput(prev => [...prev, `$ ${stopCommand}`, `컨테이너 ${container.name}을(를) 중지했습니다.`]);
+        
+        // 잠시 대기 (500ms)
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 1-2. 삭제 단계 메시지 표시
+        addProcessStep({
+          type: 'start',
+          message: `컨테이너 삭제 중...`,
+          details: `컨테이너 ${container.name}을(를) 삭제합니다.`,
+          containerId: containerId,
+          stepNumber: 2,
+          totalSteps: 2
+        });
+      } else {
+        // 컨테이너가 이미 중지 상태면 삭제 메시지만 표시
+        addProcessStep({
+          type: 'start',
+          message: `컨테이너 삭제 중...`,
+          details: `컨테이너 ${container.name}을(를) 삭제합니다.`,
+          containerId: containerId,
+          stepNumber: 1,
+          totalSteps: 1
+        });
       }
       
       // 컨테이너에 연결된 볼륨 정보 저장
       const attachedVolumes = container.volumes || [];
       
-      // 컨테이너 목록에서 삭제
-      const updatedContainers = containers.filter(c => c.id !== containerId);
-      setContainers(updatedContainers);
+      // 말풍선 표시 시간 (1초)
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 네트워크 목록에서 삭제
-      const updatedNetworks = networks.map(n => ({
-        ...n,
-        containers: n.containers.filter(c => c.id !== containerId)
-      }));
-      setNetworks(updatedNetworks);
-      
-      // 컨테이너 삭제 후 처리 로그
+      // 컨테이너 삭제 명령 출력 메시지 추가
       const rmCommand = `docker rm ${container.name}`;
       setCommandHistory(prev => [...prev, rmCommand]);
       setOutput(prev => [...prev, `$ ${rmCommand}`, `컨테이너 ${container.name}을(를) 삭제했습니다.`]);
@@ -1065,6 +1418,24 @@ const Terminal: React.FC = () => {
         ]);
       }
       
+      // 말풍선 완전히 제거 (컨테이너 삭제 전에)
+      setProcesses(prev => prev.filter(p => p.containerId !== containerId));
+      
+      // 잠시 대기 (말풍선이 완전히 사라지는 시간)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // 컨테이너 삭제 처리 진행
+      const updatedContainers = containers.filter(c => c.id !== containerId);
+      setContainers(updatedContainers);
+      
+      // 네트워크에서도 컨테이너 삭제
+      const updatedNetworks = networks.map(n => ({
+        ...n,
+        containers: n.containers.filter(c => c.id !== containerId)
+      }));
+      setNetworks(updatedNetworks);
+      
+      // 처리 완료
       setIsProcessing(false);
     } catch (error) {
       console.error('컨테이너 삭제 오류:', error);
@@ -1072,6 +1443,7 @@ const Terminal: React.FC = () => {
         type: 'error',
         message: '컨테이너 삭제 실패',
         details: `오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+        containerId: containerId
       });
       setIsProcessing(false);
     }
@@ -1280,6 +1652,7 @@ const Terminal: React.FC = () => {
                     <div 
                       key={container.id} 
                       className={`${styles.containerWrapper} ${newContainerId === container.id ? styles.creating : ''}`}
+                      data-container-id={container.id}
                     >
                       <ContainerCard
                         container={container}
@@ -1446,7 +1819,7 @@ const Terminal: React.FC = () => {
 
       {animating && (
         <ProcessVisualization 
-          processes={processes} 
+          processes={processes}
         />
       )}
     </div>

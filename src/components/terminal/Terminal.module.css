@@ -834,6 +834,7 @@
   }
 }
 
+/* 프로세스 시각화 영역 및 말풍선 스타일 개선 */
 .processVisualization {
   position: fixed;
   top: 0;
@@ -842,6 +843,7 @@
   bottom: 0;
   z-index: 500;
   pointer-events: none;
+  overflow: hidden;
 }
 
 .processBubble {
@@ -849,8 +851,8 @@
   background: white;
   border-radius: 12px;
   padding: 1rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  min-width: 240px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  min-width: 260px;
   max-width: 320px;
   display: flex;
   align-items: flex-start;
@@ -859,6 +861,7 @@
   transform: translateY(20px);
   animation: bubbleAppear 0.3s forwards;
   border-left: 4px solid #868e96;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .processBubble::after {
@@ -879,33 +882,57 @@
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
+/* 프로세스 타입별 색상 강화 */
 .processBubble.pull {
   border-left-color: #1c7ed6;
+  background-color: #e7f5ff;
 }
 
 .processBubble.create {
   border-left-color: #f59f00;
+  background-color: #fff9db;
 }
 
 .processBubble.start {
   border-left-color: #40c057;
+  background-color: #ebfbee;
 }
 
 .processBubble.connect {
   border-left-color: #ae3ec9;
+  background-color: #f3d9fa;
 }
 
 .processBubble.error {
   border-left-color: #fa5252;
+  background-color: #fff5f5;
 }
 
 .processBubble.search {
   border-left-color: #22b8cf;
+  background-color: #e3fafc;
 }
 
+/* 애니메이션 속도 조정 */
+@keyframes bubbleAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 아이콘 스타일 개선 */
 .processIcon {
   font-size: 1.5rem;
   line-height: 1;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .processContent {
@@ -922,17 +949,7 @@
 .processDetails {
   font-size: 0.875rem;
   color: #495057;
-}
-
-@keyframes bubbleAppear {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  word-break: break-word;
 }
 
 /* 컨테이너 생성 및 볼륨 연결 애니메이션 효과 */
