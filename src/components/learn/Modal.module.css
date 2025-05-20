@@ -175,67 +175,161 @@
   color: white;
 }
 
-/* 명령어 사전 모달 스타일 */
-.categoryList {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
+/* 명령어 사전 모달 스타일 업데이트 */
+.commandDictionaryModal {
+  max-width: 900px;
+  height: 80vh;
 }
 
-.categoryButton {
-  padding: 0.5rem 1rem;
-  border: 1px solid #e9ecef;
+.commandDictionaryLayout {
+  display: flex;
+  height: 100%;
+}
+
+.categorySidebar {
+  width: 200px;
+  padding: 1rem;
+  border-right: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+}
+
+.categorySidebar .categoryButton {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border: none;
   border-radius: 4px;
   background: none;
   cursor: pointer;
   transition: all 0.2s;
+  font-weight: 500;
 }
 
-.categoryButton:hover {
-  border-color: #228be6;
-  color: #228be6;
+.categorySidebar .categoryButton:hover {
+  background-color: #f1f3f5;
 }
 
-.categoryButton.selected {
-  background-color: #228be6;
-  color: white;
-  border-color: #228be6;
+.categorySidebar .categoryButton.selected {
+  background-color: #e7f5ff;
+  color: #1971c2;
+  border: none;
 }
 
-.commandList {
-  display: grid;
-  gap: 1rem;
-}
-
-.commandItem {
+.commandContentArea {
+  flex: 1;
   padding: 1rem;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
+  overflow-y: auto;
 }
 
-.commandItem h3 {
-  margin: 0 0 0.5rem 0;
-  color: #228be6;
+.commandDetail {
+  padding: 1rem;
 }
 
-.description {
-  margin: 0.5rem 0;
+.commandDetail h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #1971c2;
+}
+
+.commandDetail h4 {
+  font-size: 1.1rem;
+  margin: 1.5rem 0 0.5rem;
   color: #495057;
+}
+
+.exampleSection {
+  margin-top: 1.5rem;
 }
 
 .example {
   background-color: #f8f9fa;
   padding: 1rem;
   border-radius: 4px;
-  margin-top: 0.5rem;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .example code {
-  display: block;
-  margin-top: 0.5rem;
-  font-family: monospace;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.9rem;
+  color: #212529;
+}
+
+.copyButton {
+  background: none;
+  border: none;
+  color: #868e96;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+
+.copyButton:hover {
+  background-color: #e9ecef;
   color: #495057;
+}
+
+.optionsSection {
+  margin-top: 1.5rem;
+}
+
+.optionsList {
+  padding-left: 1.5rem;
+}
+
+.optionsList li {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #495057;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.backButton {
+  margin-top: 2rem;
+  padding: 0.5rem 1rem;
+  background-color: #f1f3f5;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #495057;
+  transition: all 0.2s;
+}
+
+.backButton:hover {
+  background-color: #e9ecef;
+}
+
+/* 명령어 목록 스타일 업데이트 */
+.commandList {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.commandItem {
+  padding: 1rem;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.commandItem:hover {
+  border-color: #74c0fc;
+  background-color: #f8f9fa;
+}
+
+.commandItem h3 {
+  margin: 0 0 0.5rem 0;
+  color: #1971c2;
+  font-size: 1.1rem;
 }
 
 /* 필터링 섹션 스타일 */
