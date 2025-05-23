@@ -172,6 +172,232 @@ const commands: Command[] = [
     options: [
       '--label: 설정에 메타데이터를 설정합니다.'
     ]
+  },
+  {
+    id: '15',
+    category: '컨테이너',
+    command: 'docker start',
+    description: '중지된 컨테이너를 시작합니다.',
+    example: 'docker start my-container',
+    options: [
+      '-a, --attach: 표준 출력/표준 오류를 연결합니다.',
+      '-i, --interactive: 컨테이너의 표준 입력에 연결합니다.'
+    ]
+  },
+  {
+    id: '16',
+    category: '컨테이너',
+    command: 'docker stop',
+    description: '실행 중인 컨테이너를 중지합니다.',
+    example: 'docker stop my-container',
+    options: [
+      '-t, --time: 컨테이너가 종료되기 전 대기하는 시간(초)입니다. (기본값: 10)'
+    ]
+  },
+  {
+    id: '17',
+    category: '컨테이너',
+    command: 'docker restart',
+    description: '컨테이너를 다시 시작합니다.',
+    example: 'docker restart my-container',
+    options: [
+      '-t, --time: 컨테이너가 종료되기 전 대기하는 시간(초)입니다. (기본값: 10)'
+    ]
+  },
+  {
+    id: '18',
+    category: '컨테이너',
+    command: 'docker exec',
+    description: '실행 중인 컨테이너에서 명령을 실행합니다.',
+    example: 'docker exec -it my-container bash',
+    options: [
+      '-d, --detach: 백그라운드에서 명령을 실행합니다.',
+      '-i, --interactive: 표준 입력을 열어둡니다.',
+      '-t, --tty: 가상 TTY를 할당합니다.',
+      '-w, --workdir: 컨테이너 내의 작업 디렉토리를 설정합니다.'
+    ]
+  },
+  {
+    id: '19',
+    category: '컨테이너',
+    command: 'docker rm',
+    description: '하나 이상의 컨테이너를 제거합니다.',
+    example: 'docker rm my-container',
+    options: [
+      '-f, --force: 실행 중인 컨테이너를 강제로 제거합니다.',
+      '-v, --volumes: 컨테이너에 연결된 익명 볼륨을 제거합니다.'
+    ]
+  },
+  {
+    id: '20',
+    category: '컨테이너',
+    command: 'docker logs',
+    description: '컨테이너의 로그를 가져옵니다.',
+    example: 'docker logs my-container',
+    options: [
+      '-f, --follow: 로그 출력을 계속 따릅니다.',
+      '--tail: 마지막 n개의 로그 라인을 표시합니다.',
+      '--timestamps: 타임스탬프를 표시합니다.'
+    ]
+  },
+  {
+    id: '21',
+    category: '네트워크',
+    command: 'docker network connect',
+    description: '컨테이너를 네트워크에 연결합니다.',
+    example: 'docker network connect my-network my-container',
+    options: [
+      '--ip: IPv4 주소를 지정합니다.',
+      '--alias: 네트워크 스코프 별칭을 추가합니다.'
+    ]
+  },
+  {
+    id: '22',
+    category: '네트워크',
+    command: 'docker network disconnect',
+    description: '컨테이너를 네트워크에서 연결 해제합니다.',
+    example: 'docker network disconnect my-network my-container',
+    options: [
+      '-f, --force: 컨테이너가 실행 중이 아니더라도 강제로 연결을 해제합니다.'
+    ]
+  },
+  {
+    id: '23',
+    category: '네트워크',
+    command: 'docker network inspect',
+    description: '하나 이상의 네트워크에 대한 자세한 정보를 표시합니다.',
+    example: 'docker network inspect my-network',
+    options: [
+      '--format: Go 템플릿을 사용하여 출력 형식을 지정합니다.'
+    ]
+  },
+  {
+    id: '24',
+    category: '네트워크',
+    command: 'docker network rm',
+    description: '하나 이상의 네트워크를 제거합니다.',
+    example: 'docker network rm my-network',
+    options: []
+  },
+  {
+    id: '25',
+    category: '볼륨',
+    command: 'docker volume rm',
+    description: '하나 이상의 볼륨을 제거합니다.',
+    example: 'docker volume rm my-volume',
+    options: [
+      '-f, --force: 볼륨을 강제로 제거합니다.'
+    ]
+  },
+  {
+    id: '26',
+    category: '볼륨',
+    command: 'docker volume inspect',
+    description: '하나 이상의 볼륨에 대한 자세한 정보를 표시합니다.',
+    example: 'docker volume inspect my-volume',
+    options: [
+      '--format: Go 템플릿을 사용하여 출력 형식을 지정합니다.'
+    ]
+  },
+  {
+    id: '27',
+    category: '볼륨',
+    command: 'docker volume prune',
+    description: '사용되지 않는 모든 볼륨을 제거합니다.',
+    example: 'docker volume prune',
+    options: [
+      '--filter: 제공된 조건에 따라 볼륨을 필터링합니다.',
+      '-f, --force: 확인 프롬프트를 표시하지 않습니다.'
+    ]
+  },
+  {
+    id: '28',
+    category: '이미지',
+    command: 'docker search',
+    description: 'Docker Hub에서 이미지를 검색합니다.',
+    example: 'docker search nginx',
+    options: [
+      '--filter: 결과에 필터를 적용합니다.',
+      '--limit: 결과의 최대 개수를 제한합니다. (기본값: 25)',
+      '--no-trunc: 출력을 자르지 않습니다.'
+    ]
+  },
+  {
+    id: '29',
+    category: '이미지',
+    command: 'docker tag',
+    description: '소스 이미지에 대상 이미지 태그를 생성합니다.',
+    example: 'docker tag nginx:latest myregistry/nginx:v1',
+    options: []
+  },
+  {
+    id: '30',
+    category: '시스템',
+    command: 'docker system prune',
+    description: '사용되지 않는 데이터를 정리합니다.',
+    example: 'docker system prune',
+    options: [
+      '-a, --all: 사용되지 않는 이미지를 제거합니다.',
+      '--volumes: 사용되지 않는 볼륨을 제거합니다.',
+      '-f, --force: 확인 프롬프트를 표시하지 않습니다.'
+    ]
+  },
+  {
+    id: '31',
+    category: '시스템',
+    command: 'docker system df',
+    description: '도커의 디스크 사용량을 표시합니다.',
+    example: 'docker system df',
+    options: [
+      '-v, --verbose: 자세한 정보를 표시합니다.'
+    ]
+  },
+  {
+    id: '32',
+    category: '시스템',
+    command: 'docker inspect',
+    description: '도커 객체에 대한 세부 정보를 표시합니다.',
+    example: 'docker inspect my-container',
+    options: [
+      '-f, --format: Go 템플릿을 사용하여 출력 형식을 지정합니다.',
+      '--type: 검사할 객체 유형을 지정합니다. (container|image|node|network|service|volume|task|plugin)'
+    ]
+  },
+  {
+    id: '33',
+    category: '컴포즈',
+    command: 'docker-compose up',
+    description: '서비스를 생성하고 시작합니다.',
+    example: 'docker-compose up -d',
+    options: [
+      '-d, --detach: 백그라운드에서 컨테이너를 실행합니다.',
+      '--build: 서비스를 시작하기 전에 이미지를 빌드합니다.',
+      '--no-deps: 연결된 서비스를 시작하지 않습니다.'
+    ]
+  },
+  {
+    id: '34',
+    category: '컴포즈',
+    command: 'docker-compose down',
+    description: '서비스를 중지하고 제거합니다.',
+    example: 'docker-compose down',
+    options: [
+      '--volumes: 선언된 볼륨을 제거합니다.',
+      '--rmi: 이미지를 제거합니다. (all|local)',
+      '-v, --volumes: 네임드 볼륨과 익명 볼륨을 제거합니다.'
+    ]
+  },
+  {
+    id: '35',
+    category: '컴포즈',
+    command: 'docker-compose logs',
+    description: '서비스의 로그를 출력합니다.',
+    example: 'docker-compose logs',
+    options: [
+      '-f, --follow: 로그 출력을 계속 따릅니다.',
+      '--tail: 각 서비스의 마지막 n개의 로그 라인을 표시합니다.',
+      '-t, --timestamps: 타임스탬프를 표시합니다.'
+    ]
   }
 ];
 
