@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { dummyPosts } from '@/domains/board/data';
+import Header from '@/components/common/Header';
 
 const POST_TYPE_LABELS = {
   question: '질문',
@@ -152,49 +153,122 @@ export default function PostDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+      <Header />
+      
+      <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem' }}>
         {/* 상단 네비게이션 */}
-        <div className="mb-6">
-          <Link href="/board" className="text-blue-600 hover:text-blue-800 font-medium">
-            ← 게시판으로 돌아가기
+        <div style={{ marginBottom: '1.5rem' }}>
+          <Link 
+            href="/board" 
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              color: '#228be6',
+              fontWeight: '500',
+              textDecoration: 'none'
+            }}
+          >
+            <span>←</span>
+            <span>게시판으로 돌아가기</span>
           </Link>
         </div>
 
         {/* 게시글 헤더 */}
-        <div className="bg-white rounded-lg shadow-sm p-8 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${POST_TYPE_COLORS[post.type]}`}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '2rem',
+          marginBottom: '1.5rem',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+            <span style={{
+              padding: '0.35rem 1rem',
+              borderRadius: '20px',
+              fontSize: '0.875rem',
+              fontWeight: '500'
+            }}
+            className={POST_TYPE_COLORS[post.type]}
+            >
               {POST_TYPE_LABELS[post.type]}
             </span>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: '#666' }}>
               <span>👁️ {post.views}</span>
               <span>💬 {post.comments.length}</span>
             </div>
           </div>
 
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">{post.title}</h1>
+          <h1 style={{ 
+            fontSize: '1.75rem',
+            fontWeight: '700',
+            color: '#333',
+            marginBottom: '1.5rem',
+            lineHeight: '1.4'
+          }}>
+            {post.title}
+          </h1>
 
-          <div className="flex items-center justify-between border-t border-gray-200 pt-4">
-            <div className="flex items-center gap-4">
+          <div style={{ 
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderTop: '1px solid #eee',
+            paddingTop: '1.5rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                borderRadius: '50%', 
+                backgroundColor: '#e9ecef',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#495057',
+                fontWeight: '600',
+                fontSize: '1.25rem'
+              }}>
+                {post.author.charAt(0).toUpperCase()}
+              </div>
               <div>
-                <p className="font-medium text-gray-900">{post.author}</p>
-                <p className="text-sm text-gray-500">{formatDate(post.createdAt)}</p>
+                <p style={{ margin: 0, fontWeight: '500', color: '#333' }}>{post.author}</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#6c757d' }}>{formatDate(post.createdAt)}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <button
                 onClick={handleLike}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  isLiked
-                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  backgroundColor: isLiked ? '#ffe3e3' : '#f1f3f5',
+                  color: isLiked ? '#e03131' : '#495057'
+                }}
               >
                 {isLiked ? '❤️' : '🤍'} {likes}
               </button>
-              <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+              <button
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  backgroundColor: '#f1f3f5',
+                  color: '#495057'
+                }}
+              >
                 공유하기
               </button>
             </div>
@@ -202,18 +276,38 @@ export default function PostDetailPage() {
         </div>
 
         {/* 게시글 내용 */}
-        <div className="bg-white rounded-lg shadow-sm p-8 mb-6">
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '2rem',
+          marginBottom: '1.5rem',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+        }}>
           {renderContent(post.content)}
         </div>
 
         {/* 태그 */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">태그</h3>
-          <div className="flex flex-wrap gap-2">
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '1.5rem',
+          marginBottom: '1.5rem',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+        }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#333', marginBottom: '1rem' }}>태그</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {post.tags.map((tag) => (
               <span
                 key={tag}
-                className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full hover:bg-blue-200 cursor-pointer transition-colors"
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  backgroundColor: '#e7f5ff',
+                  color: '#1971c2',
+                  fontSize: '0.875rem',
+                  borderRadius: '20px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
               >
                 #{tag}
               </span>
@@ -222,27 +316,48 @@ export default function PostDetailPage() {
         </div>
 
         {/* 댓글 섹션 */}
-        <div className="bg-white rounded-lg shadow-sm p-8">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '2rem',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+        }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#333', marginBottom: '1.5rem' }}>
             댓글 {post.comments.length}개
           </h3>
 
           {/* 댓글 작성 */}
-          <form onSubmit={handleCommentSubmit} className="mb-8">
-            <div className="mb-4">
+          <form onSubmit={handleCommentSubmit} style={{ marginBottom: '2rem' }}>
+            <div style={{ marginBottom: '1rem' }}>
               <textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="댓글을 작성해주세요..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                style={{
+                  width: '100%',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #dee2e6',
+                  fontSize: '1rem',
+                  resize: 'none'
+                }}
                 rows={4}
               />
             </div>
-            <div className="flex justify-end">
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="submit"
                 disabled={!newComment.trim()}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#228be6',
+                  color: 'white',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontWeight: '500',
+                  cursor: newComment.trim() ? 'pointer' : 'not-allowed',
+                  opacity: newComment.trim() ? 1 : 0.7
+                }}
               >
                 댓글 등록
               </button>
@@ -250,30 +365,63 @@ export default function PostDetailPage() {
           </form>
 
           {/* 댓글 목록 */}
-          <div className="space-y-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {post.comments.length > 0 ? (
               post.comments.map((comment) => (
-                <div key={comment.id} className="border-l-4 border-blue-200 pl-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium text-gray-900">{comment.author}</span>
-                      <span className="text-sm text-gray-500">
-                        {formatDate(comment.createdAt)}
-                      </span>
+                <div key={comment.id} style={{ 
+                  borderLeft: '4px solid #dee2e6',
+                  paddingLeft: '1.5rem'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ 
+                        width: '32px', 
+                        height: '32px', 
+                        borderRadius: '50%', 
+                        backgroundColor: '#e9ecef',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#495057',
+                        fontWeight: '600'
+                      }}>
+                        {comment.author.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <span style={{ fontWeight: '500', color: '#333' }}>{comment.author}</span>
+                        <span style={{ fontSize: '0.875rem', color: '#6c757d', marginLeft: '0.5rem' }}>
+                          {formatDate(comment.createdAt)}
+                        </span>
+                      </div>
                     </div>
-                    <button className="text-sm text-gray-500 hover:text-red-600 transition-colors">
+                    <button style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      backgroundColor: 'transparent',
+                      border: 'none',
+                      color: '#6c757d',
+                      cursor: 'pointer',
+                      fontSize: '0.875rem'
+                    }}>
                       ❤️ {comment.likes}
                     </button>
                   </div>
-                  <p className="text-gray-700 leading-relaxed">{comment.content}</p>
+                  <p style={{ margin: 0, lineHeight: '1.5', color: '#495057' }}>{comment.content}</p>
                 </div>
               ))
             ) : (
-              <p className="text-gray-500 text-center py-8">아직 댓글이 없습니다. 첫 댓글을 남겨보세요!</p>
+              <div style={{ 
+                textAlign: 'center',
+                padding: '2rem 0',
+                color: '#6c757d'
+              }}>
+                아직 댓글이 없습니다. 첫 댓글을 남겨보세요!
+              </div>
             )}
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}

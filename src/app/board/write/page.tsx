@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PostType, CreatePostData } from '@/domains/board/types';
+import Header from '@/components/common/Header';
 
 export default function WritePostPage() {
   const router = useRouter();
@@ -139,57 +140,121 @@ export default function WritePostPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
+      <Header />
+      
+      <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem' }}>
         {/* 상단 네비게이션 */}
-        <div className="mb-6">
-          <Link href="/board" className="text-blue-600 hover:text-blue-800 font-medium">
-            ← 게시판으로 돌아가기
+        <div style={{ marginBottom: '1.5rem' }}>
+          <Link 
+            href="/board" 
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              color: '#228be6',
+              fontWeight: '500',
+              textDecoration: 'none'
+            }}
+          >
+            <span>←</span>
+            <span>게시판으로 돌아가기</span>
           </Link>
         </div>
 
         {/* 헤더 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">새 글 작성</h1>
-          <p className="text-gray-600 mt-2">질문이나 시뮬레이션을 공유해보세요</p>
+        <div style={{ marginBottom: '2rem' }}>
+          <h1 style={{ 
+            fontSize: '1.75rem',
+            fontWeight: '700',
+            color: '#333',
+            margin: '0 0 0.5rem 0'
+          }}>
+            새 글 작성
+          </h1>
+          <p style={{ 
+            color: '#666',
+            fontSize: '1rem',
+            margin: 0
+          }}>
+            질문이나 시뮬레이션을 공유해보세요
+          </p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="bg-white rounded-lg shadow-sm p-8 mb-6">
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            padding: '2rem',
+            marginBottom: '1.5rem',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
+          }}>
             {/* 게시글 타입 선택 */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ 
+                display: 'block',
+                fontSize: '1rem',
+                fontWeight: '500',
+                color: '#333',
+                marginBottom: '0.75rem'
+              }}>
                 게시글 유형
               </label>
-              <div className="flex gap-4">
-                <label className="flex items-center">
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <label style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer'
+                }}>
                   <input
                     type="radio"
                     name="type"
                     value="question"
                     checked={formData.type === 'question'}
                     onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as PostType }))}
-                    className="mr-2"
+                    style={{ marginRight: '0.5rem' }}
                   />
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                  <span style={{
+                    padding: '0.35rem 1rem',
+                    backgroundColor: '#e7f5ff',
+                    color: '#1971c2',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}>
                     질문
                   </span>
                 </label>
-                <label className="flex items-center">
+                <label style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  cursor: 'pointer'
+                }}>
                   <input
                     type="radio"
                     name="type"
                     value="simulation"
                     checked={formData.type === 'simulation'}
                     onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as PostType }))}
-                    className="mr-2"
+                    style={{ marginRight: '0.5rem' }}
                   />
-                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                  <span style={{
+                    padding: '0.35rem 1rem',
+                    backgroundColor: '#ebfbee',
+                    color: '#2b8a3e',
+                    borderRadius: '20px',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}>
                     시뮬레이션
                   </span>
                 </label>
               </div>
-              <p className="text-sm text-gray-500 mt-2">
+              <p style={{ 
+                fontSize: '0.875rem',
+                color: '#6c757d',
+                marginTop: '0.5rem'
+              }}>
                 {formData.type === 'question' 
                   ? 'Docker 사용 중 궁금한 점이나 문제를 질문해보세요'
                   : 'Docker 실습이나 시뮬레이션 내용을 공유해보세요'
@@ -198,8 +263,14 @@ export default function WritePostPage() {
             </div>
 
             {/* 제목 입력 */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ 
+                display: 'block',
+                fontSize: '1rem',
+                fontWeight: '500',
+                color: '#333',
+                marginBottom: '0.5rem'
+              }}>
                 제목 *
               </label>
               <input
@@ -207,37 +278,63 @@ export default function WritePostPage() {
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="제목을 입력하세요"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  fontSize: '1rem',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  outline: 'none'
+                }}
                 required
               />
             </div>
 
             {/* 내용 입력/미리보기 */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ 
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.5rem'
+              }}>
+                <label style={{ 
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  color: '#333'
+                }}>
                   내용 *
                 </label>
-                <div className="flex gap-2">
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button
                     type="button"
                     onClick={() => setIsPreview(false)}
-                    className={`px-3 py-1 text-sm rounded-lg ${
-                      !isPreview 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      backgroundColor: !isPreview ? '#e7f5ff' : '#f1f3f5',
+                      color: !isPreview ? '#1971c2' : '#495057',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
                   >
                     편집
                   </button>
                   <button
                     type="button"
                     onClick={() => setIsPreview(true)}
-                    className={`px-3 py-1 text-sm rounded-lg ${
-                      isPreview 
-                        ? 'bg-blue-100 text-blue-700' 
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      backgroundColor: isPreview ? '#e7f5ff' : '#f1f3f5',
+                      color: isPreview ? '#1971c2' : '#495057',
+                      borderRadius: '6px',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
                   >
                     미리보기
                   </button>
@@ -250,56 +347,126 @@ export default function WritePostPage() {
                     value={formData.content}
                     onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
                     placeholder="내용을 입력하세요. 마크다운 문법을 지원합니다."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono"
-                    rows={15}
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      fontSize: '1rem',
+                      fontFamily: 'monospace',
+                      border: '1px solid #dee2e6',
+                      borderRadius: '8px',
+                      minHeight: '300px',
+                      resize: 'vertical',
+                      outline: 'none'
+                    }}
                     required
                   />
-                  <div className="mt-2 text-sm text-gray-500">
-                    <p className="mb-1">💡 마크다운 사용법:</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div style={{ 
+                    marginTop: '0.75rem',
+                    fontSize: '0.875rem',
+                    color: '#6c757d'
+                  }}>
+                    <p style={{ margin: '0 0 0.5rem 0' }}>💡 마크다운 사용법:</p>
+                    <div style={{ 
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '0.5rem',
+                      fontSize: '0.75rem'
+                    }}>
                       <span>## 제목 → <strong>제목</strong></span>
-                      <span>`코드` → <code className="bg-gray-100 px-1 rounded">코드</code></span>
+                      <span>`코드` → <code style={{ 
+                        backgroundColor: '#f1f3f5',
+                        padding: '0.125rem 0.25rem',
+                        borderRadius: '4px',
+                        fontFamily: 'monospace'
+                      }}>코드</code></span>
                       <span>```언어 → 코드블록</span>
                       <span>- 목록 → • 목록</span>
                     </div>
                   </div>
                 </>
               ) : (
-                <div className="border border-gray-300 rounded-lg p-4 min-h-[300px] bg-gray-50">
+                <div style={{ 
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  minHeight: '300px',
+                  backgroundColor: '#f8f9fa',
+                  overflow: 'auto'
+                }}>
                   {formData.content ? renderPreview(formData.content) : (
-                    <p className="text-gray-500">내용을 입력하면 미리보기가 표시됩니다.</p>
+                    <p style={{ color: '#6c757d' }}>내용을 입력하면 미리보기가 표시됩니다.</p>
                   )}
                 </div>
               )}
             </div>
 
             {/* 태그 입력 */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ 
+                display: 'block',
+                fontSize: '1rem',
+                fontWeight: '500',
+                color: '#333',
+                marginBottom: '0.5rem'
+              }}>
                 태그
               </label>
-              <div className="mb-3">
+              <div style={{ marginBottom: '0.75rem' }}>
                 <input
                   type="text"
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={handleAddTag}
                   placeholder="태그를 입력하고 Enter나 쉼표를 누르세요 (최대 10개)"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    fontSize: '1rem',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '8px',
+                    outline: 'none'
+                  }}
                 />
               </div>
               {formData.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div style={{ 
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                  marginBottom: '0.75rem'
+                }}>
                   {formData.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        padding: '0.35rem 0.75rem',
+                        backgroundColor: '#e7f5ff',
+                        color: '#1971c2',
+                        borderRadius: '20px',
+                        fontSize: '0.875rem'
+                      }}
                     >
                       #{tag}
                       <button
                         type="button"
                         onClick={() => removeTag(tag)}
-                        className="ml-2 text-blue-500 hover:text-blue-700"
+                        style={{
+                          marginLeft: '0.35rem',
+                          backgroundColor: 'transparent',
+                          border: 'none',
+                          color: '#1971c2',
+                          cursor: 'pointer',
+                          fontSize: '1rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          padding: 0
+                        }}
                       >
                         ×
                       </button>
@@ -307,23 +474,56 @@ export default function WritePostPage() {
                   ))}
                 </div>
               )}
-              <p className="text-sm text-gray-500 mt-2">
+              <p style={{ 
+                fontSize: '0.875rem',
+                color: '#6c757d',
+                margin: 0
+              }}>
                 관련 키워드나 기술 스택을 태그로 추가해주세요
               </p>
             </div>
           </div>
 
           {/* 버튼 */}
-          <div className="flex justify-end gap-4">
+          <div style={{ 
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '1rem',
+            marginBottom: '2rem'
+          }}>
             <Link
               href="/board"
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.75rem 1.5rem',
+                border: '1px solid #dee2e6',
+                borderRadius: '8px',
+                backgroundColor: 'white',
+                color: '#495057',
+                fontWeight: '500',
+                textDecoration: 'none',
+                fontSize: '1rem'
+              }}
             >
               취소
             </Link>
             <button
               type="submit"
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.75rem 1.5rem',
+                backgroundColor: '#228be6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                fontSize: '1rem'
+              }}
             >
               게시글 등록
             </button>
@@ -331,12 +531,35 @@ export default function WritePostPage() {
         </form>
 
         {/* 작성 가이드 */}
-        <div className="mt-8 bg-blue-50 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-4">✍️ 작성 가이드</h3>
-          <div className="space-y-3 text-sm text-blue-800">
+        <div style={{
+          backgroundColor: '#e7f5ff',
+          borderRadius: '12px',
+          padding: '1.5rem',
+          marginBottom: '2rem'
+        }}>
+          <h3 style={{ 
+            fontSize: '1.125rem',
+            fontWeight: '600',
+            color: '#1971c2',
+            marginBottom: '1rem'
+          }}>
+            ✍️ 작성 가이드
+          </h3>
+          <div style={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            fontSize: '0.9rem',
+            color: '#1864ab'
+          }}>
             <div>
               <strong>질문 작성 시:</strong>
-              <ul className="list-disc list-inside mt-1 ml-4 space-y-1">
+              <ul style={{ 
+                listStyleType: 'disc',
+                margin: '0.5rem 0 0 1.25rem',
+                padding: 0,
+                lineHeight: '1.5'
+              }}>
                 <li>구체적인 상황과 오류 메시지를 포함해주세요</li>
                 <li>시도해본 방법들을 설명해주세요</li>
                 <li>환경 정보(OS, Docker 버전 등)를 제공해주세요</li>
@@ -344,7 +567,12 @@ export default function WritePostPage() {
             </div>
             <div>
               <strong>시뮬레이션 공유 시:</strong>
-              <ul className="list-disc list-inside mt-1 ml-4 space-y-1">
+              <ul style={{ 
+                listStyleType: 'disc',
+                margin: '0.5rem 0 0 1.25rem',
+                padding: 0,
+                lineHeight: '1.5'
+              }}>
                 <li>실습 목표와 학습 포인트를 명시해주세요</li>
                 <li>단계별 진행 과정을 상세히 설명해주세요</li>
                 <li>필요한 파일이나 설정 정보를 포함해주세요</li>
@@ -355,4 +583,4 @@ export default function WritePostPage() {
       </div>
     </div>
   );
-} 
+}

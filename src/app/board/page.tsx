@@ -23,6 +23,7 @@ export default function BoardPage() {
   const [selectedType, setSelectedType] = useState<PostType | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'latest' | 'popular'>('latest');
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   const formatDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
@@ -72,113 +73,192 @@ export default function BoardPage() {
   }, [selectedType, searchTerm, sortBy]);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#ffffff' }}>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
       <Header />
       
-      <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-        {/* 헤더 섹션 */}
-        <div style={{ marginBottom: '2rem' }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            marginBottom: '1.5rem'
-          }}>
-            <div>
-              <h1 style={{ 
-                fontSize: '2rem', 
-                fontWeight: '600', 
-                color: '#333',
-                margin: '0 0 0.5rem 0'
-              }}>
-                Docker 커뮤니티
-              </h1>
-              <p style={{ 
-                color: '#666', 
-                fontSize: '1rem',
-                margin: 0
-              }}>
-                질문과 시뮬레이션을 공유하는 공간입니다
-              </p>
-            </div>
-            <Link
-              href="/board/write"
-              style={{
-                backgroundColor: '#228be6',
-                color: 'white',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                fontWeight: '600',
-                transition: 'background-color 0.2s'
-              }}
-            >
-              글 작성하기
-            </Link>
-          </div>
-
-          {/* 필터 및 검색 */}
-          <div style={{
-            backgroundColor: '#f8f9fa',
-            borderRadius: '8px',
-            padding: '1.5rem',
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-          }}>
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem'
+      <div style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto',
+        display: 'flex',
+        gap: '2rem',
+        padding: '2rem'
+      }}>
+        {/* 왼쪽 사이드바 - 고정 */}
+        <div style={{ 
+          width: '250px',
+          position: 'sticky',
+          top: '2rem',
+          alignSelf: 'flex-start',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+          padding: '1.5rem'
+        }}>
+          <div>
+            <h2 style={{ 
+              fontSize: '1.25rem', 
+              fontWeight: '600', 
+              color: '#333',
+              marginBottom: '1rem'
             }}>
-              {/* 타입 필터 */}
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => setSelectedType('all')}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    backgroundColor: selectedType === 'all' ? '#228be6' : '#e9ecef',
-                    color: selectedType === 'all' ? 'white' : '#495057',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  전체
-                </button>
-                <button
-                  onClick={() => setSelectedType('question')}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    backgroundColor: selectedType === 'question' ? '#228be6' : '#e9ecef',
-                    color: selectedType === 'question' ? 'white' : '#495057',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  질문
-                </button>
-                <button
-                  onClick={() => setSelectedType('simulation')}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '6px',
-                    border: 'none',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    backgroundColor: selectedType === 'simulation' ? '#228be6' : '#e9ecef',
-                    color: selectedType === 'simulation' ? 'white' : '#495057',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  시뮬레이션
-                </button>
+              게시판
+            </h2>
+            
+            <div style={{ position: 'relative', marginBottom: '1.5rem' }}>
+              <div 
+                style={{
+                  padding: '0.75rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #dee2e6',
+                  backgroundColor: 'white',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  fontWeight: '500'
+                }}
+                onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+              >
+                <span>
+                  {selectedType === 'all' ? '전체' : 
+                   selectedType === 'question' ? '질문' : '시뮬레이션'}
+                </span>
+                <span>{showCategoryDropdown ? '▲' : '▼'}</span>
               </div>
+              
+              {showCategoryDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  backgroundColor: 'white',
+                  borderRadius: '8px',
+                  border: '1px solid #dee2e6',
+                  marginTop: '0.25rem',
+                  zIndex: 10,
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+                }}>
+                  <div
+                    style={{
+                      padding: '0.75rem 1rem',
+                      cursor: 'pointer',
+                      backgroundColor: selectedType === 'all' ? '#f1f3f5' : 'white',
+                      borderTopLeftRadius: '8px',
+                      borderTopRightRadius: '8px',
+                      fontWeight: selectedType === 'all' ? '500' : 'normal'
+                    }}
+                    onClick={() => {
+                      setSelectedType('all');
+                      setShowCategoryDropdown(false);
+                    }}
+                  >
+                    전체
+                  </div>
+                  <div
+                    style={{
+                      padding: '0.75rem 1rem',
+                      cursor: 'pointer',
+                      backgroundColor: selectedType === 'question' ? '#f1f3f5' : 'white',
+                      fontWeight: selectedType === 'question' ? '500' : 'normal'
+                    }}
+                    onClick={() => {
+                      setSelectedType('question');
+                      setShowCategoryDropdown(false);
+                    }}
+                  >
+                    질문
+                  </div>
+                  <div
+                    style={{
+                      padding: '0.75rem 1rem',
+                      cursor: 'pointer',
+                      backgroundColor: selectedType === 'simulation' ? '#f1f3f5' : 'white',
+                      borderBottomLeftRadius: '8px',
+                      borderBottomRightRadius: '8px',
+                      fontWeight: selectedType === 'simulation' ? '500' : 'normal'
+                    }}
+                    onClick={() => {
+                      setSelectedType('simulation');
+                      setShowCategoryDropdown(false);
+                    }}
+                  >
+                    시뮬레이션
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div style={{ 
+              padding: '1rem',
+              backgroundColor: '#f8f9fa',
+              borderRadius: '8px',
+              fontSize: '0.875rem',
+              color: '#495057',
+              lineHeight: '1.5'
+            }}>
+              <p style={{ margin: '0 0 0.75rem 0', fontWeight: '500' }}>커뮤니티 이용 안내</p>
+              <p style={{ margin: '0 0 0.5rem 0' }}>• <strong>질문</strong>: Docker 사용 중 발생한 문제나 궁금한 점을 자유롭게 질문해보세요.</p>
+              <p style={{ margin: '0' }}>• <strong>시뮬레이션</strong>: Docker 실습 경험이나 시뮬레이션 결과를 공유해보세요.</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* 오른쪽 메인 콘텐츠 - 스크롤 가능 */}
+        <div style={{ flex: 1 }}>
+          {/* 헤더 섹션 */}
+          <div style={{ marginBottom: '2rem' }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              marginBottom: '1.5rem'
+            }}>
+              <div>
+                <h1 style={{ 
+                  fontSize: '2rem', 
+                  fontWeight: '600', 
+                  color: '#333',
+                  margin: '0 0 0.5rem 0'
+                }}>
+                  Docker 커뮤니티
+                </h1>
+                <p style={{ 
+                  color: '#666', 
+                  fontSize: '1rem',
+                  margin: 0
+                }}>
+                  질문과 시뮬레이션을 공유하는 공간입니다
+                </p>
+              </div>
+              <Link
+                href="/board/write"
+                style={{
+                  backgroundColor: '#228be6',
+                  color: 'white',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  fontWeight: '600',
+                  transition: 'background-color 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <span>✏️</span>
+                <span>글 작성하기</span>
+              </Link>
+            </div>
 
-              {/* 검색 및 정렬 */}
+            {/* 검색 */}
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '1.5rem',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+              marginBottom: '1.5rem'
+            }}>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <input
                   type="text"
@@ -189,7 +269,7 @@ export default function BoardPage() {
                     flex: 1,
                     padding: '0.75rem',
                     border: '1px solid #dee2e6',
-                    borderRadius: '6px',
+                    borderRadius: '8px',
                     fontSize: '1rem'
                   }}
                 />
@@ -199,7 +279,7 @@ export default function BoardPage() {
                   style={{
                     padding: '0.75rem',
                     border: '1px solid #dee2e6',
-                    borderRadius: '6px',
+                    borderRadius: '8px',
                     fontSize: '1rem',
                     backgroundColor: 'white'
                   }}
@@ -210,169 +290,122 @@ export default function BoardPage() {
               </div>
             </div>
           </div>
-        </div>
 
-        {/* 게시글 목록 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {filteredPosts.length > 0 ? (
-            filteredPosts.map((post) => (
-              <Link key={post.id} href={`/board/${post.id}`} style={{ textDecoration: 'none' }}>
-                <div style={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e9ecef',
-                  borderRadius: '8px',
-                  padding: '1.5rem',
-                  transition: 'all 0.2s',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-                  e.currentTarget.style.borderColor = '#228be6';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = 'none';
-                  e.currentTarget.style.borderColor = '#e9ecef';
-                }}
-                >
-                  <div style={{ marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                      <span style={{
-                        padding: '0.25rem 0.75rem',
-                        borderRadius: '12px',
-                        fontSize: '0.875rem',
-                        fontWeight: '500',
-                        border: '1px solid'
-                      }}
-                      className={POST_TYPE_COLORS[post.type]}
-                      >
-                        {POST_TYPE_LABELS[post.type]}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: '#666' }}>
-                        <span>❤️ {post.likes}</span>
-                        <span>💬 {post.comments.length}</span>
+          {/* 게시글 목록 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {filteredPosts.length > 0 ? (
+              filteredPosts.map((post) => (
+                <Link key={post.id} href={`/board/${post.id}`} style={{ textDecoration: 'none' }}>
+                  <div style={{
+                    backgroundColor: 'white',
+                    border: '1px solid #e9ecef',
+                    borderRadius: '12px',
+                    padding: '1.5rem',
+                    transition: 'all 0.2s',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.03)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                    e.currentTarget.style.borderColor = '#228be6';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.03)';
+                    e.currentTarget.style.borderColor = '#e9ecef';
+                  }}
+                  >
+                    <div style={{ marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                        <span style={{
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '12px',
+                          fontSize: '0.875rem',
+                          fontWeight: '500',
+                          border: '1px solid'
+                        }}
+                        className={POST_TYPE_COLORS[post.type]}
+                        >
+                          {POST_TYPE_LABELS[post.type]}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: '#666' }}>
+                          <span>❤️ {post.likes}</span>
+                          <span>💬 {post.comments.length}</span>
+                        </div>
                       </div>
+                      <h2 style={{
+                        fontSize: '1.25rem',
+                        fontWeight: '600',
+                        color: '#333',
+                        margin: 0,
+                        lineHeight: '1.4'
+                      }}>
+                        {post.title}
+                      </h2>
                     </div>
-                    <h2 style={{
-                      fontSize: '1.25rem',
-                      fontWeight: '600',
-                      color: '#333',
-                      margin: 0,
-                      lineHeight: '1.4'
+
+                    <p style={{
+                      color: '#666',
+                      fontSize: '1rem',
+                      lineHeight: '1.5',
+                      margin: '0 0 1rem 0',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden'
                     }}>
-                      {post.title}
-                    </h2>
-                  </div>
+                      {post.content.replace(/```[\s\S]*?```/g, '[코드]').substring(0, 150)}
+                      {post.content.length > 150 ? '...' : ''}
+                    </p>
 
-                  <p style={{
-                    color: '#666',
-                    fontSize: '1rem',
-                    lineHeight: '1.5',
-                    margin: '0 0 1rem 0',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden'
-                  }}>
-                    {post.content.replace(/```[\s\S]*?```/g, '[코드]').substring(0, 150)}
-                    {post.content.length > 150 ? '...' : ''}
-                  </p>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      {post.tags.slice(0, 3).map((tag) => (
-                        <span
-                          key={tag}
-                          style={{
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        {post.tags.slice(0, 3).map((tag) => (
+                          <span
+                            key={tag}
+                            style={{
+                              padding: '0.25rem 0.5rem',
+                              backgroundColor: '#f1f3f4',
+                              color: '#5f6368',
+                              fontSize: '0.75rem',
+                              borderRadius: '4px'
+                            }}
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                        {post.tags.length > 3 && (
+                          <span style={{
                             padding: '0.25rem 0.5rem',
                             backgroundColor: '#f1f3f4',
                             color: '#5f6368',
                             fontSize: '0.75rem',
                             borderRadius: '4px'
-                          }}
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                      {post.tags.length > 3 && (
-                        <span style={{
-                          padding: '0.25rem 0.5rem',
-                          backgroundColor: '#f1f3f4',
-                          color: '#5f6368',
-                          fontSize: '0.75rem',
-                          borderRadius: '4px'
-                        }}>
-                          +{post.tags.length - 3}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.875rem', color: '#666' }}>
-                      {post.author} · {formatDate(post.createdAt)}
+                          }}>
+                            +{post.tags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.875rem', color: '#666' }}>
+                        {post.author} · {formatDate(post.createdAt)}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))
-          ) : (
-            <div style={{
-              textAlign: 'center',
-              padding: '3rem',
-              backgroundColor: 'white',
-              border: '1px solid #e9ecef',
-              borderRadius: '8px'
-            }}>
-              <p style={{ color: '#666', fontSize: '1rem', margin: 0 }}>검색 결과가 없습니다.</p>
-            </div>
-          )}
-        </div>
-
-        {/* 통계 */}
-        <div style={{
-          marginTop: '2rem',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px',
-          padding: '1.5rem',
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
-        }}>
-          <h3 style={{ 
-            fontSize: '1.25rem', 
-            fontWeight: '600', 
-            color: '#333',
-            margin: '0 0 1rem 0'
-          }}>
-            커뮤니티 현황
-          </h3>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-            gap: '1rem'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: '600', color: '#228be6' }}>
-                {dummyPosts.length}
+                </Link>
+              ))
+            ) : (
+              <div style={{
+                textAlign: 'center',
+                padding: '3rem',
+                backgroundColor: 'white',
+                border: '1px solid #e9ecef',
+                borderRadius: '12px'
+              }}>
+                <p style={{ color: '#666', fontSize: '1rem', margin: 0 }}>검색 결과가 없습니다.</p>
               </div>
-              <div style={{ fontSize: '0.875rem', color: '#666' }}>전체 게시글</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: '600', color: '#28a745' }}>
-                {dummyPosts.filter(p => p.type === 'simulation').length}
-              </div>
-              <div style={{ fontSize: '0.875rem', color: '#666' }}>시뮬레이션</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: '600', color: '#fd7e14' }}>
-                {dummyPosts.filter(p => p.type === 'question').length}
-              </div>
-              <div style={{ fontSize: '0.875rem', color: '#666' }}>질문</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: '600', color: '#6f42c1' }}>
-                {dummyPosts.reduce((sum, post) => sum + post.comments.length, 0)}
-              </div>
-              <div style={{ fontSize: '0.875rem', color: '#666' }}>총 댓글</div>
-            </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}
