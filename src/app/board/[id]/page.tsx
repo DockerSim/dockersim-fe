@@ -394,18 +394,6 @@ export default function PostDetailPage() {
                         </span>
                       </div>
                     </div>
-                    <button style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      backgroundColor: 'transparent',
-                      border: 'none',
-                      color: '#6c757d',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem'
-                    }}>
-                      ❤️ {comment.likes}
-                    </button>
                   </div>
                   <p style={{ margin: 0, lineHeight: '1.5', color: '#495057' }}>{comment.content}</p>
                 </div>
