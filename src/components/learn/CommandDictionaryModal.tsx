@@ -2,6 +2,9 @@
 
 import React, { useState } from 'react';
 import styles from './Modal.module.css';
+import { useDockerStore } from '../store/dockerStore';
+import Tippy from '@tippyjs/react';
+import 'tippy.js/dist/tippy.css';
 
 interface Command {
   id: string;

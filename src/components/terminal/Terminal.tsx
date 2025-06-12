@@ -6,6 +6,7 @@ import { parseDockerRunCommand } from '@/utils/dockerCommandParser';
 import LevelSelectModal from '@/components/learn/LevelSelectModal';
 import ContainerListModal from '@/components/learn/ContainerListModal';
 import CommandDictionaryModal from '@/components/learn/CommandDictionaryModal';
+import { DockerMasterDetail } from '../DockerMasterDetail';
 
 interface Port {
   hostPort: string;
@@ -548,6 +549,28 @@ const VolumeConnection: React.FC<{
   );
 };
 
+// 이미지 아이콘 버튼 컴포넌트 추가
+const ImageIcon = ({ label, icon, onClick }: { label: string; icon: string; onClick: () => void }) => (
+  <div className={styles.imageIconButton} onClick={onClick}>
+    <div className={styles.imageIcon}>{icon}</div>
+    <div className={styles.imageIconLabel}>{label}</div>
+  </div>
+);
+
+// 다운로드 시각화 컴포넌트 추가
+const DownloadVisualization = ({ isVisible, progress, isCompleted }: { isVisible: boolean; progress: number; isCompleted?: boolean }) => {
+  if (!isVisible) return null;
+  
+  return (
+    <div className={`${styles.downloadVisualization} ${isCompleted ? styles.completed : ''}`}>
+      <div className={styles.downloadBubble}>
+        {isCompleted ? '다운로드 완료!' : `다운로드 중... ${progress}%`}
+      </div>
+      <div className={styles.downloadArrow}></div>
+    </div>
+  );
+};
+
 const Terminal: React.FC = () => {
   const [command, setCommand] = useState('');
   const [output, setOutput] = useState<string[]>([]);
@@ -560,9 +583,14 @@ const Terminal: React.FC = () => {
   const [isLevelModalOpen, setIsLevelModalOpen] = useState(false);
   const [isContainerListModalOpen, setIsContainerListModalOpen] = useState(false);
   const [isCommandDictModalOpen, setIsCommandDictModalOpen] = useState(false);
+  const [isImageBrowserOpen, setIsImageBrowserOpen] = useState(false);
   const [images, setImages] = useState<Image[]>([]);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imageDownloading, setImageDownloading] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadTimer, setDownloadTimer] = useState<any>(null);
+  const [isDownloadComplete, setIsDownloadComplete] = useState(false);
   const [processes, setProcesses] = useState<ProcessStep[]>([]);
   const [animating, setAnimating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -573,6 +601,7 @@ const Terminal: React.FC = () => {
   const [containers, setContainers] = useState<Container[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [selectedImageTab, setSelectedImageTab] = useState<'local' | 'registry'>('local');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -822,6 +851,8 @@ const Terminal: React.FC = () => {
         const imageName = trimmedCommand.split(' ')[2];
         if (imageName) {
           setImageDownloading(imageName);
+          setIsDownloading(true);
+          setDownloadProgress(0);
           setOutput(prev => [...prev, `이미지 '${imageName}'를 다운로드하는 중...`]);
           
           addProcessStep({
@@ -834,36 +865,58 @@ const Terminal: React.FC = () => {
             totalSteps: 3
           });
           
+          // 다운로드 진행 상황을 시뮬레이션하는 인터벌 설정
+          const timer = setInterval(() => {
+            setDownloadProgress(prev => {
+              const newProgress = prev + Math.random() * 10;
+              return newProgress >= 100 ? 100 : newProgress;
+            });
+          }, 300);
+          
+          setDownloadTimer(timer);
+          
           setTimeout(() => {
+            const [name, tag] = imageName.includes(':') 
+              ? imageName.split(':') 
+              : [imageName, 'latest'];
+            
+            // 이미지 가져오기 완료
             addProcessStep({
               type: 'pull',
-              message: '이미지 다운로드 중',
-              details: `${imageName} 이미지를 다운로드합니다.`,
+              message: '이미지 다운로드 완료',
+              details: `${imageName} 이미지 다운로드가 완료되었습니다.`,
               position: calculateProcessPosition('pull', processes.length),
               containerId: imageName,
-              stepNumber: 2,
+              stepNumber: 3,
               totalSteps: 3
             });
             
+            setOutput(prev => [...prev, `이미지 '${imageName}' 다운로드 완료.`]);
+            setImageDownloading(null);
+            setIsDownloadComplete(true); // 다운로드 완료 상태로 변경
+            
+            if (downloadTimer) {
+              clearInterval(downloadTimer);
+              setDownloadTimer(null);
+            }
+            
+            const newImage: Image = {
+              id: Date.now().toString(),
+              name,
+              tag: tag || 'latest',
+              size: `${Math.floor(Math.random() * 200) + 10}MB`,
+              created: new Date(),
+              isOfficial: Math.random() > 0.3
+            };
+            
+            setImages(prev => [...prev, newImage]);
+            
+            // 다운로드 완료 메시지를 5초 동안 표시한 후 사라지게 함
             setTimeout(() => {
-              const [name, tag] = imageName.includes(':') 
-                ? imageName.split(':') 
-                : [imageName, 'latest'];
-              
-              const newImage: Image = {
-                id: Date.now().toString(),
-                name,
-                tag: tag || 'latest',
-                size: `${Math.floor(Math.random() * 200) + 10}MB`,
-                created: new Date(),
-                isOfficial: Math.random() > 0.3
-              };
-              
-              setImages(prev => [...prev, newImage]);
-              setImageDownloading(null);
-              setOutput(prev => [...prev, `이미지 '${imageName}'를 성공적으로 다운로드했습니다.`]);
-            }, 2000);
-          }, 1500);
+              setIsDownloading(false);
+              setIsDownloadComplete(false);
+            }, 5000);
+          }, 4000);
         }
       }
       else if (trimmedCommand === 'docker images') {
@@ -1585,6 +1638,46 @@ const Terminal: React.FC = () => {
     setActiveNetwork(defaultNetworks[0].id);
   }, []);
 
+  // 이미지 브라우저 모달 컴포넌트 수정
+  const ImageBrowserModal = () => (
+    <div className={styles.modalOverlay} onClick={() => setIsImageBrowserOpen(false)}>
+      <div className={styles.chromeModal} onClick={e => e.stopPropagation()}>
+        <div className={styles.chromeHeader}>
+          <div className={styles.tabSection}>
+            <div className={styles.activeTab}>
+              <span className={styles.tabIcon}>🖼️</span>
+              이미지 브라우저
+            </div>
+          </div>
+          <button className={styles.chromeClose} onClick={() => setIsImageBrowserOpen(false)}>×</button>
+        </div>
+        <div className={`${styles.modalContent} ${styles.imageBrowserContent}`}>
+          <DockerMasterDetail initialTab={selectedImageTab} />
+        </div>
+      </div>
+    </div>
+  );
+
+  // 이미지 아이콘 컴포넌트에서 onClick 핸들러 수정
+  const handleImageRepositoryClick = () => {
+    setSelectedImageTab('registry');
+    setIsImageBrowserOpen(true);
+  };
+
+  const handleLocalImageClick = () => {
+    setSelectedImageTab('local');
+    setIsImageBrowserOpen(true);
+  };
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (downloadTimer) {
+        clearInterval(downloadTimer);
+      }
+    };
+  }, [downloadTimer]);
+
   return (
     <div className={styles.terminalContainer}>
       <div className={styles.terminalSection}>
@@ -1732,6 +1825,20 @@ const Terminal: React.FC = () => {
             </div>
           ))}
         </div>
+        
+        {/* 이미지 아이콘 섹션을 브라우저 섹션 내부로 이동 */}
+        <div className={styles.imageIconsSection}>
+          <ImageIcon 
+            label="원격 저장소" 
+            icon="🌐" 
+            onClick={handleImageRepositoryClick} 
+          />
+          <ImageIcon 
+            label="로컬 이미지" 
+            icon="🖼️" 
+            onClick={handleLocalImageClick} 
+          />
+        </div>
       </div>
 
       <div className={styles.rightSection}>
@@ -1780,6 +1887,8 @@ const Terminal: React.FC = () => {
         isOpen={isCommandDictModalOpen}
         onClose={() => setIsCommandDictModalOpen(false)}
       />
+
+      {isImageBrowserOpen && <ImageBrowserModal />}
 
       <div className={styles.uploadBar}>
         <div className={styles.uploadSection}>
@@ -1840,6 +1949,13 @@ const Terminal: React.FC = () => {
           processes={processes}
         />
       )}
+
+      {/* 다운로드 시각화 */}
+      <DownloadVisualization 
+        isVisible={isDownloading || isDownloadComplete} 
+        progress={Math.round(downloadProgress)} 
+        isCompleted={isDownloadComplete} 
+      />
     </div>
   );
 };

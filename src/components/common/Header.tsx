@@ -10,6 +10,11 @@ const Header: React.FC = () => {
 
   const isActive = (path: string) => pathname === path;
 
+  const handleBoardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    window.location.href = '/board';
+  };
+
   return (
     <header className={styles.header}>
       <div className={styles.logo}>
@@ -33,6 +38,7 @@ const Header: React.FC = () => {
         <Link 
           href="/board" 
           className={`${styles.navLink} ${isActive('/board') ? styles.active : ''}`}
+          onClick={handleBoardClick}
         >
           게시판
         </Link>

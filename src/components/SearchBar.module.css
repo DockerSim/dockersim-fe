@@ -1,0 +1,81 @@
+.searchContainer {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(229, 229, 229, 0.2);
+  background: transparent;
+}
+
+.searchBar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.searchInput {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid rgba(229, 229, 229, 0.2);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e9ecef;
+  backdrop-filter: blur(8px);
+}
+
+.searchInput::placeholder {
+  color: #adb5bd;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: rgba(34, 139, 230, 0.5);
+  box-shadow: 0 0 0 2px rgba(34, 139, 230, 0.1);
+}
+
+.filterGroup {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.filterButton {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid rgba(229, 229, 229, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.75rem;
+  color: #ced4da;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(8px);
+}
+
+.filterButton:hover {
+  background: rgba(248, 249, 250, 0.2);
+  border-color: rgba(222, 226, 230, 0.3);
+}
+
+.filterButton.active {
+  background: rgba(34, 139, 230, 0.8);
+  color: white;
+  border-color: rgba(34, 139, 230, 0.5);
+}
+
+.loadingSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(231, 245, 255, 0.2);
+  border-top-color: #228be6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.searchIcon {
+  color: #adb5bd;
+  margin-right: 0.5rem;
+} 

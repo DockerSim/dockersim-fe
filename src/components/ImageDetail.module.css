@@ -1,0 +1,225 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1rem;
+  background: transparent;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #000;
+}
+
+.statusBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+}
+
+.statusBadge[data-status="pulled"] {
+  background: rgba(211, 249, 216, 0.2);
+  color: #40c057;
+}
+
+.statusBadge[data-status="missing"] {
+  background: rgba(255, 227, 227, 0.2);
+  color: #ff6b6b;
+}
+
+.infoSection {
+  background: rgba(248, 249, 250, 0.1);
+  backdrop-filter: blur(8px);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid rgba(233, 236, 239, 0.2);
+}
+
+.infoItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(233, 236, 239, 0.2);
+}
+
+.infoItem:last-child {
+  border-bottom: none;
+}
+
+.label {
+  color: #000;
+  font-weight: 500;
+}
+
+.value {
+  color: #000;
+  font-family: monospace;
+}
+
+.commandSection {
+  margin-bottom: 1.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.125rem;
+  color: #000000;
+  margin-bottom: 1rem;
+}
+
+.commandItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(125, 125, 126, 0.1);
+  backdrop-filter: blur(8px);
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.command {
+  flex: 1;
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: #000;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.copyButton {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid rgba(233, 236, 239, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #000;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(8px);
+}
+
+.copyButton:hover {
+  background: rgba(241, 243, 245, 0.2);
+  border-color: rgba(222, 226, 230, 0.3);
+}
+
+.actions {
+  margin-top: auto;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pullButton,
+.runButton,
+.createButton {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  backdrop-filter: blur(8px);
+}
+
+.pullButton {
+  background: rgba(34, 139, 230, 0.8);
+  color: white;
+}
+
+.pullButton:hover {
+  background: rgba(28, 126, 214, 0.9);
+}
+
+.pullButton:disabled {
+  background: rgba(173, 181, 189, 0.5);
+  cursor: not-allowed;
+}
+
+.createButton {
+  background: rgba(64, 192, 87, 0.8);
+  color: white;
+}
+
+.createButton:hover {
+  background: rgba(55, 178, 77, 0.9);
+}
+
+.runButton {
+  background: rgba(121, 80, 242, 0.8);
+  color: white;
+}
+
+.runButton:hover {
+  background: rgba(103, 65, 217, 0.9);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #adb5bd;
+}
+
+.pullProgress {
+  flex: 1;
+  height: 38px;
+  background: rgba(233, 236, 239, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  backdrop-filter: blur(8px);
+}
+
+.progressBar {
+  height: 100%;
+  background: rgba(34, 139, 230, 0.8);
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* 반응형 스타일 */
+@media (max-width: 768px) {
+  .container {
+    padding: 0.75rem;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .pullButton,
+  .runButton,
+  .createButton {
+    width: 100%;
+  }
+} 
