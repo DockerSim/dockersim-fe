@@ -1,0 +1,123 @@
+.footer {
+    background-color: #f8f9fa;
+    padding: 3rem 0;
+    border-top: 1px solid #e9ecef;
+    margin-top: 3rem;
+    color: #666;
+}
+
+.container {
+    max-width: 100%;
+    padding: 0 2rem;
+    margin: 0 auto;
+}
+
+
+.footerContent {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+}
+
+.footerSection {
+    flex: 1;
+    min-width: 300px;
+    margin-bottom: 1.5rem;
+    padding-right: 2rem;
+}
+
+.footerTitle {
+    color: #004AAD;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    position: relative;
+    display: inline-block;
+}
+
+.footerTitle::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 40px;
+    height: 2px;
+    background-color: #004AAD;
+}
+
+.footerText {
+    color: #666;
+    line-height: 1.8;
+    margin-bottom: 1rem;
+}
+
+.footerDescription {
+    color: #666;
+    line-height: 1.8;
+    font-style: italic;
+}
+
+.footerBottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #e9ecef;
+    padding-top: 1.5rem;
+}
+
+.copyright {
+    color: #888;
+    font-size: 0.9rem;
+}
+
+.socialLinks {
+    display: flex;
+    gap: 1rem;
+}
+
+.socialLink {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #f1f3f5;
+    color: #666;
+    transition: all 0.3s ease;
+}
+
+.socialLink:hover {
+    background-color: #004AAD;
+    color: white;
+    transform: translateY(-3px);
+}
+
+@media (max-width: 768px) {
+    .footerTop {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1.5rem;
+    }
+    
+    .footerNav {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .footerContent {
+        flex-direction: column;
+    }
+    
+    .footerSection {
+        width: 100%;
+        padding-right: 0;
+    }
+    
+    .footerBottom {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+} 
