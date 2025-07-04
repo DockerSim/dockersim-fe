@@ -3,28 +3,23 @@
 import React from 'react';
 import Button from './Button';
 
-interface DeleteBtnProps {
+interface StopBtnProps {
   onClick?: () => void;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
 }
 
-const DeleteBtn = ({ onClick, className = '', size = 'md' }: DeleteBtnProps) => {
-  const buttonStyle = {
-    borderRadius: '9999px', // 완전한 원형
-  };
-  
+const StopBtn = ({ onClick, className = '', size = 'md' }: StopBtnProps) => {
   return (
     <Button 
       onClick={onClick} 
       className={className}
       variant="danger"
       size={size}
-      style={buttonStyle}
     >
-      <i className="bi bi-dash-lg"></i>
+      <i className="bi bi-stop-fill"></i>
     </Button>
   );
 };
 
-export default DeleteBtn;
+export default StopBtn;

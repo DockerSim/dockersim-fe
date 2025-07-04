@@ -1,9 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import 'bootstrap-icons/font/bootstrap-icons.css';
+
 :root {
   --primary-color: #004AAD;
   --text-color: #333;
   --background-color: #ffffff;
   --light-gray: #f8f9fa;
   --border-color: #e9ecef;
+}
+
+/* 아이콘 스타일 */
+.bi {
+  display: inline-block;
+  font-size: 1.2em;
+  line-height: 1;
+  vertical-align: middle;
 }
 
 * {
