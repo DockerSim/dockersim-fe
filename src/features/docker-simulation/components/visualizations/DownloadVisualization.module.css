@@ -1,0 +1,98 @@
+.downloadVisualization {
+  position: fixed;
+  right: 50%;
+  top: 200px;
+  transform: translateX(50%);
+  z-index: 1000;
+  animation: bounce 0.5s ease;
+}
+
+.downloadVisualization.completed {
+  animation: pulse 0.5s ease;
+}
+
+.downloadBubble {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+}
+
+.downloadArrow {
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 15px solid #667eea;
+  margin: 0 auto;
+  animation: arrowBounce 1s infinite;
+}
+
+.imageIconButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  margin: 10px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  min-width: 100px;
+}
+
+.imageIconButton:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
+}
+
+.imageIcon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.imageIconLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  text-align: center;
+}
+
+@keyframes bounce {
+  0%, 20%, 60%, 100% {
+    transform: translateY(0) translateX(50%);
+  }
+  40% {
+    transform: translateY(-20px) translateX(50%);
+  }
+  80% {
+    transform: translateY(-10px) translateX(50%);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1) translateX(50%);
+  }
+  50% {
+    transform: scale(1.1) translateX(50%);
+  }
+  100% {
+    transform: scale(1) translateX(50%);
+  }
+}
+
+@keyframes arrowBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+} 

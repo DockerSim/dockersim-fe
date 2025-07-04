@@ -1,31 +1,29 @@
-export type PostType = 'question' | 'simulation';
+import { PostType, BasePost, BaseComment } from '../../types/shared';
 
-export interface Post {
-  id: number;
-  title: string;
-  content: string;
-  type: PostType;
-  author: string;
-  createdAt: string;
-  updatedAt: string;
-  views: number;
-  likes: number;
-  tags: string[];
+// 도메인 특화 Post 인터페이스
+export interface Post extends BasePost {
   comments: Comment[];
 }
 
-export interface Comment {
-  id: number;
-  postId: number;
-  author: string;
-  content: string;
-  createdAt: string;
-  likes: number;
-}
+// 도메인 특화 Comment 인터페이스  
+export interface Comment extends BaseComment {}
 
+// 게시글 생성 요청 타입
 export interface CreatePostData {
   title: string;
   content: string;
   type: PostType;
-  tags: string[];
+  tags?: string[];
+}
+
+// 게시글 수정 요청 타입
+export interface UpdatePostData extends Partial<CreatePostData> {
+  id: number;
+}
+
+// 댓글 생성 요청 타입
+export interface CreateCommentData {
+  postId: number;
+  content: string;
+  author: string;
 } 

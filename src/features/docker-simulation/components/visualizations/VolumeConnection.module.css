@@ -1,0 +1,69 @@
+.volumeConnectionContainer {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.volumeConnectionContainer.connected .connectionPathSvg {
+  stroke: #1c7ed6;
+  opacity: 0.8;
+}
+
+.volumeConnectionContainer.connecting .connectionPathSvg {
+  stroke: #f59e0b;
+  opacity: 1;
+  animation: connectionPulse 1s infinite;
+}
+
+.volumeConnectionContainer.highlighted .connectionPathSvg {
+  stroke: #10b981;
+  opacity: 1;
+  stroke-width: 4;
+}
+
+.connectionPath {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.connectionPathSvg {
+  transition: all 0.3s ease;
+}
+
+.pulseDot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #f59e0b;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  animation: movingDot 2s linear infinite;
+}
+
+@keyframes connectionPulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes movingDot {
+  0% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) translateY(95px);
+    opacity: 0;
+  }
+} 

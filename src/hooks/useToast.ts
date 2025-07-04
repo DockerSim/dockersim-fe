@@ -1,5 +1,10 @@
 import { useState, useCallback } from 'react';
-import type { ToastProps } from '../components/Toast';
+
+export interface ToastProps {
+  message: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+  duration?: number;
+}
 
 interface Toast extends ToastProps {
   id: string;
@@ -10,7 +15,16 @@ export function useToast() {
 
   const addToast = useCallback((props: ToastProps) => {
     const id = Math.random().toString(36).substring(2);
-    setToasts(prev => [...prev, { ...props, id }]);
+    const toast = { ...props, id };
+    
+    setToasts(prev => [...prev, toast]);
+    
+    // 자동 제거 (기본 3초)
+    const duration = props.duration || 3000;
+    setTimeout(() => {
+      removeToast(id);
+    }, duration);
+    
     return id;
   }, []);
 
@@ -30,6 +44,14 @@ export function useToast() {
     return addToast({ message, type: 'info', duration });
   }, [addToast]);
 
+  const showWarningToast = useCallback((message: string, duration?: number) => {
+    return addToast({ message, type: 'warning', duration });
+  }, [addToast]);
+
+  const clearAllToasts = useCallback(() => {
+    setToasts([]);
+  }, []);
+
   return {
     toasts,
     addToast,
@@ -37,5 +59,7 @@ export function useToast() {
     showSuccessToast,
     showErrorToast,
     showInfoToast,
+    showWarningToast,
+    clearAllToasts,
   };
 } 
