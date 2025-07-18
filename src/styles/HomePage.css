@@ -1,0 +1,93 @@
+.home-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #ffffff;
+  position: relative;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  margin-left: 0; /* 사이드바가 보이지 않을 때는 마진 없음 */
+  transition: margin-left 0.3s ease;
+}
+
+.main-content.sidebar-visible {
+  margin-left: 60px; /* 사이드바가 보일 때만 마진 적용 */
+}
+
+.sidebar-content {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  transition: width 0.3s ease;
+}
+
+.main-content.both-collapsed .sidebar-content {
+  width: 0;
+  overflow: hidden;
+}
+
+.visualizer {
+  flex: 1;
+  transition: all 0.3s ease;
+}
+
+.visualizer.expanded {
+  margin-left: 0;
+}
+
+/* 리사이저블 패널 컨테이너 스타일 */
+.control-panel-container {
+  margin-left: 0 !important; /* 사이드바 마진 제거 */
+}
+
+.terminal-container {
+  margin-left: 0 !important; /* 사이드바 마진 제거 */
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 50px;
+  }
+  
+  .sidebar-content {
+    width: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    margin-left: 0;
+    flex-direction: column;
+  }
+  
+  .sidebar-content {
+    width: 100%;
+    order: 2;
+  }
+  
+  .visualizer {
+    order: 1;
+  }
+}
+
+/* 스크롤바 스타일 */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: #dee2e6;
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: #ced4da;
+} 

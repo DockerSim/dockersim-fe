@@ -1,0 +1,238 @@
+.visualizer-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 크롬 브라우저 탭 스타일 */
+.chrome-toolbar {
+  background: #f1f3f5;
+  padding: 8px 4px 0;
+  display: flex;
+  align-items: flex-end;
+  min-height: 40px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.network-tabs {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  gap: 0;
+}
+
+.chrome-tab {
+  height: 32px;
+  padding: 0 10px 0 16px;
+  background: #e9ecef;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+  max-width: 180px;
+  position: relative;
+  cursor: pointer;
+  font-size: 12px;
+  color: #495057;
+  border-radius: 8px 8px 0 0;
+  margin-right: -10px;
+  transition: all 0.15s;
+}
+
+.chrome-tab::before,
+.chrome-tab::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  bottom: 0;
+  background: transparent;
+}
+
+.chrome-tab::before {
+  left: -8px;
+  border-bottom-right-radius: 8px;
+  box-shadow: 4px 4px 0 4px #e9ecef;
+}
+
+.chrome-tab::after {
+  right: -8px;
+  border-bottom-left-radius: 8px;
+  box-shadow: -4px 4px 0 4px #e9ecef;
+}
+
+.chrome-tab:hover {
+  background: #f1f3f5;
+}
+
+.chrome-tab:hover::before {
+  box-shadow: 4px 4px 0 4px #f1f3f5;
+}
+
+.chrome-tab:hover::after {
+  box-shadow: -4px 4px 0 4px #f1f3f5;
+}
+
+.chrome-tab.active {
+  background: white;
+  z-index: 2;
+}
+
+.chrome-tab.active::before {
+  box-shadow: 4px 4px 0 4px white;
+}
+
+.chrome-tab.active::after {
+  box-shadow: -4px 4px 0 4px white;
+}
+
+.tab-icon {
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+.tab-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: #868e96;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.8;
+  margin-right: -4px;
+}
+
+.tab-close:hover {
+  background: #dee2e6;
+  color: #495057;
+}
+
+/* 네트워크 콘텐츠 */
+.network-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.network-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 볼륨 컨테이너 영역 */
+.volumes-container-area {
+  position: relative;
+  width: 100%;
+  padding-top: 30px;
+  margin-top: 2rem;
+}
+
+.volume-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.volumes-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+  min-height: 120px;
+  position: relative;
+}
+
+.unconnected-volume {
+  background: #ffc107;
+  border: 2px solid #ffb300;
+}
+
+.unconnected-volume:hover {
+  background: #ffca28;
+  transform: translateY(-3px);
+}
+
+.empty-volume-message {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* 하이라이트 애니메이션 */
+.highlight {
+  animation: highlight 2s;
+}
+
+@keyframes highlight {
+  0% {
+    box-shadow: 0 0 0 4px rgba(64, 192, 87, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(64, 192, 87, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 0 4px rgba(64, 192, 87, 0);
+  }
+}
+
+/* 레이아웃 반응형 */
+@media (max-width: 768px) {
+  .chrome-tab {
+    min-width: 100px;
+    max-width: 140px;
+  }
+  
+  .network-content {
+    padding: 1rem;
+  }
+  
+  .volumes-section {
+    padding: 0.5rem;
+  }
+}
+
+/* 접기/펼치기 애니메이션 */
+.collapsible-section {
+  transition: all 0.3s ease;
+}
+
+.collapsible-section.collapsed {
+  max-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.collapsible-section.expanded {
+  max-height: 100vh;
+} 

@@ -1,0 +1,360 @@
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { useDockerStore } from '../store/dockerStore'
+import { AddBtn, DeleteBtn, NetworkConnectBtn } from './common/BtnCrud'
+import '../styles/ControlPanel.css'
+
+interface ControlPanelProps {
+  isCollapsed?: boolean
+  onCollapseToggle?: () => void
+}
+
+const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onCollapseToggle }) => {
+  const { 
+    containers, 
+    volumes, 
+    networks, 
+    updateContainer, 
+    removeContainer, 
+    removeVolume, 
+    removeNetwork,
+    executeCommand
+  } = useDockerStore()
+  const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null)
+  const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'containers' | 'volumes' | 'networks'>('containers')
+
+  const handleContainerAction = (containerId: string, action: string) => {
+    const container = containers.find(c => c.id === containerId)
+    if (!container) return
+
+    switch (action) {
+      case 'start':
+        updateContainer(containerId, { status: 'running' })
+        executeCommand(`docker start ${container.name}`)
+        break
+      case 'stop':
+        updateContainer(containerId, { status: 'stopped' })
+        executeCommand(`docker stop ${container.name}`)
+        break
+      case 'pause':
+        updateContainer(containerId, { status: 'paused' })
+        executeCommand(`docker pause ${container.name}`)
+        break
+      case 'remove':
+        removeContainer(containerId)
+        executeCommand(`docker rm ${container.name}`)
+        break
+    }
+  }
+
+  const handleVolumeAction = (volumeId: string, action: string) => {
+    const volume = volumes.find(v => v.id === volumeId)
+    if (!volume) return
+
+    if (action === 'remove') {
+      removeVolume(volumeId)
+      executeCommand(`docker volume rm ${volume.name}`)
+    }
+  }
+
+  const handleNetworkAction = (networkId: string, action: string) => {
+    const network = networks.find(n => n.id === networkId)
+    if (!network) return
+
+    if (action === 'remove' && network.id !== 'bridge') {
+      removeNetwork(networkId)
+      executeCommand(`docker network rm ${network.name}`)
+    }
+  }
+
+  const handleCreateNetwork = () => {
+    const networkName = prompt('네트워크 이름을 입력하세요:')
+    if (networkName) {
+      executeCommand(`docker network create ${networkName}`)
+    }
+  }
+
+  const handleCreateVolume = () => {
+    const volumeName = prompt('볼륨 이름을 입력하세요:')
+    if (volumeName) {
+      executeCommand(`docker volume create ${volumeName}`)
+    }
+  }
+
+  const handleCreateContainer = () => {
+    const imageName = prompt('컨테이너를 생성할 이미지 이름을 입력하세요:')
+    if (imageName) {
+      const containerName = prompt('컨테이너 이름을 입력하세요 (선택사항):')
+      if (containerName) {
+        executeCommand(`docker run --name ${containerName} -d ${imageName}`)
+      } else {
+        executeCommand(`docker run -d ${imageName}`)
+      }
+    }
+  }
+
+  const handleNetworkConnect = () => {
+    if (selectedNetworkId && selectedContainerId) {
+      const network = networks.find(n => n.id === selectedNetworkId)
+      const container = containers.find(c => c.id === selectedContainerId)
+      if (network && container) {
+        executeCommand(`docker network connect ${network.name} ${container.name}`)
+        setSelectedNetworkId(null)
+        setSelectedContainerId(null)
+      }
+    } else {
+      alert('네트워크와 컨테이너를 선택해주세요.')
+    }
+  }
+
+  const handleVolumeConnect = () => {
+    const volumeId = prompt('연결할 볼륨 ID를 입력하세요:')
+    const containerId = prompt('연결할 컨테이너 ID를 입력하세요:')
+    const mountPath = prompt('컨테이너 내 마운트 경로를 입력하세요 (예: /app/data):')
+    
+    if (volumeId && containerId && mountPath) {
+      const volume = volumes.find(v => v.id === volumeId)
+      const container = containers.find(c => c.id === containerId)
+      
+      if (volume && container) {
+        executeCommand(`docker run -v ${volume.name}:${mountPath} ${container.image}`)
+      } else {
+        alert('볼륨 또는 컨테이너를 찾을 수 없습니다.')
+      }
+    } else {
+      alert('모든 정보를 입력해주세요.')
+    }
+  }
+
+  const toggleCollapse = () => {
+    onCollapseToggle?.()
+  }
+
+  return (
+    <div className={`control-panel ${isCollapsed ? 'collapsed' : ''}`}>
+      <div className="control-panel-header">
+        <div className="control-panel-title">
+          <span className="control-panel-icon">🎛️</span>
+          리소스 제어
+        </div>
+        <button className="collapse-btn" onClick={toggleCollapse}>
+          {isCollapsed ? '↑' : '↓'}
+        </button>
+      </div>
+
+            {!isCollapsed && (
+        <div className="control-panel-content">
+          {/* 탭 네비게이션 */}
+          <div className="tab-navigation">
+            <button 
+              className={`tab-button ${activeTab === 'containers' ? 'active' : ''}`}
+              onClick={() => setActiveTab('containers')}
+            >
+              📦 컨테이너 ({containers.length})
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'volumes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('volumes')}
+            >
+              💾 볼륨 ({volumes.length})
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'networks' ? 'active' : ''}`}
+              onClick={() => setActiveTab('networks')}
+            >
+              🌐 네트워크 ({networks.length})
+            </button>
+          </div>
+
+          {/* 탭 콘텐츠 */}
+          <div className="tab-content">
+            {activeTab === 'containers' && (
+              <div className="resource-section">
+                <div className="section-header">
+                  <h3>컨테이너 관리</h3>
+                  <AddBtn 
+                    onClick={handleCreateContainer}
+                    size="sm"
+                  />
+                </div>
+                <div className="resource-list">
+                  {containers.map(container => (
+                    <div key={container.id} className="resource-item">
+                      <div className="resource-info">
+                        <div className="resource-name">{container.name}</div>
+                        <div className="resource-details">
+                          <span className={`status-badge ${container.status}`}>
+                            {container.status}
+                          </span>
+                          <span className="resource-image">{container.image}</span>
+                        </div>
+                      </div>
+                      <div className="resource-actions">
+                        {container.status === 'stopped' && (
+                          <button 
+                            className="action-btn start"
+                            onClick={() => handleContainerAction(container.id, 'start')}
+                          >
+                            ▶️
+                          </button>
+                        )}
+                        {container.status === 'running' && (
+                          <button 
+                            className="action-btn stop"
+                            onClick={() => handleContainerAction(container.id, 'stop')}
+                          >
+                            ⏹️
+                          </button>
+                        )}
+                        {container.status === 'running' && (
+                          <button 
+                            className="action-btn pause"
+                            onClick={() => handleContainerAction(container.id, 'pause')}
+                          >
+                            ⏸️
+                          </button>
+                        )}
+                        <button 
+                          className="action-btn remove"
+                          onClick={() => handleContainerAction(container.id, 'remove')}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {containers.length === 0 && (
+                    <div className="empty-state">
+                      <p>컨테이너가 없습니다</p>
+                      <small>터미널에서 docker run 명령어를 실행해보세요</small>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'volumes' && (
+              <div className="resource-section">
+                <div className="section-header">
+                  <h3>볼륨 관리</h3>
+                  <div className="header-actions">
+                    <AddBtn 
+                      onClick={handleCreateVolume}
+                      size="sm"
+                    />
+                    <NetworkConnectBtn 
+                      onClick={handleVolumeConnect}
+                      size="sm"
+                    />
+                  </div>
+                </div>
+                <div className="resource-list">
+                  {volumes.map(volume => (
+                    <div key={volume.id} className="resource-item">
+                      <div className="resource-info">
+                        <div className="resource-name">{volume.name}</div>
+                        <div className="resource-details">
+                          <span className="resource-path">{volume.mountPath}</span>
+                          <span className="connected-count">
+                            {volume.connectedContainers.length}개 연결됨
+                          </span>
+                        </div>
+                      </div>
+                      <div className="resource-actions">
+                        <DeleteBtn 
+                          onClick={() => handleVolumeAction(volume.id, 'remove')}
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {volumes.length === 0 && (
+                    <div className="empty-state">
+                      <p>볼륨이 없습니다</p>
+                      <small>터미널에서 docker volume create 명령어를 실행해보세요</small>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'networks' && (
+              <div className="resource-section">
+                <div className="section-header">
+                  <h3>네트워크 관리</h3>
+                  <AddBtn 
+                    onClick={handleCreateNetwork}
+                    size="sm"
+                  />
+                </div>
+                
+                {/* 네트워크 연결 컨트롤 */}
+                <div className="network-connection-control">
+                  <div className="connection-selector">
+                    <select 
+                      value={selectedNetworkId || ''} 
+                      onChange={(e) => setSelectedNetworkId(e.target.value)}
+                      className="select-input"
+                    >
+                      <option value="">네트워크 선택</option>
+                      {networks.map(network => (
+                        <option key={network.id} value={network.id}>
+                          {network.name}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    <select 
+                      value={selectedContainerId || ''} 
+                      onChange={(e) => setSelectedContainerId(e.target.value)}
+                      className="select-input"
+                    >
+                      <option value="">컨테이너 선택</option>
+                      {containers.map(container => (
+                        <option key={container.id} value={container.id}>
+                          {container.name}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    <NetworkConnectBtn 
+                      onClick={handleNetworkConnect}
+                      size="sm"
+                    />
+                  </div>
+                </div>
+                
+                <div className="resource-list">
+                  {networks.map(network => (
+                    <div key={network.id} className="resource-item">
+                      <div className="resource-info">
+                        <div className="resource-name">{network.name}</div>
+                        <div className="resource-details">
+                          <span className="connected-count">
+                            {network.containers.length}개 컨테이너 연결됨
+                          </span>
+                        </div>
+                      </div>
+                      <div className="resource-actions">
+                        {network.id !== 'bridge' && (
+                          <DeleteBtn 
+                            onClick={() => handleNetworkAction(network.id, 'remove')}
+                            size="sm"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default ControlPanel 

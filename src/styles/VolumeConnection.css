@@ -1,0 +1,160 @@
+.volume-connection-container {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.volume-connection-container.connected .connection-path-svg {
+  stroke: #1c7ed6;
+  opacity: 0.8;
+}
+
+.volume-connection-container.connecting .connection-path-svg {
+  stroke: #f59e0b;
+  opacity: 1;
+  animation: connectionPulse 1s infinite;
+}
+
+.volume-connection-container.highlighted .connection-path-svg {
+  stroke: #10b981;
+  opacity: 1;
+  stroke-width: 4;
+}
+
+.connection-path {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+}
+
+.connection-path-svg {
+  transition: all 0.3s ease;
+}
+
+.pulse-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #f59e0b;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  animation: movingDot 2s linear infinite;
+}
+
+@keyframes connectionPulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes movingDot {
+  0% {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) translateY(95px);
+    opacity: 0;
+  }
+}
+
+/* 볼륨 연결 컨테이너 스타일 */
+.volumes-container {
+  position: relative;
+  width: 100%;
+  height: 160px;
+  margin-top: 0;
+  z-index: 3;
+}
+
+/* 볼륨 연결 컨테이너 래퍼 */
+.volume-connection-wrapper {
+  position: absolute;
+  width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: visible;
+  z-index: 3;
+  transform-origin: center top;
+}
+
+/* 볼륨 원 스타일 */
+.volume-circle {
+  width: 100px;
+  height: 100px;
+  background: #4dabf7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 4;
+}
+
+.volume-circle:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 연결된 볼륨 스타일 */
+.attached-volume {
+  width: 70px;
+  height: 70px;
+  margin-top: 95px;
+  background: #4dabf7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 3;
+}
+
+.attached-volume:hover {
+  transform: translateY(-5px) !important;
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 볼륨 연결 점 스타일 */
+.volume-connection-dot {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #1c7ed6;
+  transform: translateX(-50%);
+  border: 2px solid white;
+  z-index: 5;
+  box-shadow: 0 0 0 1px rgba(28, 126, 214, 0.3);
+}
+
+/* 볼륨 이름 스타일 */
+.volume-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-align: center;
+  color: white;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+} 
