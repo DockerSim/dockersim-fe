@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useDockerStore } from '../store/dockerStore'
 import { AddBtn, DeleteBtn, NetworkConnectBtn } from './common/BtnCrud'
 import '../styles/ControlPanel.css'
+import VolumeConnectModal from './VolumeConnectModal';
 
 interface ControlPanelProps {
   isCollapsed?: boolean
@@ -19,11 +20,13 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
     removeContainer, 
     removeVolume, 
     removeNetwork,
-    executeCommand
+    executeCommand,
+    updateVolume
   } = useDockerStore()
   const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null)
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'containers' | 'volumes' | 'networks'>('containers')
+  const [volumeModalOpen, setVolumeModalOpen] = useState(false);
 
   const handleContainerAction = (containerId: string, action: string) => {
     const container = containers.find(c => c.id === containerId)
@@ -110,23 +113,29 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
   }
 
   const handleVolumeConnect = () => {
-    const volumeId = prompt('연결할 볼륨 ID를 입력하세요:')
-    const containerId = prompt('연결할 컨테이너 ID를 입력하세요:')
-    const mountPath = prompt('컨테이너 내 마운트 경로를 입력하세요 (예: /app/data):')
-    
-    if (volumeId && containerId && mountPath) {
-      const volume = volumes.find(v => v.id === volumeId)
-      const container = containers.find(c => c.id === containerId)
-      
-      if (volume && container) {
-        executeCommand(`docker run -v ${volume.name}:${mountPath} ${container.image}`)
-      } else {
-        alert('볼륨 또는 컨테이너를 찾을 수 없습니다.')
-      }
-    } else {
-      alert('모든 정보를 입력해주세요.')
+    setVolumeModalOpen(true);
+  };
+
+  const handleVolumeModalConnect = (volumeId: string, containerId: string, mountPath: string) => {
+    const volume = volumes.find(v => v.id === volumeId);
+    const container = containers.find(c => c.id === containerId);
+    if (volume && container) {
+      // 컨테이너에 볼륨 추가
+      const newVolumeObj = {
+        id: volume.id,
+        name: volume.name,
+        mountPath: mountPath,
+        connectedContainers: [...(volume.connectedContainers || []), container.id]
+      };
+      const updatedVolumes = (container.volumes || []).filter(v => v.id !== volume.id).concat(newVolumeObj);
+      updateContainer(container.id, { volumes: updatedVolumes });
+      // 볼륨에 컨테이너 연결 추가
+      updateVolume(volume.id, {
+        connectedContainers: Array.from(new Set([...(volume.connectedContainers || []), container.id]))
+      });
+      setVolumeModalOpen(false);
     }
-  }
+  };
 
   const toggleCollapse = () => {
     onCollapseToggle?.()
@@ -353,6 +362,14 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
           </div>
         </div>
       )}
+      {/* 볼륨 연결 모달 */}
+      <VolumeConnectModal
+        containers={containers}
+        volumes={volumes}
+        open={volumeModalOpen}
+        onConnect={handleVolumeModalConnect}
+        onClose={() => setVolumeModalOpen(false)}
+      />
     </div>
   )
 }
