@@ -62,6 +62,7 @@ interface DockerStore {
   addTerminalHistory: (history: TerminalHistory) => void
   clearTerminalHistory: () => void
   executeCommand: (command: string) => void
+  addMessage: (message: string) => void
   
   // 컨테이너 액션
   addContainer: (container: Container) => void
@@ -105,6 +106,18 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     })),
   
   clearTerminalHistory: () => set({ terminalHistory: [] }),
+
+  // 단순 메시지 추가 함수 (오류 없이)
+  addMessage: (message: string) => {
+    const { addTerminalHistory } = get()
+    addTerminalHistory({
+      id: `msg_${Date.now()}`,
+      command: '',
+      output: message,
+      timestamp: new Date().toISOString(),
+      isError: false
+    })
+  },
   
   executeCommand: (command: string) => {
     const { addTerminalHistory, addContainer, addVolume, addNetwork, clearTerminalHistory } = get()
@@ -113,6 +126,11 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     let isError = false
 
     try {
+      // 빈 명령어는 무시
+      if (!command.trim()) {
+        return
+      }
+
       // 간단한 Docker 명령어 시뮬레이션
       if (command.startsWith('docker ps')) {
         output = `CONTAINER ID   IMAGE           COMMAND                  CREATED         STATUS         PORTS                    NAMES`
@@ -139,6 +157,22 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
           output = `Container ${containerName} created and started`
         } else {
           output = 'Error: Invalid docker run command'
+          isError = true
+        }
+      } else if (command.startsWith('docker pull')) {
+        const imageName = command.split(' ').slice(2).join(' ')
+        if (imageName) {
+          output = `Pulling ${imageName}... Done`
+        } else {
+          output = 'Error: Image name required'
+          isError = true
+        }
+      } else if (command.startsWith('docker rmi')) {
+        const imageName = command.split(' ').slice(2).join(' ')
+        if (imageName) {
+          output = `Deleted: ${imageName}`
+        } else {
+          output = 'Error: Image name required'
           isError = true
         }
       } else if (command.startsWith('docker start')) {
@@ -218,10 +252,14 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
         clearTerminalHistory()
         return
       } else if (command.startsWith('docker')) {
+        // 알 수 없는 Docker 명령어도 성공적으로 처리
         output = `Command executed: ${command}`
+      } else if (command.startsWith('echo')) {
+        // echo 명령어는 완전히 무시하고 아무것도 하지 않음
+        return
       } else {
-        output = `Command not found: ${command}`
-        isError = true
+        // 알 수 없는 명령어도 오류로 표시하지 않고 무시
+        return
       }
     } catch (error) {
       output = `Error executing command: ${error}`

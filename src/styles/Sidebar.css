@@ -1,24 +1,20 @@
 .sidebar {
   position: fixed;
   left: 0;
-  top: 60px; /* 헤더 공간 확보 */
-  height: calc(100vh - 60px);
+  top: 0;
+  height: 100vh;
   width: 60px;
   background: rgba(248, 249, 250, 0.95);
   backdrop-filter: blur(20px);
   border-right: 1px solid rgba(0, 0, 0, 0.1);
-  z-index: 500; /* 헤더보다 낮게 설정 */
+  z-index: 500;
   display: flex;
   flex-direction: column;
-  padding: 20px 0;
-  visibility: hidden;
-  opacity: 0;
-  transition: all 0.3s ease;
-}
-
-.sidebar.visible {
+  padding-top: 92px;
+  padding-bottom: 20px;
   visibility: visible;
   opacity: 1;
+  transition: all 0.3s ease;
 }
 
 .sidebar-icons {
@@ -78,5 +74,44 @@
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 50px;
+    padding-top: 76px;
+    padding-bottom: 16px;
+  }
+  
+  .sidebar-icon {
+    padding: 8px 6px;
+    min-width: 38px;
+    gap: 2px;
+  }
+  
+  .sidebar-icon .icon {
+    font-size: 14px;
+  }
+  
+  .sidebar-icon .label {
+    font-size: 7px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 45px;
+    padding-top: 70px;
+  }
+  
+  .sidebar-icon {
+    padding: 6px 4px;
+    min-width: 35px;
+  }
+  
+  .sidebar-icon .label {
+    display: none;
   }
 } 
