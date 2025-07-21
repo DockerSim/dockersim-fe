@@ -1,0 +1,114 @@
+.terminalCommandPanel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #2a2a2a;
+  border-bottom: 1px solid #444;
+  height: fit-content;
+  max-height: 80px;
+  overflow: hidden;
+  position: relative;
+  border-radius: 8px 8px 0 0;
+  width: 100%; /* 터미널 영역 폭에 맞춤 */
+  max-width: 100%; /* 터미널 영역을 벗어나지 않도록 제한 */
+  box-sizing: border-box; /* 패딩 포함한 전체 크기 제한 */
+}
+
+.buttonGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.commandButton {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  padding: 0 !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+}
+
+.commandButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.commandButton.processing {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background: #555;
+  margin: 0 4px;
+}
+
+.selectedInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.infoLabel {
+  color: #94a3b8;
+}
+
+.infoValue {
+  color: #f1f5f9;
+  font-family: 'Courier New', monospace;
+  background: #374151;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.statusBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.statusBadge.running {
+  background: #10b981;
+  color: white;
+}
+
+.statusBadge.stopped {
+  background: #ef4444;
+  color: white;
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .terminalCommandPanel {
+    padding: 6px 8px;
+    max-height: 60px;
+  }
+  
+  .commandButton {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+  }
+  
+  .selectedInfo {
+    font-size: 11px;
+  }
+  
+  .buttonGroup {
+    gap: 6px;
+  }
+} 

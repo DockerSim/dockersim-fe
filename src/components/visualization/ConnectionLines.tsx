@@ -31,43 +31,80 @@ const ConnectionLines: React.FC<ConnectionLinesProps> = ({ containers, volumes }
   }, [containers, volumes])
 
   const drawConnections = (ctx: CanvasRenderingContext2D, containers: Container[], volumes: Volume[]) => {
-    // 볼륨-컨테이너 연결선 그리기
-    volumes.forEach((volume, volumeIndex) => {
-      volume.connectedContainers.forEach((containerId) => {
-        const container = containers.find(c => c.id === containerId)
-        if (!container) return
+    // 컨테이너가 1개일 때만 시각화 (여러 개면 첫 번째만)
+    if (containers.length === 0) return;
+    const container = containers[0];
+    const containerX = ctx.canvas.width / 2;
+    const containerY = 100;
 
-        // 볼륨 위치 계산 (우측 열에 위치)
-        const volumeX = ctx.canvas.width * 0.75
-        const volumeY = 100 + volumeIndex * 80
+    // 볼륨 배치
+    const connectedVolumes = volumes.filter(v => v.connectedContainers.includes(container.id));
+    const n = connectedVolumes.length;
+    const baseY = 350;
+    const spread = Math.min(ctx.canvas.width * 0.7, 120 * n); // 볼륨이 많아도 너무 벌어지지 않게
+    const startX = containerX - spread / 2;
 
-        // 컨테이너 위치 계산 (좌측 열에 위치)
-        const containerIndex = containers.findIndex(c => c.id === containerId)
-        const containerX = ctx.canvas.width * 0.25
-        const containerY = 100 + containerIndex * 80
+    // 중심선 (컨테이너에서 아래로)
+    if (n > 0) {
+      ctx.beginPath();
+      ctx.moveTo(containerX, containerY + 20);
+      ctx.lineTo(containerX, baseY - 60);
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([]);
+      ctx.stroke();
+    }
 
-        // 연결선 그리기
-        ctx.beginPath()
-        ctx.moveTo(containerX, containerY)
-        ctx.lineTo(volumeX, volumeY)
-        ctx.strokeStyle = '#10b981' // green-500
-        ctx.lineWidth = 2
-        ctx.setLineDash([5, 5])
-        ctx.stroke()
-        ctx.setLineDash([])
+    connectedVolumes.forEach((volume, i) => {
+      const volumeX = startX + (i + 0.5) * (spread / n);
+      const volumeY = baseY;
 
-        // 연결점 그리기
-        ctx.beginPath()
-        ctx.arc(containerX, containerY, 4, 0, 2 * Math.PI)
-        ctx.fillStyle = '#3b82f6' // blue-500
-        ctx.fill()
+      // 곡선 연결 (중심선 하단에서 볼륨으로)
+      ctx.beginPath();
+      ctx.moveTo(containerX, baseY - 60);
+      // cubic bezier: (cp1, cp2, end)
+      ctx.bezierCurveTo(
+        containerX, baseY - 20,
+        volumeX, baseY - 40,
+        volumeX, volumeY
+      );
+      ctx.strokeStyle = '#1c7ed6';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([]);
+      ctx.stroke();
 
-        ctx.beginPath()
-        ctx.arc(volumeX, volumeY, 4, 0, 2 * Math.PI)
-        ctx.fillStyle = '#10b981' // green-500
-        ctx.fill()
-      })
-    })
+      // 연결점 (볼륨)
+      ctx.beginPath();
+      ctx.arc(volumeX, volumeY, 18, 0, 2 * Math.PI);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(volumeX, volumeY, 4, 0, 2 * Math.PI);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+
+      // 볼륨 이름
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.fillText(volume.name, volumeX, volumeY + 5);
+    });
+
+    // 컨테이너 박스 (상단)
+    ctx.beginPath();
+    ctx.roundRect(containerX - 80, containerY - 40, 160, 60, 12);
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 3;
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = '#222';
+    ctx.textAlign = 'center';
+    ctx.fillText(container.name, containerX, containerY - 10);
+    ctx.font = '14px sans-serif';
+    ctx.fillStyle = '#888';
+    ctx.fillText(container.image, containerX, containerY + 12);
   }
 
   return (

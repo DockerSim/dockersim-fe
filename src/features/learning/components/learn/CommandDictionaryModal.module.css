@@ -1,0 +1,251 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  padding: 0;
+  width: 90%;
+  max-width: 900px;
+  height: 80vh;
+  max-height: 80vh;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+.commandDictionaryModal {
+  max-width: 900px;
+  height: 80vh;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  flex-shrink: 0;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  color: #212529;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #868e96;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.closeButton:hover {
+  color: #495057;
+  background-color: #f8f9fa;
+}
+
+.modalContent {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.commandDictionaryLayout {
+  display: flex;
+  height: 100%;
+}
+
+.categorySidebar {
+  width: 200px;
+  padding: 1rem;
+  border-right: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.categoryButton {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+  color: #495057;
+}
+
+.categoryButton:hover {
+  background-color: #f1f3f5;
+}
+
+.categoryButton.selected {
+  background-color: #e7f5ff;
+  color: #1971c2;
+  border: none;
+}
+
+.commandContentArea {
+  flex: 1;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.commandDetail {
+  padding: 1rem;
+}
+
+.commandDetail h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #1971c2;
+}
+
+.commandDetail h4 {
+  font-size: 1.1rem;
+  margin: 1.5rem 0 0.5rem;
+  color: #495057;
+}
+
+.description {
+  color: #495057;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.exampleSection {
+  margin-top: 1.5rem;
+}
+
+.example {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #e9ecef;
+}
+
+.example code {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.9rem;
+  color: #212529;
+  background: none;
+  padding: 0;
+}
+
+.copyButton {
+  background: none;
+  border: none;
+  color: #868e96;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+
+.copyButton:hover {
+  background-color: #e9ecef;
+  color: #495057;
+}
+
+.optionsSection {
+  margin-top: 1.5rem;
+}
+
+.optionsList {
+  padding-left: 1.5rem;
+  margin: 0;
+}
+
+.optionsList li {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #495057;
+  font-family: 'Consolas', 'Monaco', monospace;
+  line-height: 1.5;
+}
+
+.backButton {
+  margin-top: 2rem;
+  padding: 0.5rem 1rem;
+  background-color: #f1f3f5;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #495057;
+  transition: all 0.2s;
+}
+
+.backButton:hover {
+  background-color: #e9ecef;
+  border-color: #dee2e6;
+}
+
+.commandList {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.commandItem {
+  padding: 1rem;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: white;
+}
+
+.commandItem:hover {
+  border-color: #74c0fc;
+  background-color: #f8f9fa;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.commandItem h4 {
+  margin: 0 0 0.5rem 0;
+  color: #1971c2;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.commandItem .description {
+  margin-bottom: 0.75rem;
+}
+
+.commandItem .example {
+  margin-top: 0.5rem;
+  background-color: #f1f3f5;
+  padding: 0.5rem;
+  border: none;
+}
+
+.commandItem .example code {
+  font-size: 0.85rem;
+} 

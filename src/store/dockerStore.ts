@@ -119,28 +119,54 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
       } else if (command.startsWith('docker run')) {
         // docker run 명령어 파싱
         const nameMatch = command.match(/--name\s+(\S+)/)
-        const imageMatch = command.match(/(\S+)(?:\s+(.*))?$/)
+        const imageMatch = command.match(/([\w\-]+)(?=\s*$)/)
         
-        if (imageMatch) {
-          const image = imageMatch[1]
-          const containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`
-          
-          // 새 컨테이너 추가
-          addContainer({
-            id: containerName,
-            name: containerName,
-            image: image,
-            status: 'running',
-            ports: [],
-            network: 'bridge',
-            created: new Date()
+        let containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`
+        let image = imageMatch ? imageMatch[1] : 'ubuntu'
+        // 여러 볼륨 파싱
+        const volumeMatches = [...command.matchAll(/-v\s+([^:]+):([^\s]+)/g)]
+        let volumes: any[] = []
+        if (volumeMatches.length > 0) {
+          volumeMatches.forEach(match => {
+            const volumeName: string = match[1]
+            const mountPath: string = match[2]
+            // 볼륨이 이미 존재하는지 확인
+            let volume = get().volumes.find(v => v.name === volumeName)
+            if (!volume) {
+              // 볼륨이 없으면 생성
+              volume = {
+                id: `vol_${Date.now()}_${volumeName}`,
+                name: volumeName,
+                mountPath: '/var/lib/docker/volumes',
+                connectedContainers: []
+              }
+              get().addVolume(volume)
+            }
+            // 볼륨에 컨테이너 연결
+            get().updateVolume(volume.id, {
+              connectedContainers: Array.from(new Set([...(volume.connectedContainers || []), containerName]))
+            })
+            // 컨테이너에 볼륨 정보 추가
+            volumes.push({
+              id: volume.id,
+              name: volume.name,
+              mountPath: mountPath,
+              connectedContainers: [containerName]
+            })
           })
-          
-          output = `Container ${containerName} created and started`
-        } else {
-          output = 'Error: Invalid docker run command'
-          isError = true
         }
+        // 새 컨테이너 추가
+        get().addContainer({
+          id: containerName,
+          name: containerName,
+          image: image,
+          status: 'running',
+          ports: [],
+          network: 'bridge',
+          created: new Date(),
+          volumes: volumes
+        })
+        output = `Container ${containerName} created and started`;
       } else if (command.startsWith('docker start')) {
         const containerName = command.split(' ')[2]
         if (containerName) {
