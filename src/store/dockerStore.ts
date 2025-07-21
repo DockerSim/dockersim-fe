@@ -62,6 +62,7 @@ interface DockerStore {
   addTerminalHistory: (history: TerminalHistory) => void
   clearTerminalHistory: () => void
   executeCommand: (command: string) => void
+  addMessage: (message: string) => void
   
   // 컨테이너 액션
   addContainer: (container: Container) => void
@@ -105,6 +106,18 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     })),
   
   clearTerminalHistory: () => set({ terminalHistory: [] }),
+
+  // 단순 메시지 추가 함수 (오류 없이)
+  addMessage: (message: string) => {
+    const { addTerminalHistory } = get()
+    addTerminalHistory({
+      id: `msg_${Date.now()}`,
+      command: '',
+      output: message,
+      timestamp: new Date().toISOString(),
+      isError: false
+    })
+  },
   
   executeCommand: (command: string) => {
     const { addTerminalHistory, addContainer, addVolume, addNetwork, clearTerminalHistory } = get()
@@ -113,60 +126,39 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     let isError = false
 
     try {
+      // 빈 명령어는 무시
+      if (!command.trim()) {
+        return
+      }
+
       // 간단한 Docker 명령어 시뮬레이션
       if (command.startsWith('docker ps')) {
         output = `CONTAINER ID   IMAGE           COMMAND                  CREATED         STATUS         PORTS                    NAMES`
       } else if (command.startsWith('docker run')) {
         // docker run 명령어 파싱
         const nameMatch = command.match(/--name\s+(\S+)/)
-        const imageMatch = command.match(/([\w\-]+)(?=\s*$)/)
+        const imageMatch = command.match(/(\S+)(?:\s+(.*))?$/)
         
-        let containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`
-        let image = imageMatch ? imageMatch[1] : 'ubuntu'
-        // 여러 볼륨 파싱
-        const volumeMatches = [...command.matchAll(/-v\s+([^:]+):([^\s]+)/g)]
-        let volumes: any[] = []
-        if (volumeMatches.length > 0) {
-          volumeMatches.forEach(match => {
-            const volumeName: string = match[1]
-            const mountPath: string = match[2]
-            // 볼륨이 이미 존재하는지 확인
-            let volume = get().volumes.find(v => v.name === volumeName)
-            if (!volume) {
-              // 볼륨이 없으면 생성
-              volume = {
-                id: `vol_${Date.now()}_${volumeName}`,
-                name: volumeName,
-                mountPath: '/var/lib/docker/volumes',
-                connectedContainers: []
-              }
-              get().addVolume(volume)
-            }
-            // 볼륨에 컨테이너 연결
-            get().updateVolume(volume.id, {
-              connectedContainers: Array.from(new Set([...(volume.connectedContainers || []), containerName]))
-            })
-            // 컨테이너에 볼륨 정보 추가
-            volumes.push({
-              id: volume.id,
-              name: volume.name,
-              mountPath: mountPath,
-              connectedContainers: [containerName]
-            })
+        if (imageMatch) {
+          const image = imageMatch[1]
+          const containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`
+          
+          // 새 컨테이너 추가
+          addContainer({
+            id: containerName,
+            name: containerName,
+            image: image,
+            status: 'running',
+            ports: [],
+            network: 'bridge',
+            created: new Date()
           })
+          
+          output = `Container ${containerName} created and started`
+        } else {
+          output = 'Error: Invalid docker run command'
+          isError = true
         }
-        // 새 컨테이너 추가
-        get().addContainer({
-          id: containerName,
-          name: containerName,
-          image: image,
-          status: 'running',
-          ports: [],
-          network: 'bridge',
-          created: new Date(),
-          volumes: volumes
-        })
-        output = `Container ${containerName} created and started`;
       } else if (command.startsWith('docker start')) {
         const containerName = command.split(' ')[2]
         if (containerName) {
@@ -244,10 +236,14 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
         clearTerminalHistory()
         return
       } else if (command.startsWith('docker')) {
+        // 알 수 없는 Docker 명령어도 성공적으로 처리
         output = `Command executed: ${command}`
+      } else if (command.startsWith('echo')) {
+        // echo 명령어는 완전히 무시하고 아무것도 하지 않음
+        return
       } else {
-        output = `Command not found: ${command}`
-        isError = true
+        // 알 수 없는 명령어도 오류로 표시하지 않고 무시
+        return
       }
     } catch (error) {
       output = `Error executing command: ${error}`

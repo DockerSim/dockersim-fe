@@ -21,7 +21,6 @@ export default function HomePage() {
   }
 
   const bothCollapsed = isControlPanelCollapsed && isTerminalCollapsed
-  const sidebarVisible = isControlPanelCollapsed || isTerminalCollapsed
 
   return (
     <div className="home-layout">
@@ -32,29 +31,37 @@ export default function HomePage() {
         onTerminalToggle={toggleTerminal}
       />
       
-      <div className={`main-content ${bothCollapsed ? 'both-collapsed' : ''} ${sidebarVisible ? 'sidebar-visible' : ''}`}>
+      <div className={`main-content sidebar-visible ${bothCollapsed ? 'both-collapsed' : ''}`}>
         <div className="sidebar-content">
           <ResizablePanel 
             isCollapsed={isControlPanelCollapsed}
+            onCollapseToggle={toggleControlPanel}
             defaultHeight={350}
             minHeight={200}
             maxHeight={600}
             className="control-panel-container"
           >
-            <ControlPanel isCollapsed={isControlPanelCollapsed} onCollapseToggle={toggleControlPanel} />
+            <ControlPanel 
+              isCollapsed={isControlPanelCollapsed}
+              onCollapseToggle={toggleControlPanel}
+            />
           </ResizablePanel>
           
           <ResizablePanel 
             isCollapsed={isTerminalCollapsed}
+            onCollapseToggle={toggleTerminal}
             defaultHeight={300}
             minHeight={150}
             maxHeight={500}
             className="terminal-container"
           >
-            <Terminal isCollapsed={isTerminalCollapsed} onCollapseToggle={toggleTerminal} />
+            <Terminal 
+              isCollapsed={isTerminalCollapsed}
+              onCollapseToggle={toggleTerminal}
+            />
           </ResizablePanel>
         </div>
-
+        
         <div className={`visualizer ${bothCollapsed ? 'expanded' : ''}`}>
           <Visualizer />
         </div>
