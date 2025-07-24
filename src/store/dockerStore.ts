@@ -137,11 +137,13 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
       } else if (command.startsWith('docker run')) {
         // docker run 명령어 파싱
         const nameMatch = command.match(/--name\s+(\S+)/)
+        const networkMatch = command.match(/--network\s+(\S+)/)
         const imageMatch = command.match(/(\S+)(?:\s+(.*))?$/)
         
         if (imageMatch) {
           const image = imageMatch[1]
           const containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`
+          const targetNetwork = networkMatch ? networkMatch[1] : 'bridge'
           
           // 새 컨테이너 추가
           addContainer({
@@ -150,11 +152,12 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
             image: image,
             status: 'running',
             ports: [],
-            network: 'bridge',
-            created: new Date()
+            network: targetNetwork,
+            created: new Date(),
+            isNew: true
           })
           
-          output = `Container ${containerName} created and started`
+          output = `Container ${containerName} created and started in network ${targetNetwork}`
         } else {
           output = 'Error: Invalid docker run command'
           isError = true
@@ -194,21 +197,27 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
       } else if (command.startsWith('docker volume create')) {
         const volumeName = command.split(' ')[3] || `volume_${Date.now()}`
         
+        // 명령어에서 네트워크 정보 추출 (예: docker volume create --network bridge myvolume)
+        const networkMatch = command.match(/--network\s+(\S+)/)
+        const targetNetworkId = networkMatch ? networkMatch[1] : 'bridge'
+        
         addVolume({
           id: `vol_${Date.now()}`,
           name: volumeName,
           mountPath: '/var/lib/docker/volumes',
-          connectedContainers: []
+          connectedContainers: [],
+          networkId: targetNetworkId
         })
         
-        output = `Volume ${volumeName} created`
+        output = `Volume ${volumeName} created in network ${targetNetworkId}`
       } else if (command.startsWith('docker network create')) {
         const networkName = command.split(' ')[3] || `network_${Date.now()}`
         
         addNetwork({
           id: `net_${Date.now()}`,
           name: networkName,
-          containers: []
+          containers: [],
+          isNew: true
         })
         
         output = `Network ${networkName} created`
@@ -262,9 +271,23 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
   
   // 컨테이너 액션
   addContainer: (container: Container) => 
-    set((state) => ({ 
-      containers: [...state.containers, container] 
-    })),
+    set((state) => {
+      // 새 컨테이너를 추가하고 해당 네트워크의 containers 배열도 업데이트
+      const updatedNetworks = state.networks.map(network => {
+        if (network.name === container.network || network.id === container.network) {
+          return {
+            ...network,
+            containers: [...network.containers, container]
+          };
+        }
+        return network;
+      });
+
+      return {
+        containers: [...state.containers, container],
+        networks: updatedNetworks
+      };
+    }),
   
   removeContainer: (id: string) => 
     set((state) => ({ 

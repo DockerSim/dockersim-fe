@@ -5,13 +5,17 @@ import { useDockerStore } from '../store/dockerStore'
 import { AddBtn, DeleteBtn, NetworkConnectBtn } from './common/BtnCrud'
 import '../styles/ControlPanel.css'
 import VolumeConnectModal from './VolumeConnectModal';
+import ResourceCreationModal, { ResourceCreationData } from './modals/ResourceCreationModal';
+import { useNetworkSync } from '../hooks/useNetworkSync';
 
 interface ControlPanelProps {
   isCollapsed?: boolean
   onCollapseToggle?: () => void
+  showToast?: (message: string, type?: 'success' | 'error' | 'info') => void
+  showProcessBubble?: (type: 'create' | 'start' | 'stop' | 'remove' | 'error' | 'info', message: string, containerId: string) => void
 }
 
-const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onCollapseToggle }) => {
+const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onCollapseToggle, showToast, showProcessBubble }) => {
   const { 
     containers, 
     volumes, 
@@ -27,6 +31,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'containers' | 'volumes' | 'networks'>('containers')
   const [volumeModalOpen, setVolumeModalOpen] = useState(false);
+  const [resourceCreationModalOpen, setResourceCreationModalOpen] = useState(false);
+  const [resourceCreationType, setResourceCreationType] = useState<'container' | 'volume'>('container');
+  
+  // 네트워크 동기화 훅 사용
+  useNetworkSync();
 
   const handleContainerAction = (containerId: string, action: string) => {
     const container = containers.find(c => c.id === containerId)
@@ -36,18 +45,26 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
       case 'start':
         updateContainer(containerId, { status: 'running' })
         executeCommand(`docker start ${container.name}`)
+        showToast && showToast('컨테이너가 시작되었습니다.', 'success')
+        showProcessBubble && showProcessBubble('start', '시작!', containerId)
         break
       case 'stop':
         updateContainer(containerId, { status: 'stopped' })
         executeCommand(`docker stop ${container.name}`)
+        showToast && showToast('컨테이너가 중지되었습니다.', 'info')
+        showProcessBubble && showProcessBubble('stop', '중지', containerId)
         break
       case 'pause':
         updateContainer(containerId, { status: 'paused' })
         executeCommand(`docker pause ${container.name}`)
+        showToast && showToast('컨테이너가 일시정지되었습니다.', 'info')
+        showProcessBubble && showProcessBubble('info', '일시정지', containerId)
         break
       case 'remove':
         removeContainer(containerId)
         executeCommand(`docker rm ${container.name}`)
+        showToast && showToast('컨테이너가 삭제되었습니다.', 'error')
+        showProcessBubble && showProcessBubble('remove', '삭제', containerId)
         break
     }
   }
@@ -80,22 +97,13 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
   }
 
   const handleCreateVolume = () => {
-    const volumeName = prompt('볼륨 이름을 입력하세요:')
-    if (volumeName) {
-      executeCommand(`docker volume create ${volumeName}`)
-    }
+    setResourceCreationType('volume');
+    setResourceCreationModalOpen(true);
   }
 
   const handleCreateContainer = () => {
-    const imageName = prompt('컨테이너를 생성할 이미지 이름을 입력하세요:')
-    if (imageName) {
-      const containerName = prompt('컨테이너 이름을 입력하세요 (선택사항):')
-      if (containerName) {
-        executeCommand(`docker run --name ${containerName} -d ${imageName}`)
-      } else {
-        executeCommand(`docker run -d ${imageName}`)
-      }
-    }
+    setResourceCreationType('container');
+    setResourceCreationModalOpen(true);
   }
 
   const handleNetworkConnect = () => {
@@ -135,6 +143,31 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
       });
       setVolumeModalOpen(false);
     }
+  };
+
+  const handleResourceCreation = (data: ResourceCreationData) => {
+    const network = networks.find(n => n.id === data.networkId);
+    if (!network) return;
+
+    if (resourceCreationType === 'container' && data.image) {
+      // 컨테이너 생성 로직
+      let newId = Date.now().toString();
+      
+      if (data.name) {
+        executeCommand(`docker run --name ${data.name} --network ${network.name} -d ${data.image}`);
+      } else {
+        executeCommand(`docker run --network ${network.name} -d ${data.image}`);
+      }
+      
+      showToast && showToast(`${network.name} 네트워크에 컨테이너가 생성되었습니다.`, 'success');
+      showProcessBubble && showProcessBubble('create', '생성!', newId);
+    } else if (resourceCreationType === 'volume') {
+      // 볼륨 생성 로직
+      executeCommand(`docker volume create --network ${network.name} ${data.name}`);
+      showToast && showToast(`${network.name} 네트워크에 볼륨이 생성되었습니다.`, 'success');
+    }
+
+    setResourceCreationModalOpen(false);
   };
 
   const toggleCollapse = () => {
@@ -369,6 +402,15 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
         open={volumeModalOpen}
         onConnect={handleVolumeModalConnect}
         onClose={() => setVolumeModalOpen(false)}
+      />
+      
+      {/* 리소스 생성 모달 */}
+      <ResourceCreationModal
+        type={resourceCreationType}
+        networks={networks}
+        open={resourceCreationModalOpen}
+        onConfirm={handleResourceCreation}
+        onClose={() => setResourceCreationModalOpen(false)}
       />
     </div>
   )

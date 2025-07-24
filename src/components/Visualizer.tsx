@@ -1,20 +1,42 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useDockerStore } from '../store/dockerStore'
 import { ContainerCard } from './ContainerCard'
 import { VolumeConnection } from './VolumeConnection'
 import { Container, Volume, Network } from '../types/docker'
+import { useActiveNetworkSync } from '../hooks/useActiveNetworkSync'
 import '../styles/Visualizer.css'
+import { ProcessVisualization, ProcessStep } from './ProcessVisualization';
 
-const Visualizer: React.FC = () => {
+interface VisualizerProps {
+  processes: ProcessStep[];
+}
+
+const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
   const { containers, volumes, networks } = useDockerStore()
   const [activeNetwork, setActiveNetwork] = useState<string>('bridge')
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null)
   const [selectedVolume, setSelectedVolume] = useState<Volume | null>(null)
   const [connectingVolume, setConnectingVolume] = useState(false)
-  const [newContainerId, setNewContainerId] = useState<string | null>(null)
-  const [newVolumeId, setNewVolumeId] = useState<string | null>(null)
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const prevContainersRef = useRef(containers)
+  
+  // 새로 생성된 네트워크/컨테이너로 자동 전환
+  useActiveNetworkSync(activeNetwork, setActiveNetwork)
+
+  useEffect(() => {
+    if (containers.length > prevContainersRef.current.length) {
+      const newContainer = containers.find(
+        c => !prevContainersRef.current.some(prev => prev.id === c.id)
+      )
+      if (newContainer) {
+        setHighlightedId(newContainer.id)
+        setTimeout(() => setHighlightedId(null), 1500)
+      }
+    }
+    prevContainersRef.current = containers
+  }, [containers])
 
   // 컨테이너 레이아웃 클래스 계산
   const getContainerLayoutClass = (containers: Container[]) => {
@@ -44,14 +66,65 @@ const Visualizer: React.FC = () => {
     setSelectedVolume(volume)
   }
 
-  // 활성 네트워크의 컨테이너 필터링
-  const activeNetworkContainers = containers.filter(c => c.network === activeNetwork || (!c.network && activeNetwork === 'bridge'))
+  // 컨테이너 카드의 DOM 위치를 계산하는 함수
+  const getContainerPosition = (containerId: string) => {
+    // ContainerCard 자체를 찾도록 수정
+    const el = document.querySelector(`.container-card[data-container-id="${containerId}"]`);
+    console.log('Looking for container:', containerId, 'Found element:', el);
+    if (el) {
+      const rect = (el as HTMLElement).getBoundingClientRect();
+      console.log('Container position:', rect);
+      // 스크롤/뷰포트 보정
+      return {
+        x: rect.left + window.scrollX + rect.width / 2 - 60, // 중앙 정렬, 약간 왼쪽
+        y: rect.top + window.scrollY
+      };
+    }
+    console.log('Container not found:', containerId);
+    return undefined;
+  };
 
-  // 활성 네트워크의 볼륨 필터링
-  const activeNetworkVolumes = volumes.filter(v => !activeNetworkContainers.some(c => c.volumes?.some(cv => cv.id === v.id)))
+  // 말풍선/이모티콘 띄우기 함수
+  const showProcessBubble = (type: ProcessStep['type'], message: string, containerId: string) => {
+    const id = Date.now().toString() + Math.random();
+    // setProcesses(prev => [...prev, { id, type, message, containerId }]); // 이 부분은 이제 상위에서 전달받음
+    setTimeout(() => {
+      // setProcesses(prev => prev.filter(p => p.id !== id)); // 이 부분은 이제 상위에서 전달받음
+    }, 1500);
+  };
+
+  // 활성 네트워크의 컨테이너 필터링
+  const activeNetworkContainers = containers.filter(c => {
+    // 네트워크 ID 또는 이름으로 매칭
+    const currentNetwork = networks.find(n => n.id === activeNetwork);
+    if (!currentNetwork) return false;
+    
+    return c.network === currentNetwork.id || 
+           c.network === currentNetwork.name || 
+           (!c.network && activeNetwork === 'bridge');
+  })
+
+  // 활성 네트워크의 볼륨 필터링 - 해당 네트워크에 속한 볼륨만 표시
+  const activeNetworkVolumes = volumes.filter(v => {
+    // 현재 활성 네트워크 정보 가져오기
+    const currentNetwork = networks.find(n => n.id === activeNetwork);
+    if (!currentNetwork) return false;
+    
+    // 볼륨이 특정 네트워크에 속하는지 확인 (ID 또는 이름으로)
+    const isInActiveNetwork = v.networkId === currentNetwork.id || 
+                              v.networkId === currentNetwork.name ||
+                              (!v.networkId && activeNetwork === 'bridge')
+    
+    // 컨테이너에 연결되지 않은 볼륨만 표시
+    const isNotConnectedToContainer = !activeNetworkContainers.some(c => 
+      c.volumes?.some(cv => cv.id === v.id)
+    )
+    
+    return isInActiveNetwork && isNotConnectedToContainer
+  })
 
   return (
-    <div className="visualizer-container">
+    <div className="visualizer-container" style={{ position: 'relative' }}>
       {/* 크롬 브라우저 탭 스타일 */}
       <div className="chrome-toolbar">
         <div className="network-tabs">
@@ -85,13 +158,13 @@ const Visualizer: React.FC = () => {
             {activeNetworkContainers.map((container) => (
               <div 
                 key={container.id} 
-                className={`container-wrapper ${newContainerId === container.id ? 'creating' : ''}`}
+                className={`container-wrapper ${highlightedId === container.id ? 'creating' : ''}`}
                 data-container-id={container.id}
               >
                 <ContainerCard
                   container={container}
                   onClick={() => handleContainerClick(container)}
-                  isCreating={newContainerId === container.id}
+                  isCreating={highlightedId === container.id}
                 />
                 
                 {/* 볼륨 연결 시각화 */}
@@ -118,10 +191,10 @@ const Visualizer: React.FC = () => {
                           <VolumeConnection 
                             container={container}
                             volume={volume}
-                            isConnecting={connectingVolume && container.id === newContainerId}
+                            isConnecting={connectingVolume && container.id === highlightedId}
                           />
                           <div 
-                            className={`volume-circle attached-volume ${newVolumeId === volume.id ? 'highlight' : ''}`}
+                            className={`volume-circle attached-volume ${highlightedId === volume.id ? 'highlight' : ''}`}
                             onClick={() => handleVolumeClick(volume)}
                           >
                             <div className="volume-connection-dot"></div>
@@ -149,7 +222,7 @@ const Visualizer: React.FC = () => {
               {activeNetworkVolumes.map((volume, index) => (
                 <div
                   key={`unconnected-${volume.id}`}
-                  className={`volume-circle unconnected-volume ${newVolumeId === volume.id ? 'highlight' : ''}`}
+                  className={`volume-circle unconnected-volume ${highlightedId === volume.id ? 'highlight' : ''}`}
                   style={{ 
                     left: `${(index * 120) + 20}px`,
                     position: 'relative',
@@ -168,6 +241,8 @@ const Visualizer: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* 말풍선/이모티콘 시각화 */}
+      <ProcessVisualization processes={processes} getContainerPosition={getContainerPosition} />
     </div>
   )
 }

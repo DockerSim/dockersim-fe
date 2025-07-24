@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Container, Network, Volume } from '../../types';
+import { Container, Network, Volume } from '../../../../store/dockerStore';
 import { TabType } from './CommandHeaderPanel';
 import styles from './TabContentArea.module.css';
 
@@ -10,6 +10,7 @@ interface TabContentAreaProps {
   containers: Container[];
   networks: Network[];
   volumes: Volume[];
+  activeNetworkId?: string; // 활성 네트워크 ID 추가
   onContainerClick?: (container: Container) => void;
   onNetworkClick?: (network: Network) => void;
   onVolumeClick?: (volume: Volume) => void;
@@ -20,6 +21,7 @@ const TabContentArea: React.FC<TabContentAreaProps> = ({
   containers,
   networks,
   volumes,
+  activeNetworkId,
   onContainerClick,
   onNetworkClick,
   onVolumeClick
@@ -121,21 +123,27 @@ const TabContentArea: React.FC<TabContentAreaProps> = ({
     </div>
   );
 
-  const renderVolumes = () => (
-    <div className={styles.contentList}>
-      <div className={styles.sectionHeader}>
-        <h3>볼륨 목록</h3>
-        <span className={styles.count}>{volumes.length}개</span>
-      </div>
-      {volumes.length === 0 ? (
-        <div className={styles.emptyState}>
-          <span className={styles.emptyIcon}>💾</span>
-          <p>생성된 볼륨이 없습니다.</p>
-          <small>+ 버튼을 클릭하여 새 볼륨을 생성하세요.</small>
+  const renderVolumes = () => {
+    // 활성 네트워크에 속한 볼륨만 필터링
+    const filteredVolumes = activeNetworkId 
+      ? volumes.filter(v => v.networkId === activeNetworkId || (!v.networkId && activeNetworkId === 'bridge'))
+      : volumes;
+    
+    return (
+      <div className={styles.contentList}>
+        <div className={styles.sectionHeader}>
+          <h3>볼륨 목록</h3>
+          <span className={styles.count}>{filteredVolumes.length}개</span>
         </div>
-      ) : (
-        <div className={styles.itemGrid}>
-          {volumes.map((volume) => (
+        {filteredVolumes.length === 0 ? (
+          <div className={styles.emptyState}>
+            <span className={styles.emptyIcon}>💾</span>
+            <p>생성된 볼륨이 없습니다.</p>
+            <small>+ 버튼을 클릭하여 새 볼륨을 생성하세요.</small>
+          </div>
+        ) : (
+          <div className={styles.itemGrid}>
+            {filteredVolumes.map((volume) => (
             <div
               key={volume.id}
               className={`${styles.item} ${styles.volumeItem}`}
@@ -151,9 +159,9 @@ const TabContentArea: React.FC<TabContentAreaProps> = ({
                   <span className={styles.detailValue}>{volume.mountPath}</span>
                 </div>
                 <div className={styles.detailRow}>
-                  <span className={styles.detailLabel}>생성일:</span>
+                  <span className={styles.detailLabel}>네트워크:</span>
                   <span className={styles.detailValue}>
-                    {volume.createdAt.toLocaleDateString()}
+                    {volume.networkId || 'bridge'}
                   </span>
                 </div>
               </div>
@@ -163,6 +171,7 @@ const TabContentArea: React.FC<TabContentAreaProps> = ({
       )}
     </div>
   );
+  };
 
   return (
     <div className={styles.tabContentArea}>
