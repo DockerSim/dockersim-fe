@@ -195,11 +195,21 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
           isError = true
         }
       } else if (command.startsWith('docker volume create')) {
-        const volumeName = command.split(' ')[3] || `volume_${Date.now()}`
-        
-        // 명령어에서 네트워크 정보 추출 (예: docker volume create --network bridge myvolume)
+        // 명령어에서 네트워크 정보 추출
         const networkMatch = command.match(/--network\s+(\S+)/)
         const targetNetworkId = networkMatch ? networkMatch[1] : 'bridge'
+        
+        // 볼륨 이름 추출 - --network 플래그가 있는 경우와 없는 경우를 고려
+        let volumeName;
+        if (networkMatch) {
+          // docker volume create --network bridge volumeName 형태
+          const parts = command.split(' ');
+          const networkIndex = parts.findIndex(part => part === '--network');
+          volumeName = parts[networkIndex + 2] || `volume_${Date.now()}`;  // --network 다음다음이 볼륨명
+        } else {
+          // docker volume create volumeName 형태
+          volumeName = command.split(' ')[3] || `volume_${Date.now()}`;
+        }
         
         addVolume({
           id: `vol_${Date.now()}`,

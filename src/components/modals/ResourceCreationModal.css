@@ -1,0 +1,383 @@
+/* 리소스 생성 모달 백드롭 */
+.resource-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+/* 모달 컨테이너 */
+.resource-modal-container {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 85vh;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  animation: modalSlideIn 0.3s ease-out;
+  overflow: hidden;
+  position: relative;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 모달 헤더 */
+.resource-modal-header {
+  background: #f8f9fa;
+  color: #495057;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #dee2e6;
+  border-radius: 16px 16px 0 0;
+  flex-shrink: 0;
+}
+
+.resource-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.resource-modal-close {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.resource-modal-close:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+/* 폼 콘텐츠 */
+.resource-form {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  background: white;
+}
+
+/* 폼 그룹 */
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 500;
+  color: #495057;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.required {
+  color: #dc3545;
+  margin-left: 0.25rem;
+}
+
+/* 폼 입력 요소 */
+.form-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.form-input::placeholder {
+  color: #6c757d;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.form-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+/* 이미지 선택 그룹 */
+.image-select-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.image-input {
+  flex: 1;
+  background: #f8f9fa !important;
+  cursor: pointer;
+}
+
+.image-select-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.image-select-btn:hover {
+  background: #0056b3;
+}
+
+.btn-icon {
+  font-size: 0.9rem;
+}
+
+/* 포트 매핑 */
+.ports-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px solid #e9ecef;
+  margin-top: 1rem;
+}
+
+.ports-container > h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.port-mapping-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+
+.port-input {
+  flex: 1;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-align: center;
+  font-family: monospace;
+}
+
+.port-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.port-arrow {
+  font-size: 1rem;
+  color: #6c757d;
+  min-width: 20px;
+  text-align: center;
+}
+
+.protocol-select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  background: white;
+  cursor: pointer;
+  min-width: 70px;
+}
+
+.protocol-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.remove-port-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.remove-port-btn:hover {
+  background: #c82333;
+}
+
+.add-port-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+}
+
+.add-port-btn:hover {
+  background: #218838;
+}
+
+/* 액션 버튼 영역 */
+.resource-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  opacity: 0.8;
+}
+
+.action-btn.secondary {
+  background: white;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+}
+
+.action-btn.secondary:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  color: #495057;
+}
+
+.action-btn.primary {
+  background: #007bff;
+  color: white;
+}
+
+.action-btn.primary:hover {
+  background: #0056b3;
+}
+
+.action-btn.primary.disabled {
+  background: #6c757d;
+  color: #dee2e6;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.action-btn.primary.disabled:hover {
+  background: #6c757d;
+  opacity: 0.6;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .resource-modal-container {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .resource-actions {
+    flex-direction: column;
+  }
+  
+  .action-btn {
+    width: 100%;
+  }
+  
+  .image-select-group {
+    flex-direction: column;
+  }
+  
+  .port-mapping-group {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+  
+  .port-input {
+    min-width: 80px;
+  }
+} 

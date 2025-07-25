@@ -1,11 +1,12 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { useDockerStore } from '../store/dockerStore'
+import { useDockerStore, Container, Volume } from '../store/dockerStore'
 import { ContainerCard } from './ContainerCard'
 import { VolumeConnection } from './VolumeConnection'
-import { Container, Volume, Network } from '../types/docker'
 import { useActiveNetworkSync } from '../hooks/useActiveNetworkSync'
+import ContainerDetailModal from './modals/ContainerDetailModal'
+import VolumeDetailModal from './modals/VolumeDetailModal'
 import '../styles/Visualizer.css'
 import { ProcessVisualization, ProcessStep } from './ProcessVisualization';
 
@@ -20,6 +21,8 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
   const [selectedVolume, setSelectedVolume] = useState<Volume | null>(null)
   const [connectingVolume, setConnectingVolume] = useState(false)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const [containerDetailModalOpen, setContainerDetailModalOpen] = useState(false)
+  const [volumeDetailModalOpen, setVolumeDetailModalOpen] = useState(false)
   const prevContainersRef = useRef(containers)
   
   // 새로 생성된 네트워크/컨테이너로 자동 전환
@@ -59,11 +62,13 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
   // 컨테이너 클릭 핸들러
   const handleContainerClick = (container: Container) => {
     setSelectedContainer(container)
+    setContainerDetailModalOpen(true)
   }
 
   // 볼륨 클릭 핸들러
   const handleVolumeClick = (volume: Volume) => {
     setSelectedVolume(volume)
+    setVolumeDetailModalOpen(true)
   }
 
   // 컨테이너 카드의 DOM 위치를 계산하는 함수
@@ -243,6 +248,66 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
       </div>
       {/* 말풍선/이모티콘 시각화 */}
       <ProcessVisualization processes={processes} getContainerPosition={getContainerPosition} />
+      
+      {/* 컨테이너 상세 정보 모달 */}
+      <ContainerDetailModal
+        container={selectedContainer}
+        open={containerDetailModalOpen}
+        onClose={() => {
+          setContainerDetailModalOpen(false)
+          setSelectedContainer(null)
+        }}
+        onStart={(containerId) => {
+          const { updateContainer, executeCommand } = useDockerStore.getState()
+          const container = containers.find(c => c.id === containerId)
+          if (container) {
+            updateContainer(containerId, { status: 'running' })
+            executeCommand(`docker start ${container.name}`)
+          }
+        }}
+        onStop={(containerId) => {
+          const { updateContainer, executeCommand } = useDockerStore.getState()
+          const container = containers.find(c => c.id === containerId)
+          if (container) {
+            updateContainer(containerId, { status: 'stopped' })
+            executeCommand(`docker stop ${container.name}`)
+          }
+        }}
+        onPause={(containerId) => {
+          const { updateContainer, executeCommand } = useDockerStore.getState()
+          const container = containers.find(c => c.id === containerId)
+          if (container) {
+            updateContainer(containerId, { status: 'paused' })
+            executeCommand(`docker pause ${container.name}`)
+          }
+        }}
+        onRemove={(containerId) => {
+          const { removeContainer, executeCommand } = useDockerStore.getState()
+          const container = containers.find(c => c.id === containerId)
+          if (container) {
+            removeContainer(containerId)
+            executeCommand(`docker rm ${container.name}`)
+          }
+        }}
+      />
+      
+      {/* 볼륨 상세 정보 모달 */}
+      <VolumeDetailModal
+        volume={selectedVolume}
+        open={volumeDetailModalOpen}
+        onClose={() => {
+          setVolumeDetailModalOpen(false)
+          setSelectedVolume(null)
+        }}
+        onRemove={(volumeId) => {
+          const { removeVolume, executeCommand } = useDockerStore.getState()
+          const volume = volumes.find(v => v.id === volumeId)
+          if (volume) {
+            removeVolume(volumeId)
+            executeCommand(`docker volume rm ${volume.name}`)
+          }
+        }}
+      />
     </div>
   )
 }

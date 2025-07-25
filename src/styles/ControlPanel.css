@@ -88,38 +88,39 @@
 .network-connection-control {
   margin-bottom: 15px;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .connection-selector {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  justify-content: center;
 }
 
 .select-input {
-  padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  color: #e0e0e0;
-  font-size: 12px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  color: #2d3748;
+  font-size: 13px;
+  font-weight: 400;
   min-width: 120px;
-  flex: 1;
+  transition: all 0.2s ease;
 }
 
 .select-input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+  border-color: #f093fb;
+  box-shadow: 0 0 0 3px rgba(240, 147, 251, 0.3);
+  background: white;
 }
 
 .select-input option {
-  background: #2d3748;
-  color: #e0e0e0;
+  background: white;
+  color: #2d3748;
+  padding: 8px;
 }
 
 .resource-list {
@@ -132,22 +133,27 @@
   min-height: 0;
   position: relative;
   width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
   box-sizing: border-box;
+  align-items: center;
 }
 
 .resource-item {
   background: #f8f9fa;
   border: 1px solid #dee2e6;
-  border-radius: 6px;
-  padding: 0.75rem;
+  border-radius: 8px;
+  padding: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   transition: all 0.2s ease;
   width: 100%;
+  max-width: 550px;
   box-sizing: border-box;
   overflow: hidden;
   word-wrap: break-word;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .resource-item:hover {
@@ -382,6 +388,7 @@
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  align-items: center;
 }
 
 .resource-section .section-header {
@@ -391,6 +398,8 @@
   margin-bottom: 15px;
   padding-bottom: 10px;
   border-bottom: 1px solid #e9ecef;
+  width: 100%;
+  max-width: 550px;
 }
 
 .resource-section .section-header h3 {

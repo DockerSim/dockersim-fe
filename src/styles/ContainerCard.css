@@ -45,9 +45,12 @@
 }
 
 .container-name {
-  font-size: 1rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #343a40;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   margin: 0;
   flex: 1;
   overflow: hidden;
