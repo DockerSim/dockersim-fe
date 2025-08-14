@@ -11,7 +11,8 @@ export default function CommunityWritePage() {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    type: 'question' as PostType
+    type: 'question' as PostType,
+    tags: '',
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -27,6 +28,17 @@ export default function CommunityWritePage() {
       alert('내용을 입력해주세요.')
       return
     }
+
+    const processedTags = formData.tags
+      .split('#')
+      .map(tag => tag.trim())
+      .filter(Boolean)
+      .join('#');
+
+    const postData = {
+      ...formData, // ...formData를 사용하여 기존 데이터를 유지하고 tags만 덮어씌움.
+      tags: processedTags,
+    };
 
     // 실제로는 여기서 서버에 데이터를 전송
     console.log('Submitting post:', formData)
@@ -104,6 +116,19 @@ export default function CommunityWritePage() {
           <div className="char-count">
             {formData.content.length}/5000
           </div>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="tags">태그</label>
+          <input
+            type="text"
+            id="tags"
+            name="tags"
+            value={formData.tags}
+            onChange={handleChange}
+            className="form-input"
+            placeholder="태그를 #으로 구분하여 입력하세요 (예: docker#ci/cd#쿠버네티스)"
+          />
         </div>
 
         <div className="form-actions">
