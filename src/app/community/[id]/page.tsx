@@ -1,144 +1,196 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import '../../../styles/PostDetail.css'
 
+// 백엔드 DTO에 맞춘 타입 정의
 interface Comment {
-  id: number
-  content: string
-  author: string
-  createdAt: string
-  likes: number
+  id: number;
+  content: string;
+  author: string;
+  createdAt: string;
 }
 
 interface Post {
-  id: number
-  title: string
-  content: string
-  author: string
-  type: 'question' | 'simulation'
-  createdAt: string
-  likes: number
-  views: number
-  tags: string[]
-  comments: Comment[]
+  id: number;
+  title: string;
+  content: string;
+  author: string;
+  type: 'QUESTION' | 'SIMULATION' | 'TECHNICAL';
+  createdAt: string;
+  likesCount: number;
+  views: number;
+  tags: string;
 }
 
-// 더미 데이터 (실제로는 API에서 가져옴)
-const dummyPost: Post = {
-  id: 1,
-  title: 'Docker 컨테이너 실행 오류 해결 방법',
-  content: `Docker 컨테이너를 실행할 때 "Cannot connect to the Docker daemon" 오류가 발생합니다. 
-  
-어제까지 잘 동작하던 Docker가 갑자기 이런 오류를 발생시키고 있습니다.
-
-시도해본 방법:
-1. Docker Desktop 재시작
-2. 컴퓨터 재부팅
-3. Docker 재설치
-
-하지만 여전히 같은 오류가 발생합니다. 어떻게 해결할 수 있을까요?
-
-환경:
-- OS: Windows 11
-- Docker Desktop: 4.25.0
-- WSL2 사용
-
-도움을 주시면 감사하겠습니다.`,
-  author: 'docker_user',
-  type: 'question',
-  createdAt: '2024-01-15T10:30:00Z',
-  likes: 5,
-  views: 120,
-  tags: ['docker', 'error', 'daemon'],
-  comments: [
-    {
-      id: 1,
-      content: '저도 같은 문제를 겪었는데, WSL2를 업데이트하고 Docker Desktop을 관리자 권한으로 실행하니 해결됐습니다.',
-      author: 'helper1',
-      createdAt: '2024-01-15T11:00:00Z',
-      likes: 3
-    },
-    {
-      id: 2,
-      content: '혹시 Windows 서비스에서 Docker Desktop Service가 실행되고 있는지 확인해보세요. 서비스가 중지되어 있을 수 있습니다.',
-      author: 'docker_expert',
-      createdAt: '2024-01-15T11:30:00Z',
-      likes: 7
-    }
-  ]
-}
-
-const POST_TYPE_LABELS = {
-  question: '질문',
-  simulation: '시뮬레이션'
+const POST_TYPE_LABELS: Record<Post['type'], string> = {
+  QUESTION: '질문',
+  SIMULATION: '시뮬레이션',
+  TECHNICAL: '기술'
 } as const
 
 export default function PostDetailPage() {
-  const params = useParams()
-  const postId = params.id as string
+  const router = useRouter();
+  const params = useParams();
+  const postId = params.id as string;
   
-  const [post] = useState<Post>(dummyPost)
-  const [newComment, setNewComment] = useState('')
-  const [isLiked, setIsLiked] = useState(false)
-  const [currentLikes, setCurrentLikes] = useState(post.likes)
+  const [post, setPost] = useState<Post | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [newComment, setNewComment] = useState('');
+  const [isLiked, setIsLiked] = useState(false);
+
+  // 댓글 수정을 위한 상태 추가
+  const [editingComment, setEditingComment] = useState<{ id: number; content: string } | null>(null);
+
+  const fetchPostAndComments = useCallback(async () => {
+    if (!postId) return;
+    if (!editingComment) {
+        setIsLoading(true);
+    }
+    setError(null);
+    try {
+      const [postRes, commentsRes] = await Promise.all([
+        fetch(`/api/posts/${postId}`),
+        fetch(`/api/posts/${postId}/comments`)
+      ]);
+
+      if (!postRes.ok) throw new Error('게시글을 불러오는데 실패했습니다.');
+      if (!commentsRes.ok) throw new Error('댓글을 불러오는데 실패했습니다.');
+
+      const postResult = await postRes.json();
+      const commentsResult = await commentsRes.json();
+
+      setPost(postResult.data);
+      setComments(commentsResult.data || []);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [postId, editingComment]);
+
+  useEffect(() => {
+    fetchPostAndComments();
+  }, [fetchPostAndComments]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
     })
   }
 
-  const handleLike = () => {
-    if (isLiked) {
-      setCurrentLikes(currentLikes - 1)
-    } else {
-      setCurrentLikes(currentLikes + 1)
+  const handleCommentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim() || !postId) return;
+    try {
+      const response = await fetch(`/api/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newComment }),
+      });
+      if (!response.ok) throw new Error('댓글 작성에 실패했습니다.');
+      setNewComment('');
+      fetchPostAndComments();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
     }
-    setIsLiked(!isLiked)
-  }
+  };
 
-  const handleCommentSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (newComment.trim()) {
-      // 실제로는 API 호출
-      console.log('New comment:', newComment)
-      setNewComment('')
+  const handleLike = async () => {
+    if (!postId) return;
+    try {
+      const response = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
+      if (!response.ok) throw new Error('좋아요 처리에 실패했습니다.');
+      const postRes = await fetch(`/api/posts/${postId}`);
+      const postResult = await postRes.json();
+      setPost(postResult.data);
+      setIsLiked(!isLiked);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
     }
-  }
+  };
+
+  // 게시글 삭제 핸들러
+  const handlePostDelete = async () => {
+    if (!postId || !confirm('정말로 이 게시글을 삭제하시겠습니까?')) return;
+    try {
+      const response = await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('게시글 삭제에 실패했습니다.');
+      alert('게시글이 삭제되었습니다.');
+      router.push('/community');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
+    }
+  };
+
+  // 댓글 삭제 핸들러
+  const handleCommentDelete = async (commentId: number) => {
+    if (!postId || !confirm('정말로 이 댓글을 삭제하시겠습니까?')) return;
+    try {
+      const response = await fetch(`/api/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('댓글 삭제에 실패했습니다.');
+      alert('댓글이 삭제되었습니다.');
+      fetchPostAndComments(); // 댓글 목록 새로고침
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
+    }
+  };
+
+  // 댓글 수정 핸들러 추가
+  const handleCommentUpdate = async (commentId: number) => {
+    if (!postId || !editingComment || editingComment.id !== commentId) return;
+    try {
+      const response = await fetch(`/api/posts/${postId}/comments/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editingComment.content }),
+      });
+      if (!response.ok) throw new Error('댓글 수정에 실패했습니다.');
+      setEditingComment(null);
+      fetchPostAndComments();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
+    }
+  };
+
+  if (isLoading) return <div className="post-detail-page"><div className="loading-state">Loading...</div></div>;
+  if (error) return <div className="post-detail-page"><div className="error-state">{error}</div></div>;
+  if (!post) return <div className="post-detail-page"><div className="empty-state">게시글을 찾을 수 없습니다.</div></div>;
 
   return (
     <div className="post-detail-page">
       <div className="post-detail-container">
-        {/* 뒤로 가기 버튼 */}
         <div className="back-navigation">
-          <Link href="/community" className="back-button">
-            ← 목록으로 돌아가기
-          </Link>
+          <Link href="/community" className="back-button">← 목록으로 돌아가기</Link>
         </div>
 
-        {/* 게시글 내용 */}
         <article className="post-detail-card">
           <header className="post-detail-header">
             <div className="post-detail-meta">
-              <span className={`post-type ${post.type}`}>
-                {POST_TYPE_LABELS[post.type]}
-              </span>
+              <span className={`post-type ${post.type.toLowerCase()}`}>{POST_TYPE_LABELS[post.type]}</span>
               <span className="post-date">{formatDate(post.createdAt)}</span>
             </div>
-            <h1 className="post-detail-title">{post.title}</h1>
+            <div className="post-title-wrapper">
+              <h1 className="post-detail-title">{post.title}</h1>
+              {/* 게시글 수정/삭제 버튼 */}
+              <div className="post-actions">
+                <Link href={`/community/${postId}/edit`} className="action-btn edit-btn">✏️ 수정</Link>
+                <button onClick={handlePostDelete} className="action-btn delete-btn">🗑️ 삭제</button>
+              </div>
+            </div>
             <div className="post-detail-info">
               <span className="post-author">작성자: {post.author}</span>
               <div className="post-stats">
                 <span className="stat-item">👀 {post.views}</span>
-                <span className="stat-item">💬 {post.comments.length}</span>
+                <span className="stat-item">💬 {comments.length}</span>
               </div>
             </div>
           </header>
@@ -149,29 +201,22 @@ export default function PostDetailPage() {
                 <p key={index}>{line || '\u00A0'}</p>
               ))}
             </div>
-            
             <div className="post-tags">
-              {post.tags.map((tag, index) => (
-                <span key={index} className="tag">#{tag}</span>
+              {post.tags && post.tags.split(',').map((tag, index) => (
+                <span key={index} className="tag">#{tag.trim()}</span>
               ))}
             </div>
           </div>
 
           <footer className="post-detail-footer">
-            <button 
-              className={`like-button ${isLiked ? 'liked' : ''}`}
-              onClick={handleLike}
-            >
-              👍 {currentLikes}
+            <button className={`like-button ${isLiked ? 'liked' : ''}`} onClick={handleLike}>
+              👍 {post.likesCount}
             </button>
           </footer>
         </article>
 
-        {/* 댓글 섹션 */}
         <section className="comments-section">
-          <h2 className="comments-title">댓글 ({post.comments.length})</h2>
-          
-          {/* 댓글 작성 폼 */}
+          <h2 className="comments-title">댓글 ({comments.length})</h2>
           <form className="comment-form" onSubmit={handleCommentSubmit}>
             <textarea
               value={newComment}
@@ -180,25 +225,41 @@ export default function PostDetailPage() {
               className="comment-input"
               rows={3}
             />
-            <button type="submit" className="comment-submit-button">
-              댓글 작성
-            </button>
+            <button type="submit" className="comment-submit-button">댓글 작성</button>
           </form>
 
-          {/* 댓글 목록 */}
           <div className="comments-list">
-            {post.comments.map(comment => (
+            {comments.map(comment => (
               <div key={comment.id} className="comment-card">
-                <div className="comment-header">
-                  <div className="comment-author">{comment.author}</div>
-                  <div className="comment-date">{formatDate(comment.createdAt)}</div>
-                </div>
-                <div className="comment-content">{comment.content}</div>
-                <div className="comment-actions">
-                  <button className="comment-like-button">
-                    👍 {comment.likes}
-                  </button>
-                </div>
+                {editingComment?.id === comment.id ? (
+                  // 수정 모드
+                  <div className="comment-edit-form">
+                    <textarea
+                      value={editingComment.content}
+                      onChange={(e) => setEditingComment({ ...editingComment, content: e.target.value })}
+                      className="comment-edit-input"
+                      rows={3}
+                    />
+                    <div className="comment-edit-actions">
+                      <button onClick={() => handleCommentUpdate(comment.id)} className="action-btn-comment save-btn">저장</button>
+                      <button onClick={() => setEditingComment(null)} className="action-btn-comment cancel-btn">취소</button>
+                    </div>
+                  </div>
+                ) : (
+                  // 일반 모드
+                  <>
+                    <div className="comment-header">
+                      <div className="comment-author">{comment.author}</div>
+                      <div className="comment-date">{formatDate(comment.createdAt)}</div>
+                      {/* 댓글 수정/삭제 버튼 */}
+                      <div className="comment-actions">
+                        <button onClick={() => setEditingComment({ id: comment.id, content: comment.content })} className="action-btn-comment edit-btn-comment">✏️</button>
+                        <button onClick={() => handleCommentDelete(comment.id)} className="action-btn-comment delete-btn-comment">🗑️</button>
+                      </div>
+                    </div>
+                    <div className="comment-content">{comment.content}</div>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -206,4 +267,4 @@ export default function PostDetailPage() {
       </div>
     </div>
   )
-} 
+}

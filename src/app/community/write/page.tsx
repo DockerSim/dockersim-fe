@@ -4,48 +4,62 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import '../../../styles/CommunityWrite.css'
 
-type PostType = 'question' | 'simulation'
+// 백엔드 Enum에 맞춰 타입 수정
+type PostType = 'QUESTION' | 'SIMULATION' | 'TECHNICAL';
 
 export default function CommunityWritePage() {
   const router = useRouter()
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    type: 'question' as PostType,
+    type: 'QUESTION' as PostType, // 기본값도 Enum에 맞게 수정
     tags: '',
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // API 호출을 위해 async 추가 및 로직 수정
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // 유효성 검사
     if (!formData.title.trim()) {
       alert('제목을 입력해주세요.')
       return
     }
-    
     if (!formData.content.trim()) {
       alert('내용을 입력해주세요.')
       return
     }
 
-    const processedTags = formData.tags
-      .split('#')
-      .map(tag => tag.trim())
-      .filter(Boolean)
-      .join('#');
-
+    // 백엔드 DTO(PostRequest) 형식에 맞게 데이터 가공
     const postData = {
-      ...formData, // ...formData를 사용하여 기존 데이터를 유지하고 tags만 덮어씌움.
-      tags: processedTags,
+      title: formData.title,
+      content: formData.content,
+      type: formData.type,
+      // 태그를 '#'이 아닌 ','로 구분하여 전송
+      tags: formData.tags.split('#').map(tag => tag.trim()).filter(Boolean).join(','),
     };
 
-    // 실제로는 여기서 서버에 데이터를 전송
-    console.log('Submitting post:', formData)
-    
-    // 성공 시 커뮤니티 목록으로 리다이렉트
-    alert('게시글이 성공적으로 작성되었습니다!')
-    router.push('/community')
+    try {
+      // fetch를 사용하여 POST API 호출
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(postData),
+      });
+
+      if (!response.ok) {
+        const errorResult = await response.json();
+        throw new Error(errorResult.message || '게시글 작성에 실패했습니다.');
+      }
+
+      alert('게시글이 성공적으로 작성되었습니다!')
+      router.push('/community')
+
+    } catch (error) {
+      console.error('Post creation failed:', error);
+      alert(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -79,8 +93,10 @@ export default function CommunityWritePage() {
             onChange={handleChange}
             className="form-select"
           >
-            <option value="question">질문</option>
-            <option value="simulation">시뮬레이션</option>
+            {/* 백엔드 Enum에 맞춰 value 수정 */}
+            <option value="QUESTION">질문</option>
+            <option value="SIMULATION">시뮬레이션</option>
+            <option value="TECHNICAL">기술</option>
           </select>
         </div>
 
@@ -142,4 +158,4 @@ export default function CommunityWritePage() {
       </form>
     </div>
   )
-} 
+}

@@ -2,14 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import './ImageSelectionModal.css';
 
+// 백엔드 API 응답(DockerImageResponse)에 맞춰 인터페이스 수정
 interface DockerImage {
-  id: string;
+  imageId: string;
   name: string;
+  namespace: string;
   tag: string;
-  size: string;
-  created: string;
-  type: 'local' | 'official';
   description?: string;
+  starCount: number;
+  pullCount: number;
+  createdAt: string; // LocalDateTime은 JSON에서 string으로 변환됨
+  logoUrl?: string;
+  // 'type'은 UI에서 탭을 구분하기 위해 프론트엔드에서 추가
+  type: 'local' | 'official';
 }
 
 interface ImageSelectionModalProps {
@@ -21,66 +26,38 @@ interface ImageSelectionModalProps {
 const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({ open, onSelect, onClose }) => {
   const [activeTab, setActiveTab] = useState<'local' | 'official'>('official');
   const [searchTerm, setSearchTerm] = useState('');
+  // API로부터 받아온 이미지를 저장할 state
+  const [officialImages, setOfficialImages] = useState<DockerImage[]>([]);
+  const [localImages, setLocalImages] = useState<DockerImage[]>([]); // 로컬 이미지 state (현재는 비어있음)
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // 더미 데이터 - 실제로는 docker images 명령어 결과를 사용해야 함
-  const [downloadedImages] = useState<DockerImage[]>([
-    // 공식 이미지들
-    {
-      id: '1',
-      name: 'nginx',
-      tag: 'latest',
-      size: '142MB',
-      created: '2024-01-15',
-      type: 'official',
-      description: '고성능 웹 서버 및 리버스 프록시'
-    },
-    {
-      id: '2',
-      name: 'mysql',
-      tag: '8.0',
-      size: '514MB',
-      created: '2024-01-10',
-      type: 'official',
-      description: '인기 있는 오픈소스 관계형 데이터베이스'
-    },
-    {
-      id: '3',
-      name: 'redis',
-      tag: '7-alpine',
-      size: '32MB',
-      created: '2024-01-12',
-      type: 'official',
-      description: '인메모리 데이터 구조 저장소'
-    },
-    {
-      id: '4',
-      name: 'postgres',
-      tag: '15',
-      size: '379MB',
-      created: '2024-01-08',
-      type: 'official',
-      description: '강력한 오픈소스 객체 관계형 데이터베이스'
-    },
-    // 로컬 이미지들
-    {
-      id: '5',
-      name: 'my-app',
-      tag: 'v1.0',
-      size: '256MB',
-      created: '2024-01-20',
-      type: 'local',
-      description: '사용자 정의 애플리케이션 이미지'
-    },
-    {
-      id: '6',
-      name: 'custom-nginx',
-      tag: 'dev',
-      size: '180MB',
-      created: '2024-01-18',
-      type: 'local',
-      description: '커스텀 설정이 적용된 Nginx 이미지'
+  // 컴포넌트가 열릴 때 API를 호출하여 공식 이미지 목록을 가져옴
+  useEffect(() => {
+    if (open) {
+      const fetchImages = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+          const response = await fetch('/api/images'); // 백엔드 API 엔드포인트
+          if (!response.ok) {
+            throw new Error('Failed to fetch images');
+          }
+          const result = await response.json();
+          // 백엔드 응답이 ApiResponse로 감싸져 있으므로 result.data 사용
+          // 모든 이미지를 'official' 타입으로 지정
+          const imagesWithType = result.data.map((img: any) => ({ ...img, type: 'official' }));
+          setOfficialImages(imagesWithType);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchImages();
     }
-  ]);
+  }, [open]); // open 상태가 변경될 때마다 실행
 
   if (!open) return null;
 
@@ -90,15 +67,16 @@ const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({ open, onSelec
     }
   };
 
-  const filteredImages = downloadedImages
-    .filter(image => image.type === activeTab)
-    .filter(image => 
-      image.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      image.tag.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const imagesToDisplay = activeTab === 'official' ? officialImages : localImages;
+
+  const filteredImages = imagesToDisplay.filter(image =>
+    image.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    image.tag.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleSelectImage = (image: DockerImage) => {
-    onSelect(`${image.name}:${image.tag}`);
+    // 백엔드의 namespace와 name을 조합하여 전체 이미지 이름을 전달
+    onSelect(`${image.namespace}/${image.name}:${image.tag}`);
     onClose();
   };
 
@@ -123,7 +101,7 @@ const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({ open, onSelec
             onClick={() => setActiveTab('official')}
           >
             <span className="tab-icon">🛡️</span>
-            공식 이미지 ({downloadedImages.filter(img => img.type === 'official').length})
+            공식 이미지 ({officialImages.length})
             <div className="tab-description">Docker Hub 공식 이미지</div>
           </button>
           <button
@@ -131,7 +109,7 @@ const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({ open, onSelec
             onClick={() => setActiveTab('local')}
           >
             <span className="tab-icon">💻</span>
-            로컬 이미지 ({downloadedImages.filter(img => img.type === 'local').length})
+            로컬 이미지 ({localImages.length})
             <div className="tab-description">내 컴퓨터 저장된 이미지</div>
           </button>
         </div>
@@ -153,27 +131,33 @@ const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({ open, onSelec
 
           {/* 이미지 리스트 */}
           <div className="image-selection-list">
-            {filteredImages.length === 0 ? (
+            {isLoading ? (
+              <div className="image-selection-empty-state"><p>이미지를 불러오는 중입니다...</p></div>
+            ) : error ? (
+              <div className="image-selection-empty-state"><p>오류: {error}</p></div>
+            ) : filteredImages.length === 0 ? (
               <div className="image-selection-empty-state">
-                <p>다운로드된 {activeTab === 'official' ? '공식' : '로컬'} 이미지가 없습니다.</p>
-                <small>Docker Hub에서 이미지를 다운로드하거나 로컬에서 빌드해보세요.</small>
+                <p>사용 가능한 {activeTab === 'official' ? '공식' : '로컬'} 이미지가 없습니다.</p>
               </div>
             ) : (
               filteredImages.map(image => (
                 <div
-                  key={image.id}
+                  key={image.imageId} // key를 고유한 imageId로 변경
                   className="image-selection-item"
                   onClick={() => handleSelectImage(image)}
                 >
                   <div className="image-selection-info">
                     <div className="image-selection-header">
-                      <span className="image-selection-name">{image.name}</span>
+                      {/* namespace 추가 */}
+                      <span className="image-selection-name">{image.namespace}/{image.name}</span>
                       <span className="image-selection-tag">{image.tag}</span>
                     </div>
                     <p className="image-selection-description">{image.description}</p>
                     <div className="image-selection-details">
-                      <span>크기: {image.size}</span>
-                      <span>생성: {image.created}</span>
+                      {/* 백엔드 데이터에 맞게 수정 */}
+                      <span>⭐ {image.starCount}</span>
+                      <span>⬇️ {image.pullCount}</span>
+                      <span>🗓️ {new Date(image.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
                   <div className="image-selection-actions">
@@ -190,4 +174,4 @@ const ImageSelectionModal: React.FC<ImageSelectionModalProps> = ({ open, onSelec
   );
 };
 
-export default ImageSelectionModal; 
+export default ImageSelectionModal;
