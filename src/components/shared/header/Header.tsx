@@ -1,10 +1,11 @@
 'use client'
 
 import styles from './Header.module.css';
-import Image from 'next/image';
+/*import Image from 'next/image';*/
 import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { handleGithubLogin } from '../client/Login';
 
 export default function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -54,7 +55,7 @@ export default function Header() {
                 </nav>
 
                 <div className={styles.authSection}>
-                    <button className={styles.signupBtn}>
+                    <button className={styles.signupBtn} onClick={handleGithubLogin}>
                         <span className={styles.btnIcon}>🚀</span>
                         <span>로그인</span>
                     </button>
@@ -89,7 +90,7 @@ export default function Header() {
                             </Link>
                         ))}
                         <div className={styles.mobileAuthSection}>
-                            <button className={styles.mobileLoginBtn}>로그인</button>
+                            <button className={styles.mobileLoginBtn} onClick={handleGithubLogin}>로그인</button>
                             <button className={styles.mobileSignupBtn}>시작하기</button>
                         </div>
                     </div>
