@@ -1,15 +1,19 @@
 'use client'
 
 import styles from './Header.module.css';
-/*import Image from 'next/image';*/
 import Link from 'next/link';
 import { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { handleGithubLogin } from '../client/Login';
+import { useAuthStore } from '@/store/authStore';
 
 export default function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const pathname = usePathname();
+    const router = useRouter();
+
+    // Zustand 스토어에서 로그인 상태와 로그아웃 함수를 가져옵니다.
+    const { isLoggedIn, logout } = useAuthStore();
 
     const isActive = (path: string) => pathname === path;
 
@@ -22,6 +26,12 @@ export default function Header() {
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
+    };
+
+    // 로그아웃 핸들러
+    const handleLogout = () => {
+        logout();
+        router.push('/'); // 로그아웃 후 홈으로 이동
     };
 
     return (
@@ -55,10 +65,17 @@ export default function Header() {
                 </nav>
 
                 <div className={styles.authSection}>
-                    <button className={styles.signupBtn} onClick={handleGithubLogin}>
-                        <span className={styles.btnIcon}>🚀</span>
-                        <span>로그인</span>
-                    </button>
+                    {isLoggedIn ? (
+                        <button className={styles.signupBtn} onClick={handleLogout}>
+                            <span className={styles.btnIcon}>🚀</span>
+                            <span>로그아웃</span>
+                        </button>
+                    ) : (
+                        <button className={styles.signupBtn} onClick={handleGithubLogin}>
+                            <span className={styles.btnIcon}>🚀</span>
+                            <span>로그인</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* Mobile Menu Button */}
@@ -90,7 +107,11 @@ export default function Header() {
                             </Link>
                         ))}
                         <div className={styles.mobileAuthSection}>
-                            <button className={styles.mobileLoginBtn} onClick={handleGithubLogin}>로그인</button>
+                            {isLoggedIn ? (
+                                <button className={styles.mobileLoginBtn} onClick={handleLogout}>로그아웃</button>
+                            ) : (
+                                <button className={styles.mobileLoginBtn} onClick={handleGithubLogin}>로그인</button>
+                            )}
                             <button className={styles.mobileSignupBtn}>시작하기</button>
                         </div>
                     </div>
