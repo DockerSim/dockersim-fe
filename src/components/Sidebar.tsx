@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import Link from 'next/link';
 import ImageModal from './modals/ImageModal'
 import '../styles/Sidebar.css'
 
@@ -35,6 +36,11 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span className="icon">📦</span>
             <span className="label">이미지</span>
           </div>
+
+          <Link href="/overview" className="sidebar-icon" title="한 눈에 보기">
+            <span className="icon">👁️</span>
+            <span className="label">한 눈에 보기</span>
+          </Link>
           
           {isControlPanelCollapsed && (
             <div className="sidebar-icon" onClick={onControlPanelToggle} title="리소스 제어 패널 열기">

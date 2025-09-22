@@ -9,11 +9,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/d3": "^7.4.3",
     "@xterm/xterm": "^5.5.0",
     "bootstrap-icons": "^1.13.1",
+    "d3": "^7.9.0",
+    "html2canvas": "^1.4.1",
     "next": "^15.2.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "vis-network": "^10.0.2",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

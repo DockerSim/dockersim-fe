@@ -80,10 +80,41 @@ interface DockerStore {
   updateNetwork: (id: string, updates: Partial<Network>) => void
 }
 
+// --- 예시 데이터 --- 
+const exampleVolume: Volume = {
+  id: 'db-data',
+  name: 'db-data',
+  mountPath: '/var/lib/docker/volumes/db-data',
+  connectedContainers: ['database'],
+  networkId: 'custom-net-1'
+};
+
+const exampleContainers: Container[] = [
+  {
+    id: 'web-server',
+    name: 'web-server',
+    image: 'nginx:latest',
+    status: 'running',
+    ports: [],
+    network: 'custom-net-1',
+    created: new Date(),
+  },
+  {
+    id: 'database',
+    name: 'database',
+    image: 'postgres:13',
+    status: 'running',
+    ports: [],
+    volumes: [exampleVolume],
+    network: 'custom-net-1',
+    created: new Date(),
+  }
+];
+
 export const useDockerStore = create<DockerStore>((set, get) => ({
-  // 초기 상태
-  containers: [],
-  volumes: [],
+  // --- 초기 상태 (예시 데이터 포함) ---
+  containers: exampleContainers,
+  volumes: [exampleVolume],
   networks: [
     {
       id: 'bridge',
@@ -92,6 +123,12 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
       driver: 'bridge',
       subnet: '172.17.0.0/16',
       gateway: '172.17.0.1'
+    },
+    {
+      id: 'custom-net-1',
+      name: 'custom-net-1',
+      containers: exampleContainers, // `web-server`와 `database` 컨테이너를 포함
+      driver: 'bridge'
     }
   ],
   terminalHistory: [],
@@ -107,7 +144,6 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
   
   clearTerminalHistory: () => set({ terminalHistory: [] }),
 
-  // 단순 메시지 추가 함수 (오류 없이)
   addMessage: (message: string) => {
     const { addTerminalHistory } = get()
     addTerminalHistory({
@@ -120,22 +156,18 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
   },
   
   executeCommand: (command: string) => {
-    const { addTerminalHistory, addContainer, addVolume, addNetwork, clearTerminalHistory } = get()
+    const { addTerminalHistory, addContainer, removeContainer, updateContainer, addVolume, addNetwork, clearTerminalHistory, containers } = get()
     const timestamp = new Date().toISOString()
     let output = ''
     let isError = false
 
     try {
-      // 빈 명령어는 무시
-      if (!command.trim()) {
-        return
-      }
+      if (!command.trim()) return;
 
-      // 간단한 Docker 명령어 시뮬레이션
-      if (command.startsWith('docker ps')) {
-        output = `CONTAINER ID   IMAGE           COMMAND                  CREATED         STATUS         PORTS                    NAMES`
-      } else if (command.startsWith('docker run')) {
-        // docker run 명령어 파싱
+      const parts = command.trim().split(/\s+/);
+      const dockerCommand = parts[1];
+
+      if (dockerCommand === 'run') {
         const nameMatch = command.match(/--name\s+(\S+)/)
         const networkMatch = command.match(/--network\s+(\S+)/)
         const imageMatch = command.match(/(\S+)(?:\s+(.*))?$/)
@@ -145,7 +177,6 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
           const containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`
           const targetNetwork = networkMatch ? networkMatch[1] : 'bridge'
           
-          // 새 컨테이너 추가
           addContainer({
             id: containerName,
             name: containerName,
@@ -162,53 +193,46 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
           output = 'Error: Invalid docker run command'
           isError = true
         }
-      } else if (command.startsWith('docker start')) {
-        const containerName = command.split(' ')[2]
-        if (containerName) {
-          output = `Container ${containerName} started`
+      } else if (dockerCommand === 'start') {
+        const containerName = parts[2];
+        const targetContainer = containers.find(c => c.name === containerName || c.id === containerName);
+        if (targetContainer) {
+          updateContainer(targetContainer.id, { status: 'running' });
+          output = containerName;
         } else {
-          output = 'Error: Container name required'
-          isError = true
+          output = `Error: No such container: ${containerName}`;
+          isError = true;
         }
-      } else if (command.startsWith('docker stop')) {
-        const containerName = command.split(' ')[2]
-        if (containerName) {
-          output = `Container ${containerName} stopped`
+      } else if (dockerCommand === 'stop') {
+        const containerName = parts[2];
+        const targetContainer = containers.find(c => c.name === containerName || c.id === containerName);
+        if (targetContainer) {
+          updateContainer(targetContainer.id, { status: 'stopped' });
+          output = containerName;
         } else {
-          output = 'Error: Container name required'
-          isError = true
+          output = `Error: No such container: ${containerName}`;
+          isError = true;
         }
-      } else if (command.startsWith('docker pause')) {
-        const containerName = command.split(' ')[2]
-        if (containerName) {
-          output = `Container ${containerName} paused`
+      } else if (dockerCommand === 'rm') {
+        const containerName = parts[2];
+        const targetContainer = containers.find(c => c.name === containerName || c.id === containerName);
+        if (targetContainer) {
+          removeContainer(targetContainer.id);
+          output = containerName;
         } else {
-          output = 'Error: Container name required'
-          isError = true
-        }
-      } else if (command.startsWith('docker rm')) {
-        const containerName = command.split(' ')[2]
-        if (containerName) {
-          output = `Container ${containerName} removed`
-        } else {
-          output = 'Error: Container name required'
-          isError = true
+          output = `Error: No such container: ${containerName}`;
+          isError = true;
         }
       } else if (command.startsWith('docker volume create')) {
-        // 명령어에서 네트워크 정보 추출
         const networkMatch = command.match(/--network\s+(\S+)/)
         const targetNetworkId = networkMatch ? networkMatch[1] : 'bridge'
         
-        // 볼륨 이름 추출 - --network 플래그가 있는 경우와 없는 경우를 고려
         let volumeName;
         if (networkMatch) {
-          // docker volume create --network bridge volumeName 형태
-          const parts = command.split(' ');
           const networkIndex = parts.findIndex(part => part === '--network');
-          volumeName = parts[networkIndex + 2] || `volume_${Date.now()}`;  // --network 다음다음이 볼륨명
+          volumeName = parts[networkIndex + 2] || `volume_${Date.now()}`;
         } else {
-          // docker volume create volumeName 형태
-          volumeName = command.split(' ')[3] || `volume_${Date.now()}`;
+          volumeName = parts[3] || `volume_${Date.now()}`;
         }
         
         addVolume({
@@ -221,7 +245,7 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
         
         output = `Volume ${volumeName} created in network ${targetNetworkId}`
       } else if (command.startsWith('docker network create')) {
-        const networkName = command.split(' ')[3] || `network_${Date.now()}`
+        const networkName = parts[3] || `network_${Date.now()}`
         
         addNetwork({
           id: `net_${Date.now()}`,
@@ -231,45 +255,17 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
         })
         
         output = `Network ${networkName} created`
-      } else if (command.startsWith('docker network rm')) {
-        const networkName = command.split(' ')[3]
-        if (networkName) {
-          const { removeNetwork } = get()
-          removeNetwork(networkName)
-          output = `Network ${networkName} removed`
-        } else {
-          output = 'Error: Network name required'
-          isError = true
-        }
-      } else if (command.startsWith('docker network connect')) {
-        const parts = command.split(' ')
-        if (parts.length >= 4) {
-          const networkName = parts[3]
-          const containerName = parts[4]
-          output = `Container ${containerName} connected to network ${networkName}`
-        } else {
-          output = 'Error: Network and container names required'
-          isError = true
-        }
       } else if (command === 'clear') {
         clearTerminalHistory()
         return
-      } else if (command.startsWith('docker')) {
-        // 알 수 없는 Docker 명령어도 성공적으로 처리
-        output = `Command executed: ${command}`
-      } else if (command.startsWith('echo')) {
-        // echo 명령어는 완전히 무시하고 아무것도 하지 않음
-        return
       } else {
-        // 알 수 없는 명령어도 오류로 표시하지 않고 무시
-        return
+        output = `Command executed: ${command}`
       }
     } catch (error) {
       output = `Error executing command: ${error}`
       isError = true
     }
 
-    // 터미널 히스토리에 추가
     addTerminalHistory({
       id: `cmd_${Date.now()}`,
       command,
@@ -282,7 +278,6 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
   // 컨테이너 액션
   addContainer: (container: Container) => 
     set((state) => {
-      // 새 컨테이너를 추가하고 해당 네트워크의 containers 배열도 업데이트
       const updatedNetworks = state.networks.map(network => {
         if (network.name === container.network || network.id === container.network) {
           return {
@@ -346,4 +341,4 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
         n.id === id ? { ...n, ...updates } : n
       ) 
     }))
-})) 
+}))
