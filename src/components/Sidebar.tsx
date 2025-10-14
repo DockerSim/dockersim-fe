@@ -36,11 +36,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             <span className="icon">📦</span>
             <span className="label">이미지</span>
           </div>
-
-          <Link href="/overview" className="sidebar-icon" title="한 눈에 보기">
-            <span className="icon">👁️</span>
-            <span className="label">한 눈에 보기</span>
-          </Link>
           
           {isControlPanelCollapsed && (
             <div className="sidebar-icon" onClick={onControlPanelToggle} title="리소스 제어 패널 열기">
@@ -65,4 +60,4 @@ const Sidebar: React.FC<SidebarProps> = ({
   )
 }
 
-export default Sidebar 
+export default Sidebar

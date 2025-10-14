@@ -1,15 +1,16 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react' // useMemo import 추가
+import React, { useState, useEffect, useMemo } from 'react'
 import { useDockerStore } from '../../store/dockerStore'
 import './ImageModal.css'
 
 interface ImageModalProps {
   isOpen: boolean
   onClose: () => void
+  onSelect?: (image: string) => void
+  showSelectionButton?: boolean
 }
 
-// 백엔드 응답 DTO에 맞춘 이미지 인터페이스
 interface DockerImage {
   imageId: string;
   name: string;
@@ -28,7 +29,6 @@ interface DownloadState {
   progress: number
 }
 
-// 더미 다운로드/삭제 서비스 (추후 실제 API로 대체 필요)
 const imageService = {
   async downloadImage(imageName: string, tag: string = 'latest', onProgress?: (progress: number) => void): Promise<boolean> {
     return new Promise((resolve) => {
@@ -53,7 +53,7 @@ const imageService = {
   }
 }
 
-const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
+const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, onSelect, showSelectionButton }) => {
   const { executeCommand, addMessage } = useDockerStore()
   
   const [activeTab, setActiveTab] = useState<'official' | 'local'>('official')
@@ -61,7 +61,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
   const [sortBy, setSortBy] = useState<'popular' | 'recent' | 'name'>('popular')
   
   const [officialImages, setOfficialImages] = useState<DockerImage[]>([])
-  const [localImages, setLocalImages] = useState<DockerImage[]>([]) // 로컬 이미지도 DockerImage 인터페이스 사용
+  const [localImages, setLocalImages] = useState<DockerImage[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [downloadStates, setDownloadStates] = useState<Map<string, DownloadState>>(new Map())
   const [downloadedImages, setDownloadedImages] = useState<Set<string>>(new Set())
@@ -72,7 +72,6 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
     { value: 'name', label: '이름순' }
   ]
 
-  // 공식 이미지 API 호출
   const loadOfficialImages = async () => {
     setIsLoading(true)
     try {
@@ -88,7 +87,6 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
     }
   }
 
-  // 로컬 이미지 API 호출
   const loadLocalImages = async () => {
     setIsLoading(true)
     try {
@@ -106,13 +104,14 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (isOpen) {
+      // When modal opens, load data for the currently active tab.
       if (activeTab === 'official') {
-        loadOfficialImages()
+        loadOfficialImages();
       } else {
-        loadLocalImages()
+        loadLocalImages();
       }
     }
-  }, [isOpen, activeTab])
+  }, [isOpen, activeTab]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose()
@@ -137,10 +136,12 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
       setDownloadStates(prev => new Map(prev.set(downloadId, { imageId: downloadId, status: 'completed', progress: 100 })))
       setDownloadedImages(prev => new Set([...prev, downloadId]))
       addMessage(`✅ ${downloadId} 이미지 다운로드가 완료되었습니다.`)
+      // Automatically switch to local tab and reload after download
       setTimeout(() => {
-        setDownloadStates(prev => { const next = new Map(prev); next.delete(downloadId); return next })
-        if (activeTab === 'local') loadLocalImages()
-      }, 3000)
+        setActiveTab('local');
+        loadLocalImages();
+        setDownloadStates(prev => { const next = new Map(prev); next.delete(downloadId); return next });
+      }, 2000);
     } catch (error) {
       setDownloadStates(prev => new Map(prev.set(downloadId, { imageId: downloadId, status: 'error', progress: 0 })))
       addMessage(`❌ ${downloadId} 이미지 다운로드에 실패했습니다.`)
@@ -159,6 +160,13 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
       addMessage(`❌ 이미지 삭제에 실패했습니다.`)
     }
   }
+
+  const handleSelectImage = (image: DockerImage) => {
+    if (onSelect) {
+      onSelect(`${image.namespace}/${image.name}:${image.tag}`);
+      onClose();
+    }
+  };
 
   const imagesToDisplay = activeTab === 'official' ? officialImages : localImages;
 
@@ -183,9 +191,10 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
         <div className="empty-state" style={{gridColumn: '1 / -1'}}><span>{isLocal ? '로컬 이미지가 없습니다.' : '검색 결과가 없습니다.'}</span></div>
       ) : (
         images.map(image => {
-          const downloadId = `${image.namespace}/${image.name}:${image.tag}`
-          const downloadState = downloadStates.get(downloadId)
-          const isDownloaded = downloadedImages.has(downloadId)
+          const downloadId = `${image.namespace}/${image.name}:${image.tag}`;
+          const downloadState = downloadStates.get(downloadId);
+          const isDownloaded = downloadedImages.has(downloadId) || localImages.some(localImg => localImg.name === image.name && localImg.tag === image.tag);
+
           return (
             <div key={image.imageId} className={isLocal ? "local-image-item" : "image-card"}>
               {isLocal ? (
@@ -197,7 +206,12 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
                       <span className="image-created">생성일: {new Date(image.createdAt).toLocaleDateString('ko-KR')}</span>
                     </div>
                   </div>
-                  <button className="delete-btn" onClick={() => handleDeleteLocal(image)}>🗑️삭제</button>
+                  <div className="local-image-actions">
+                    {showSelectionButton && (
+                      <button className="select-btn" onClick={() => handleSelectImage(image)}>선택</button>
+                    )}
+                    <button className="delete-btn" onClick={() => handleDeleteLocal(image)}>삭제</button>
+                  </div>
                 </>
               ) : (
                 <>
@@ -219,8 +233,15 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
                     )}
                     {downloadState?.status === 'completed' && <div className="download-complete"><span className="complete-text">✅ 다운로드 완료!</span></div>}
                     <div className="action-buttons">
-                      {!downloadState && !isDownloaded && <button className="download-btn" onClick={() => handleDownload(image)}>📥 다운로드</button>}
-                      {isDownloaded && !isDownloaded && <button className="download-btn" onClick={() => handleDownload(image)}>🔄 재다운로드</button>}
+                      {showSelectionButton ? (
+                        isDownloaded ? (
+                          <button className="select-btn" onClick={() => handleSelectImage(image)}>선택</button>
+                        ) : (
+                          !downloadState && <button className="download-btn" onClick={() => handleDownload(image)}>다운로드 후 선택</button>
+                        )
+                      ) : (
+                        !downloadState && !isDownloaded && <button className="download-btn" onClick={() => handleDownload(image)}>📥 다운로드</button>
+                      )}
                     </div>
                   </div>
                 </>
@@ -236,7 +257,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose }) => {
     <div className="image-modal-backdrop" onClick={handleBackdropClick}>
       <div className="image-modal-container">
         <div className="image-modal-header">
-          <h2 className="image-modal-title"><span className="control-panel-icon">📦</span> Docker 이미지 관리</h2>
+          <h2 className="image-modal-title"><span className="control-panel-icon">📦</span> Docker 이미지 {showSelectionButton ? '선택' : '관리'}</h2>
           <button className="image-modal-close" onClick={onClose}>×</button>
         </div>
 

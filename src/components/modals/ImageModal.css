@@ -116,6 +116,12 @@
   background: #fff;
 }
 
+.image-tab:disabled {
+    cursor: not-allowed;
+    background-color: #e9ecef;
+    color: #adb5bd;
+}
+
 .tab-description {
   font-size: 10px;
   color: #868e96;
@@ -326,6 +332,44 @@
   border: 1px solid #dee2e6;
   border-radius: 12px;
 }
+
+.local-image-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.select-btn, .delete-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.select-btn {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.select-btn:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
 
 /* 로딩 및 빈 상태 */
 .loading-spinner, .empty-state {

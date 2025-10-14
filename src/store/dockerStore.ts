@@ -50,37 +50,27 @@ export interface TerminalHistory {
 }
 
 interface DockerStore {
-  // 상태
   containers: Container[]
   volumes: Volume[]
   networks: Network[]
   terminalHistory: TerminalHistory[]
   currentCommand: string
-
-  // 액션
   setCurrentCommand: (command: string) => void
   addTerminalHistory: (history: TerminalHistory) => void
   clearTerminalHistory: () => void
   executeCommand: (command: string) => void
   addMessage: (message: string) => void
-  
-  // 컨테이너 액션
   addContainer: (container: Container) => void
   removeContainer: (id: string) => void
   updateContainer: (id: string, updates: Partial<Container>) => void
-  
-  // 볼륨 액션
   addVolume: (volume: Volume) => void
   removeVolume: (id: string) => void
   updateVolume: (id: string, updates: Partial<Volume>) => void
-  
-  // 네트워크 액션
   addNetwork: (network: Network) => void
   removeNetwork: (id: string) => void
   updateNetwork: (id: string, updates: Partial<Network>) => void
 }
 
-// --- 예시 데이터 --- 
 const exampleVolume: Volume = {
   id: 'db-data',
   name: 'db-data',
@@ -112,7 +102,6 @@ const exampleContainers: Container[] = [
 ];
 
 export const useDockerStore = create<DockerStore>((set, get) => ({
-  // --- 초기 상태 (예시 데이터 포함) ---
   containers: exampleContainers,
   volumes: [exampleVolume],
   networks: [
@@ -127,14 +116,13 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     {
       id: 'custom-net-1',
       name: 'custom-net-1',
-      containers: exampleContainers, // `web-server`와 `database` 컨테이너를 포함
+      containers: exampleContainers,
       driver: 'bridge'
     }
   ],
   terminalHistory: [],
   currentCommand: '',
 
-  // 액션 구현
   setCurrentCommand: (command: string) => set({ currentCommand: command }),
   
   addTerminalHistory: (history: TerminalHistory) => 
@@ -156,126 +144,184 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
   },
   
   executeCommand: (command: string) => {
-    const { addTerminalHistory, addContainer, removeContainer, updateContainer, addVolume, addNetwork, clearTerminalHistory, containers } = get()
-    const timestamp = new Date().toISOString()
-    let output = ''
-    let isError = false
+    const { 
+        addTerminalHistory, addContainer, removeContainer, updateContainer, 
+        addVolume, removeVolume, updateVolume, addNetwork, removeNetwork, 
+        clearTerminalHistory, containers, volumes, networks 
+    } = get();
+    const timestamp = new Date().toISOString();
+    let output = '';
+    let isError = false;
 
     try {
-      if (!command.trim()) return;
+        if (!command.trim()) return;
 
-      const parts = command.trim().split(/\s+/);
-      const dockerCommand = parts[1];
+        const parts = command.trim().split(/\s+/);
+        const dockerCommand = parts[0];
+        const subCommand = parts[1];
 
-      if (dockerCommand === 'run') {
-        const nameMatch = command.match(/--name\s+(\S+)/)
-        const networkMatch = command.match(/--network\s+(\S+)/)
-        const imageMatch = command.match(/(\S+)(?:\s+(.*))?$/)
-        
-        if (imageMatch) {
-          const image = imageMatch[1]
-          const containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`
-          const targetNetwork = networkMatch ? networkMatch[1] : 'bridge'
-          
-          addContainer({
-            id: containerName,
-            name: containerName,
-            image: image,
-            status: 'running',
-            ports: [],
-            network: targetNetwork,
-            created: new Date(),
-            isNew: true
-          })
-          
-          output = `Container ${containerName} created and started in network ${targetNetwork}`
-        } else {
-          output = 'Error: Invalid docker run command'
-          isError = true
+        if (dockerCommand !== 'docker') {
+            throw new Error(`command not found: ${dockerCommand}`);
         }
-      } else if (dockerCommand === 'start') {
-        const containerName = parts[2];
-        const targetContainer = containers.find(c => c.name === containerName || c.id === containerName);
-        if (targetContainer) {
-          updateContainer(targetContainer.id, { status: 'running' });
-          output = containerName;
-        } else {
-          output = `Error: No such container: ${containerName}`;
-          isError = true;
+
+        switch (subCommand) {
+            case 'run': {
+                const nameMatch = command.match(/--name\s+(\S+)/);
+                const networkMatch = command.match(/--network\s+(\S+)/);
+                const volumeMatches = [...command.matchAll(/(?:-v|--volume)\s+([^:]+):(\S+)/g)];
+                
+                const imageArgIndex = parts.slice(2).findIndex(p => !p.startsWith('-'));
+                const image = imageArgIndex !== -1 ? parts[imageArgIndex + 2] : '';
+
+                if (image) {
+                    const containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`;
+                    const targetNetworkName = networkMatch ? networkMatch[1] : 'bridge';
+                    
+                    const newContainerVolumes: Volume[] = [];
+                    
+                    volumeMatches.forEach(match => {
+                        const volumeName = match[1];
+                        const containerPath = match[2];
+                        let volume = get().volumes.find(v => v.name === volumeName);
+
+                        if (!volume) {
+                            const newVolume: Volume = {
+                                id: `vol_${volumeName}_${Date.now()}`,
+                                name: volumeName,
+                                mountPath: `/var/lib/docker/volumes/${volumeName}/_data`,
+                                connectedContainers: [],
+                                networkId: targetNetworkName,
+                                isNew: true,
+                            };
+                            addVolume(newVolume);
+                            volume = newVolume;
+                        }
+                        
+                        newContainerVolumes.push({ ...volume, containerPath });
+
+                        const updatedConnectedContainers = Array.from(new Set([...(volume.connectedContainers || []), containerName]));
+                        updateVolume(volume.id, { connectedContainers: updatedConnectedContainers });
+                    });
+
+                    const newContainer: Container = {
+                        id: containerName,
+                        name: containerName,
+                        image: image,
+                        status: 'running',
+                        ports: [],
+                        network: targetNetworkName,
+                        volumes: newContainerVolumes,
+                        created: new Date(),
+                        isNew: true
+                    };
+
+                    addContainer(newContainer);
+                    output = containerName;
+                } else {
+                    throw new Error('"docker run" requires an image name.');
+                }
+                break;
+            }
+            case 'start':
+            case 'stop':
+            case 'pause': {
+                const containerName = parts[2];
+                const targetContainer = get().containers.find(c => c.name === containerName || c.id === containerName);
+                if (targetContainer) {
+                    const newStatus = subCommand === 'start' ? 'running' : (subCommand === 'stop' ? 'stopped' : 'paused');
+                    updateContainer(targetContainer.id, { status: newStatus });
+                    output = containerName;
+                } else {
+                    throw new Error(`No such container: ${containerName}`);
+                }
+                break;
+            }
+            case 'rm': {
+                const containerName = parts[2];
+                const targetContainer = get().containers.find(c => c.name === containerName || c.id === containerName);
+                if (targetContainer) {
+                    (targetContainer.volumes || []).forEach(volInContainer => {
+                        const globalVol = get().volumes.find(v => v.id === volInContainer.id);
+                        if (globalVol) {
+                            const updatedConnections = globalVol.connectedContainers.filter(cId => cId !== targetContainer.id);
+                            updateVolume(globalVol.id, { connectedContainers: updatedConnections });
+                        }
+                    });
+                    removeContainer(targetContainer.id);
+                    output = containerName;
+                } else {
+                    throw new Error(`No such container: ${containerName}`);
+                }
+                break;
+            }
+            case 'volume': {
+                const volumeSubCommand = parts[2];
+                const volumeName = parts[3];
+                if (volumeSubCommand === 'create') {
+                    addVolume({
+                        id: `vol_${volumeName || Date.now()}`,
+                        name: volumeName || `volume_${Date.now()}`,
+                        mountPath: `/var/lib/docker/volumes/${volumeName}/_data`,
+                        connectedContainers: [],
+                        networkId: 'bridge',
+                        isNew: true,
+                    });
+                    output = volumeName;
+                } else if (volumeSubCommand === 'rm') {
+                    const targetVolume = get().volumes.find(v => v.name === volumeName);
+                    if (targetVolume) {
+                        if (targetVolume.connectedContainers && targetVolume.connectedContainers.length > 0) {
+                            throw new Error(`remove ${volumeName}: volume is in use`);
+                        } else {
+                            removeVolume(targetVolume.id);
+                            output = volumeName;
+                        }
+                    } else {
+                        throw new Error(`No such volume: ${volumeName}`);
+                    }
+                } else {
+                    throw new Error(`Unknown docker volume command: "${volumeSubCommand}"`);
+                }
+                break;
+            }
+            case 'network': {
+                 const networkSubCommand = parts[2];
+                 const networkName = parts[3];
+                 if (networkSubCommand === 'create') {
+                    addNetwork({
+                        id: `net_${networkName || Date.now()}`,
+                        name: networkName || `network_${Date.now()}`,
+                        containers: [],
+                        isNew: true,
+                    });
+                    output = networkName;
+                 } else {
+                    throw new Error(`Unknown docker network command: "${networkSubCommand}"`);
+                 }
+                break;
+            }
+            case 'clear': {
+                clearTerminalHistory();
+                return;
+            }
+            default: {
+                throw new Error(`'${subCommand}' is not a docker command.`);
+            }
         }
-      } else if (dockerCommand === 'stop') {
-        const containerName = parts[2];
-        const targetContainer = containers.find(c => c.name === containerName || c.id === containerName);
-        if (targetContainer) {
-          updateContainer(targetContainer.id, { status: 'stopped' });
-          output = containerName;
-        } else {
-          output = `Error: No such container: ${containerName}`;
-          isError = true;
-        }
-      } else if (dockerCommand === 'rm') {
-        const containerName = parts[2];
-        const targetContainer = containers.find(c => c.name === containerName || c.id === containerName);
-        if (targetContainer) {
-          removeContainer(targetContainer.id);
-          output = containerName;
-        } else {
-          output = `Error: No such container: ${containerName}`;
-          isError = true;
-        }
-      } else if (command.startsWith('docker volume create')) {
-        const networkMatch = command.match(/--network\s+(\S+)/)
-        const targetNetworkId = networkMatch ? networkMatch[1] : 'bridge'
-        
-        let volumeName;
-        if (networkMatch) {
-          const networkIndex = parts.findIndex(part => part === '--network');
-          volumeName = parts[networkIndex + 2] || `volume_${Date.now()}`;
-        } else {
-          volumeName = parts[3] || `volume_${Date.now()}`;
-        }
-        
-        addVolume({
-          id: `vol_${Date.now()}`,
-          name: volumeName,
-          mountPath: '/var/lib/docker/volumes',
-          connectedContainers: [],
-          networkId: targetNetworkId
-        })
-        
-        output = `Volume ${volumeName} created in network ${targetNetworkId}`
-      } else if (command.startsWith('docker network create')) {
-        const networkName = parts[3] || `network_${Date.now()}`
-        
-        addNetwork({
-          id: `net_${Date.now()}`,
-          name: networkName,
-          containers: [],
-          isNew: true
-        })
-        
-        output = `Network ${networkName} created`
-      } else if (command === 'clear') {
-        clearTerminalHistory()
-        return
-      } else {
-        output = `Command executed: ${command}`
-      }
-    } catch (error) {
-      output = `Error executing command: ${error}`
-      isError = true
+    } catch (e: any) {
+        output = e.message;
+        isError = true;
     }
 
     addTerminalHistory({
-      id: `cmd_${Date.now()}`,
-      command,
-      output,
-      timestamp,
-      isError
-    })
+        id: `cmd_${Date.now()}`,
+        command,
+        output,
+        timestamp,
+        isError,
+    });
   },
   
-  // 컨테이너 액션
   addContainer: (container: Container) => 
     set((state) => {
       const updatedNetworks = state.networks.map(network => {
@@ -306,7 +352,6 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
       ) 
     })),
   
-  // 볼륨 액션
   addVolume: (volume: Volume) => 
     set((state) => ({ 
       volumes: [...state.volumes, volume] 
@@ -324,7 +369,6 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
       ) 
     })),
   
-  // 네트워크 액션
   addNetwork: (network: Network) => 
     set((state) => ({ 
       networks: [...state.networks, network] 

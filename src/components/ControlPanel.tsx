@@ -6,7 +6,6 @@ import { AddBtn, DeleteBtn, NetworkConnectBtn } from './common/BtnCrud'
 import '../styles/ControlPanel.css'
 import VolumeConnectModal from './VolumeConnectModal';
 import ResourceCreationModal, { ResourceCreationData } from './modals/ResourceCreationModal';
-import ImageSelectionModal from './modals/ImageSelectionModal';
 import { useNetworkSync } from '../hooks/useNetworkSync';
 
 interface ControlPanelProps {
@@ -26,7 +25,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
     removeVolume, 
     removeNetwork,
     executeCommand,
-    updateVolume
+    updateVolume,
+    addMessage
   } = useDockerStore()
   const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null)
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null)
@@ -34,10 +34,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
   const [volumeModalOpen, setVolumeModalOpen] = useState(false);
   const [resourceCreationModalOpen, setResourceCreationModalOpen] = useState(false);
   const [resourceCreationType, setResourceCreationType] = useState<'container' | 'volume'>('container');
-  const [imageSelectionModalOpen, setImageSelectionModalOpen] = useState(false);
   const [selectedImageForContainer, setSelectedImageForContainer] = useState('');
   
-  // 네트워크 동기화 훅 사용
   useNetworkSync();
 
   const handleContainerAction = (containerId: string, action: string) => {
@@ -115,11 +113,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
     setResourceCreationModalOpen(true);
   }
 
-  const handleImageSelected = (image: string) => {
-    setSelectedImageForContainer(image);
-    setImageSelectionModalOpen(false);
-  }
-
   const handleNetworkConnect = () => {
     if (selectedNetworkId && selectedContainerId) {
       const network = networks.find(n => n.id === selectedNetworkId)
@@ -143,22 +136,30 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
   const handleVolumeModalConnect = (volumeId: string, containerId: string, mountPath: string) => {
     const volume = volumes.find(v => v.id === volumeId);
     const container = containers.find(c => c.id === containerId);
+
     if (volume && container) {
-      // 컨테이너에 볼륨 추가
-      const newVolumeObj = {
-        id: volume.id,
-        name: volume.name,
-        mountPath: mountPath,
-        connectedContainers: [...(volume.connectedContainers || []), container.id]
+      // 1. Create a representation of the volume for the container, including the container-specific path
+      const volumeForContainer: Volume = {
+        ...volume,
+        containerPath: mountPath,
       };
-      const updatedVolumes = (container.volumes || []).filter(v => v.id !== volume.id).concat(newVolumeObj);
-      updateContainer(container.id, { volumes: updatedVolumes });
-      // 볼륨에 컨테이너 연결 추가
-      updateVolume(volume.id, {
-        connectedContainers: Array.from(new Set([...(volume.connectedContainers || []), container.id]))
-      });
-      showToast && showToast(`🔗 볼륨 "${volume.name}"가 컨테이너 "${container.name}"에 연결되었습니다.`, 'success');
-      showProcessBubble && showProcessBubble('info', `${volume.name} → ${container.name} 연결됨`, containerId);
+
+      // 2. Update the container's volumes array
+      const updatedContainerVolumes = [...(container.volumes || []).filter(v => v.id !== volumeId), volumeForContainer];
+      updateContainer(container.id, { volumes: updatedContainerVolumes });
+
+      // 3. Update the global volume's list of connected containers
+      const updatedConnectedContainers = Array.from(new Set([...(volume.connectedContainers || []), container.id]));
+      updateVolume(volume.id, { connectedContainers: updatedConnectedContainers });
+
+      // 4. UI Feedback
+      const message = `🔗 볼륨 "${volume.name}"가 컨테이너 "${container.name}"에 연결되었습니다. (경로: ${mountPath})`;
+      showToast && showToast(message, 'success');
+      showProcessBubble && showProcessBubble('info', `${volume.name} → ${container.name}`, containerId);
+      
+      // 5. Add a log to the terminal for consistency
+      addMessage(message);
+
       setVolumeModalOpen(false);
     }
   };
@@ -168,7 +169,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
     if (!network) return;
 
     if (resourceCreationType === 'container' && data.image) {
-      // 컨테이너 생성 로직
       let newId = Date.now().toString();
       const containerName = data.name || `container_${newId}`;
       
@@ -181,7 +181,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
       showToast && showToast(`📦 컨테이너 "${containerName}"가 ${network.name} 네트워크에 생성되었습니다.`, 'success');
       showProcessBubble && showProcessBubble('create', `${containerName} 생성됨`, newId);
     } else if (resourceCreationType === 'volume') {
-      // 볼륨 생성 로직
       executeCommand(`docker volume create --network ${network.name} ${data.name}`);
       showToast && showToast(`💾 볼륨 "${data.name}"가 ${network.name} 네트워크에 생성되었습니다.`, 'success');
       showProcessBubble && showProcessBubble('create', `${data.name} 생성됨`, Date.now().toString());
@@ -208,7 +207,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
 
             {!isCollapsed && (
         <div className="control-panel-content">
-          {/* 탭 네비게이션 */}
           <div className="tab-navigation">
             <button 
               className={`tab-button ${activeTab === 'containers' ? 'active' : ''}`}
@@ -230,7 +228,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
             </button>
           </div>
 
-          {/* 탭 콘텐츠 */}
           <div className="tab-content">
             {activeTab === 'containers' && (
               <div className="resource-section">
@@ -352,7 +349,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
                   />
                 </div>
                 
-                {/* 네트워크 연결 컨트롤 */}
                 <div className="network-connection-control">
                   <div className="connection-selector">
                     <select 
@@ -415,7 +411,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
           </div>
         </div>
       )}
-      {/* 볼륨 연결 모달 */}
       <VolumeConnectModal
         containers={containers}
         volumes={volumes}
@@ -424,7 +419,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
         onClose={() => setVolumeModalOpen(false)}
       />
       
-      {/* 리소스 생성 모달 */}
       <ResourceCreationModal
         type={resourceCreationType}
         networks={networks}
@@ -436,15 +430,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, onColl
         }}
         preselectedImage={selectedImageForContainer}
       />
-      
-      {/* 이미지 선택 모달 */}
-      <ImageSelectionModal
-        open={imageSelectionModalOpen}
-        onSelect={handleImageSelected}
-        onClose={() => setImageSelectionModalOpen(false)}
-      />
     </div>
   )
 }
 
-export default ControlPanel 
+export default ControlPanel

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Network } from '../../store/dockerStore';
-import ImageSelectionModal from './ImageSelectionModal';
+import ImageModal from './ImageModal'; // ImageSelectionModal -> ImageModal
 import './ResourceCreationModal.css';
 
 export interface ResourceCreationData {
@@ -276,10 +276,11 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
         </div>
 
         {/* 이미지 선택 모달 */}
-        <ImageSelectionModal
-          open={imageSelectionModalOpen}
+        <ImageModal
+          isOpen={imageSelectionModalOpen}
           onSelect={handleImageSelect}
           onClose={() => setImageSelectionModalOpen(false)}
+          showSelectionButton={true}
         />
       </div>
     </div>,
@@ -287,4 +288,4 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
   );
 };
 
-export default ResourceCreationModal; 
+export default ResourceCreationModal;

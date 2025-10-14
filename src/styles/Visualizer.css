@@ -11,8 +11,9 @@
 /* 크롬 브라우저 탭 스타일 */
 .chrome-toolbar {
   background: #f1f3f5;
-  padding: 8px 4px 0;
+  padding: 8px 8px 0;
   display: flex;
+  justify-content: space-between; /* 탭과 토글을 양 끝으로 */
   align-items: flex-end;
   min-height: 40px;
   border-bottom: 1px solid #dee2e6;
@@ -53,8 +54,6 @@
 
 .chrome-tab:hover {
   background: #f1f3f5;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .chrome-tab.active {
@@ -63,7 +62,6 @@
   border: 1px solid #dee2e6;
   border-bottom: 1px solid white;
   margin-bottom: -1px;
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .tab-icon {
@@ -99,8 +97,35 @@
   color: #495057;
 }
 
+/* 보기 토글 버튼 */
+.view-toggle {
+  display: flex;
+  background-color: #e9ecef;
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: -1px; /* 탭처럼 보이도록 */
+}
+
+.view-toggle button {
+  padding: 6px 14px;
+  border: none;
+  background-color: transparent;
+  color: #495057;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.view-toggle button.active {
+  background-color: #fff;
+  color: #007bff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
 /* 네트워크 콘텐츠 */
-.network-content {
+.network-content, .overview-main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -110,7 +135,7 @@
   -ms-overflow-style: none; /* IE and Edge */
 }
 
-.network-content::-webkit-scrollbar {
+.network-content::-webkit-scrollbar, .overview-main-content::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
 
@@ -202,19 +227,3 @@
     padding: 0.5rem;
   }
 }
-
-/* 접기/펼치기 애니메이션 */
-.collapsible-section {
-  transition: all 0.3s ease;
-}
-
-.collapsible-section.collapsed {
-  max-height: 0;
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-}
-
-.collapsible-section.expanded {
-  max-height: 100vh;
-} 
