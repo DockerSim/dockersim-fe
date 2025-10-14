@@ -13,7 +13,7 @@
   background: #f1f3f5;
   padding: 8px 8px 0;
   display: flex;
-  justify-content: space-between; /* 탭과 토글을 양 끝으로 */
+  justify-content: flex-start; /* space-between에서 변경 */
   align-items: flex-end;
   min-height: 40px;
   border-bottom: 1px solid #dee2e6;
@@ -104,6 +104,7 @@
   border-radius: 8px;
   padding: 4px;
   margin-bottom: -1px; /* 탭처럼 보이도록 */
+  margin-left: auto; /* 오른쪽에 고정 */
 }
 
 .view-toggle button {

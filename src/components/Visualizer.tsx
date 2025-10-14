@@ -26,7 +26,6 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
   const [activeNetwork, setActiveNetwork] = useState<string>('bridge')
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null)
   const [selectedVolume, setSelectedVolume] = useState<Volume | null>(null)
-  const [connectingVolume, setConnectingVolume] = useState(false)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [containerDetailModalOpen, setContainerDetailModalOpen] = useState(false)
   const [volumeDetailModalOpen, setVolumeDetailModalOpen] = useState(false)
@@ -118,7 +117,6 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
                               v.networkId === currentNetwork.name ||
                               (!v.networkId && activeNetwork === 'bridge')
     
-    // Check if the volume is attached to ANY container, not just active ones
     const isNotConnectedToAnyContainer = !containers.some(c => 
       c.volumes?.some(cv => cv.id === v.id)
     )
@@ -128,28 +126,30 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
 
   return (
     <div className="visualizer-container">
-      <div className="chrome-toolbar">
-        <div className="network-tabs">
-          {networks.map(network => (
-            <div
-              key={network.id}
-              className={`chrome-tab ${activeNetwork === network.id ? 'active' : ''}`}
-              onClick={() => handleTabClick(network.id)}
-            >
-              <span className="tab-icon">⚡</span>
-              <span className="tab-title">{network.name}</span>
-              <button
-                className="tab-close"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleTabClose(network.id)
-                }}
+      <div className={`chrome-toolbar ${showOverview ? 'overview-mode' : ''}`}>
+        {!showOverview && (
+          <div className="network-tabs">
+            {networks.map(network => (
+              <div
+                key={network.id}
+                className={`chrome-tab ${activeNetwork === network.id ? 'active' : ''}`}
+                onClick={() => handleTabClick(network.id)}
               >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
+                <span className="tab-icon">⚡</span>
+                <span className="tab-title">{network.name}</span>
+                <button
+                  className="tab-close"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleTabClose(network.id)
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="view-toggle">
           <button onClick={() => setShowOverview(false)} className={!showOverview ? 'active' : ''}>📦 시각화</button>
           <button onClick={() => setShowOverview(true)} className={showOverview ? 'active' : ''}>📊 그래프</button>
@@ -200,7 +200,7 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
                             <VolumeConnection 
                               container={container}
                               volume={volume}
-                              isConnecting={false} // Set a proper value if needed
+                              isConnecting={false}
                             />
                             <div 
                               className={`volume-circle attached-volume ${highlightedId === volume.id ? 'highlight' : ''}`}
