@@ -87,7 +87,8 @@
 
 .output {
   color: #d4d4d4;
-  white-space: pre-wrap;
+  white-space: pre;
+  overflow-x: auto;
   padding-left: 1rem;
   border-left: 2px solid #333;
   margin-left: 1rem;
@@ -125,20 +126,21 @@
 }
 
 /* 스크롤바 스타일 */
-.terminal-output::-webkit-scrollbar {
+.terminal-output::-webkit-scrollbar, .output::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
-.terminal-output::-webkit-scrollbar-track {
+.terminal-output::-webkit-scrollbar-track, .output::-webkit-scrollbar-track {
   background: #2d2d2d;
 }
 
-.terminal-output::-webkit-scrollbar-thumb {
+.terminal-output::-webkit-scrollbar-thumb, .output::-webkit-scrollbar-thumb {
   background: #555;
   border-radius: 4px;
 }
 
-.terminal-output::-webkit-scrollbar-thumb:hover {
+.terminal-output::-webkit-scrollbar-thumb:hover, .output::-webkit-scrollbar-thumb:hover {
   background: #666;
 }
 
@@ -152,4 +154,4 @@
 .terminal-section.collapsed .terminal-input-form {
   opacity: 0;
   pointer-events: none;
-} 
+}

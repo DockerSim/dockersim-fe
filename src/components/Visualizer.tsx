@@ -1,13 +1,13 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import html2canvas from 'html2canvas';
-import { useDockerStore, Container, Volume } from '../store/dockerStore'
+import { useDockerStore, Container, Volume, Network } from '../store/dockerStore'
 import { ContainerCard } from './ContainerCard'
 import { VolumeConnection } from './VolumeConnection'
 import { useActiveNetworkSync } from '../hooks/useActiveNetworkSync'
 import ContainerDetailModal from './modals/ContainerDetailModal'
 import VolumeDetailModal from './modals/VolumeDetailModal'
+import NetworkDetailModal from './modals/NetworkDetailModal'
 import '../styles/Visualizer.css'
 import { ProcessVisualization, ProcessStep } from './ProcessVisualization';
 
@@ -26,28 +26,16 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
   const [activeNetwork, setActiveNetwork] = useState<string>('bridge')
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null)
   const [selectedVolume, setSelectedVolume] = useState<Volume | null>(null)
+  const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [containerDetailModalOpen, setContainerDetailModalOpen] = useState(false)
   const [volumeDetailModalOpen, setVolumeDetailModalOpen] = useState(false)
+  const [networkDetailModalOpen, setNetworkDetailModalOpen] = useState(false)
   const prevContainersRef = useRef(containers)
   
   const [showOverview, setShowOverview] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState<Container | Volume | null>(null);
-
-  const handleNodeClick = (nodeId: string) => {
-    const resource = [...containers, ...volumes].find(r => r.id === nodeId);
-    if (resource) {
-        setSelectedResource(resource);
-        setIsModalOpen(true);
-    }
-  };
-
-  const handleModalAction = (action: 'start' | 'stop' | 'remove', resourceId: string) => {
-    const command = action === 'remove' ? `docker rm ${resourceId}` : `docker ${action} ${resourceId}`;
-    executeCommand(command);
-    setIsModalOpen(false);
-  };
 
   useActiveNetworkSync(activeNetwork, setActiveNetwork)
 
@@ -64,19 +52,40 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
     prevContainersRef.current = containers
   }, [containers])
 
-  const getContainerLayoutClass = (containers: Container[]) => {
-    if (containers.length === 0) return 'empty-layout'
-    if (containers.length <= 2) return 'small-layout'
-    return 'normal-layout'
-  }
+  const unconnectedContainers = containers.filter(c => c.network === null);
+  const unconnectedVolumes = volumes.filter(v => !v.connectedContainers || v.connectedContainers.length === 0);
+  const showUnconnectedTab = unconnectedContainers.length > 0 || unconnectedVolumes.length > 0;
+
+  const allTabs = [
+    ...(showUnconnectedTab ? [{ id: 'unconnected', name: '연결 전' }] : []),
+    ...networks,
+  ];
 
   const handleTabClick = (tabId: string) => {
     setActiveNetwork(tabId)
   }
 
-  const handleTabClose = (tabId: string) => {
-    if (tabId === 'bridge') return
-  }
+  const handleTabNameClick = (network: Network) => {
+    setSelectedNetwork(network);
+    setNetworkDetailModalOpen(true);
+  };
+
+  const handleTabClose = (tabId: string, tabName: string) => {
+    if (tabId === 'bridge' || tabId === 'unconnected') return;
+    
+    executeCommand(`docker network rm ${tabName}`);
+
+    if (activeNetwork === tabId) {
+      setActiveNetwork('bridge');
+    }
+  };
+
+  const handleAddNetworkClick = () => {
+    const networkName = window.prompt("생성할 네트워크의 이름을 입력하세요:");
+    if (networkName && networkName.trim()) {
+      executeCommand(`docker network create ${networkName.trim()}`);
+    }
+  };
 
   const handleContainerClick = (container: Container) => {
     setSelectedContainer(container)
@@ -100,54 +109,68 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
     return undefined;
   };
 
-  const activeNetworkContainers = containers.filter(c => {
-    const currentNetwork = networks.find(n => n.id === activeNetwork);
-    if (!currentNetwork) return false;
-    
-    return c.network === currentNetwork.id || 
-           c.network === currentNetwork.name || 
-           (!c.network && activeNetwork === 'bridge');
-  })
+  const activeNetworkContainers = activeNetwork === 'unconnected'
+    ? unconnectedContainers
+    : containers.filter(c => {
+        const currentNetwork = networks.find(n => n.id === activeNetwork);
+        if (!currentNetwork) return false;
+        return c.network === currentNetwork.id || c.network === currentNetwork.name;
+      });
 
-  const activeNetworkVolumes = volumes.filter(v => {
-    const currentNetwork = networks.find(n => n.id === activeNetwork);
-    if (!currentNetwork) return false;
-    
-    const isInActiveNetwork = v.networkId === currentNetwork.id || 
-                              v.networkId === currentNetwork.name ||
-                              (!v.networkId && activeNetwork === 'bridge')
-    
-    const isNotConnectedToAnyContainer = !containers.some(c => 
-      c.volumes?.some(cv => cv.id === v.id)
-    )
-    
-    return isInActiveNetwork && isNotConnectedToAnyContainer
-  })
+  const activeNetworkVolumes = activeNetwork === 'unconnected'
+    ? unconnectedVolumes
+    : volumes.filter(v => {
+        const isUnconnectedVolume = !v.connectedContainers || v.connectedContainers.length === 0;
+        if (!isUnconnectedVolume) return false;
+
+        const currentNetwork = networks.find(n => n.id === activeNetwork);
+        if (!currentNetwork) return false;
+
+        return false;
+      });
+
+  const getContainerLayoutClass = (containers: Container[]) => {
+    if (containers.length === 0) return 'empty-layout'
+    if (containers.length <= 2) return 'small-layout'
+    return 'normal-layout'
+  }
 
   return (
     <div className="visualizer-container">
-      <div className={`chrome-toolbar ${showOverview ? 'overview-mode' : ''}`}>
+      <div className="chrome-toolbar">
         {!showOverview && (
-          <div className="network-tabs">
-            {networks.map(network => (
-              <div
-                key={network.id}
-                className={`chrome-tab ${activeNetwork === network.id ? 'active' : ''}`}
-                onClick={() => handleTabClick(network.id)}
-              >
-                <span className="tab-icon">⚡</span>
-                <span className="tab-title">{network.name}</span>
-                <button
-                  className="tab-close"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleTabClose(network.id)
-                  }}
+          <div className="network-tabs-container">
+            <div className="network-tabs">
+              {allTabs.map(tab => (
+                <div
+                  key={tab.id}
+                  className={`chrome-tab ${activeNetwork === tab.id ? 'active' : ''}`}
+                  onClick={() => handleTabClick(tab.id)}
                 >
-                  ×
-                </button>
-              </div>
-            ))}
+                  <span className="tab-icon">{tab.id === 'unconnected' ? '🔌' : '⚡'}</span>
+                  <span className="tab-title" onClick={(e) => {
+                    if (tab.id !== 'unconnected') {
+                      e.stopPropagation();
+                      handleTabNameClick(tab as Network);
+                    }
+                  }}>
+                    {tab.name}
+                  </span>
+                  {tab.id !== 'bridge' && tab.id !== 'unconnected' && (
+                    <button
+                      className="tab-close"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleTabClose(tab.id, tab.name)
+                      }}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button className="add-network-btn" onClick={handleAddNetworkClick}>+</button>
           </div>
         )}
         <div className="view-toggle">
@@ -158,7 +181,7 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
 
       {showOverview ? (
         <main id="capture-area" className="overview-main-content">
-          <NetworkGraph onNodeClick={handleNodeClick} />
+          <NetworkGraph onNodeClick={() => {}} />
           <GraphLegend />
         </main>
       ) : (
@@ -176,51 +199,11 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
                     onClick={() => handleContainerClick(container)}
                     isCreating={highlightedId === container.id}
                   />
-                  
-                  {container.volumes && container.volumes.length > 0 && (
-                    <div className="volumes-container">
-                      {container.volumes.map((volume, volumeIdx) => {
-                        const volumeCount = container.volumes?.length || 0;
-                        const offset = volumeCount > 1
-                          ? (volumeIdx - (volumeCount - 1) / 2) * 100
-                          : 0;
-                        
-                        return (
-                          <div 
-                            key={`${container.id}-${volume.id}`} 
-                            className="volume-connection-wrapper"
-                            style={{ 
-                              transform: `translateX(${offset}px)`,
-                              position: 'absolute', 
-                              left: '50%',
-                              marginLeft: '-35px',
-                              top: '0'
-                            }}
-                          >
-                            <VolumeConnection 
-                              container={container}
-                              volume={volume}
-                              isConnecting={false}
-                            />
-                            <div 
-                              className={`volume-circle attached-volume ${highlightedId === volume.id ? 'highlight' : ''}`}
-                              onClick={() => handleVolumeClick(volume)}
-                              title={`Path: ${volume.containerPath}`}
-                            >
-                              <div className="volume-connection-dot"></div>
-                              <div className="volume-name">{volume.name}</div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
                 </div>
               ))}
-              
               {activeNetworkContainers.length === 0 && (
                 <div className="empty-message">
-                  컨테이너가 없습니다. docker run 명령어로 컨테이너를 생성해보세요.
+                  {activeNetwork === 'unconnected' ? '네트워크에 연결되지 않은 컨테이너가 없습니다.' : '컨테이너가 없습니다. docker run 명령어로 컨테이너를 생성해보세요.'}
                 </div>
               )}
             </div>
@@ -242,9 +225,8 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
                     <div className="volume-name">{volume.name}</div>
                   </div>
                 ))}
-                
                 {activeNetworkVolumes.length === 0 && (
-                  <div className="empty-volume-message">연결되지 않은 볼륨이 없습니다</div>
+                  <div className="empty-volume-message">{activeNetwork === 'unconnected' ? '연결되지 않은 볼륨이 없습니다.' : ''}</div>
                 )}
               </div>
             </div>
@@ -257,66 +239,31 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
       <ContainerDetailModal
         container={selectedContainer}
         open={containerDetailModalOpen}
-        onClose={() => {
-          setContainerDetailModalOpen(false)
-          setSelectedContainer(null)
-        }}
-        onStart={(containerId) => {
-          const { updateContainer, executeCommand } = useDockerStore.getState()
-          const container = containers.find(c => c.id === containerId)
-          if (container) {
-            updateContainer(containerId, { status: 'running' })
-            executeCommand(`docker start ${container.name}`)
-          }
-        }}
-        onStop={(containerId) => {
-          const { updateContainer, executeCommand } = useDockerStore.getState()
-          const container = containers.find(c => c.id === containerId)
-          if (container) {
-            updateContainer(containerId, { status: 'stopped' })
-            executeCommand(`docker stop ${container.name}`)
-          }
-        }}
-        onPause={(containerId) => {
-            const { updateContainer, executeCommand } = useDockerStore.getState()
-            const container = containers.find(c => c.id === containerId)
-            if (container) {
-            updateContainer(containerId, { status: 'paused' })
-            executeCommand(`docker pause ${container.name}`)
-            }
-        }}
-        onRemove={(containerId) => {
-            const { removeContainer, executeCommand } = useDockerStore.getState()
-            const container = containers.find(c => c.id === containerId)
-            if (container) {
-            removeContainer(containerId)
-            executeCommand(`docker rm ${container.name}`)
-            }
-        }}
+        onClose={() => setContainerDetailModalOpen(false)}
+        onStart={(id) => executeCommand(`docker start ${id}`)}
+        onStop={(id) => executeCommand(`docker stop ${id}`)}
+        onPause={(id) => executeCommand(`docker pause ${id}`)}
+        onRemove={(id) => executeCommand(`docker rm ${id}`)}
       />
       
       <VolumeDetailModal
         volume={selectedVolume}
         open={volumeDetailModalOpen}
-        onClose={() => {
-          setVolumeDetailModalOpen(false)
-          setSelectedVolume(null)
-        }}
-        onRemove={(volumeId) => {
-          const { removeVolume, executeCommand } = useDockerStore.getState()
-          const volume = volumes.find(v => v.id === volumeId)
-          if (volume) {
-            removeVolume(volumeId)
-            executeCommand(`docker volume rm ${volume.name}`)
-          }
-        }}
+        onClose={() => setVolumeDetailModalOpen(false)}
+        onRemove={(id) => executeCommand(`docker volume rm ${id}`)}
+      />
+
+      <NetworkDetailModal 
+        network={selectedNetwork}
+        open={networkDetailModalOpen}
+        onClose={() => setNetworkDetailModalOpen(false)}
       />
 
       <ResourceDetailModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           resource={selectedResource}
-          onAction={handleModalAction}
+          onAction={(action, resourceId) => executeCommand(`docker ${action} ${resourceId}`)}
       />
     </div>
   )
