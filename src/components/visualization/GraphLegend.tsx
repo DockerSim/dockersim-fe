@@ -2,18 +2,8 @@
 
 import React, { useState, useRef, MouseEvent, useEffect } from 'react';
 import { useDockerStore } from '@/store/dockerStore';
+import { getNetworkColor } from '@/utils/colorUtils'; // 공통 유틸리티 임포트
 import './GraphLegend.css';
-
-// 네트워크 색상 정보
-const groupFillColors: { [key: string]: string } = {
-    'bridge': 'rgba(100, 100, 100, 0.1)',
-    'custom-net-1': 'rgba(65, 105, 225, 0.2)',
-};
-
-const groupBorderColors: { [key: string]: string } = {
-    'bridge': '#646464',
-    'custom-net-1': '#4169E1',
-};
 
 const GraphLegend: React.FC = () => {
     const { networks } = useDockerStore();
@@ -80,6 +70,9 @@ const GraphLegend: React.FC = () => {
         };
     }, [isDragging]);
 
+    // bridge 네트워크를 제외한 네트워크 목록을 필터링하여 인덱스를 다시 계산
+    const otherNetworks = networks.filter(n => n.name !== 'bridge');
+
     return (
         <div 
             ref={legendRef}
@@ -106,14 +99,18 @@ const GraphLegend: React.FC = () => {
                 </div>
 
                 {/* 네트워크 범례 */}
-                {networks.map(network => (
-                    <div className="legend-item" key={network.id}>
-                        <div className="legend-symbol-container">
-                            <div className="legend-symbol network-area" style={{ backgroundColor: groupFillColors[network.id] || 'rgba(128,128,128,0.1)', borderColor: groupBorderColors[network.id] || '#808080' }}></div>
+                {networks.map(network => {
+                    const networkIndex = otherNetworks.findIndex(n => n.id === network.id);
+                    const colors = getNetworkColor(network.id, networkIndex);
+                    return (
+                        <div className="legend-item" key={network.id}>
+                            <div className="legend-symbol-container">
+                                <div className="legend-symbol network-area" style={{ backgroundColor: colors.fill, borderColor: colors.border }}></div>
+                            </div>
+                            <div className="legend-label">{network.name} (네트워크)</div>
                         </div>
-                        <div className="legend-label">{network.name} (네트워크)</div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

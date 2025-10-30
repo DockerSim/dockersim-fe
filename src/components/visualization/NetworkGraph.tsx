@@ -5,22 +5,12 @@ import { Network, Node, Edge } from 'vis-network';
 import 'vis-network/styles/vis-network.css';
 import * as d3 from 'd3';
 import { useDockerStore } from '@/store/dockerStore';
+import { getNetworkColor } from '@/utils/colorUtils'; // 공통 유틸리티 임포트
 
 // Props 타입 정의
 interface NetworkGraphProps {
   onNodeClick: (nodeId: string) => void;
 }
-
-// 네트워크 색상 정의
-const groupFillColors: { [key: string]: string } = {
-    'bridge': 'rgba(100, 100, 100, 0.1)',
-    'custom-net-1': 'rgba(65, 105, 225, 0.2)',
-};
-
-const groupBorderColors: { [key: string]: string } = {
-    'bridge': '#646464',
-    'custom-net-1': '#4169E1',
-};
 
 const NetworkGraph: React.FC<NetworkGraphProps> = ({ onNodeClick }) => {
     const visJsRef = useRef<HTMLDivElement>(null);
@@ -80,7 +70,6 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ onNodeClick }) => {
             const network = new Network(visJsRef.current, data, options);
             networkInstanceRef.current = network;
 
-            // --- 클릭 이벤트 리스너 추가 ---
             network.on('click', (params) => {
                 if (params.nodes.length > 0) {
                     const nodeId = params.nodes[0];
@@ -101,6 +90,8 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ onNodeClick }) => {
 
             const nodePositions = network.getPositions();
             const groups: { [key: string]: [number, number][] } = {};
+            
+            const otherNetworks = networks.filter(n => n.name !== 'bridge');
 
             networks.forEach(net => {
                 if (!groups[net.id]) groups[net.id] = [];
@@ -121,6 +112,12 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ onNodeClick }) => {
                 const groupNodes = groups[groupName];
                 if (groupNodes.length === 0) continue;
 
+                const network = networks.find(n => n.id === groupName);
+                if (!network) continue;
+
+                const networkIndex = otherNetworks.findIndex(n => n.id === network.id);
+                const colors = getNetworkColor(network.id, networkIndex);
+
                 const padding = 40;
                 const paddedNodes: [number, number][] = groupNodes.flatMap(n => [
                     [n[0] - padding, n[1] - padding],
@@ -133,8 +130,8 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ onNodeClick }) => {
                 if (hull) {
                     hullGroup.append("path")
                         .attr("d", line(hull) || "")
-                        .style("fill", groupFillColors[groupName] || 'rgba(128,128,128,0.1)')
-                        .style("stroke", groupBorderColors[groupName] || '#808080')
+                        .style("fill", colors.fill)
+                        .style("stroke", colors.border)
                         .style("stroke-width", 2)
                         .style("stroke-linejoin", "round");
                 }

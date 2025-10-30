@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Network } from '../../store/dockerStore';
-import ImageModal from './ImageModal'; // ImageSelectionModal -> ImageModal
+import ImageModal from './ImageModal';
 import './ResourceCreationModal.css';
 
 export interface ResourceCreationData {
   name: string;
-  image?: string; // 컨테이너 생성 시에만 필요
+  image?: string;
   networkId: string;
   ports?: Array<{
     hostPort: number;
@@ -41,7 +41,7 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
 }) => {
   const [resourceName, setResourceName] = useState('');
   const [imageName, setImageName] = useState('');
-  const [selectedNetworkId, setSelectedNetworkId] = useState('');
+  const [selectedNetworkId, setSelectedNetworkId] = useState('bridge'); // 기본값을 'bridge'로 설정
   const [mountPath, setMountPath] = useState('/data');
   const [ports, setPorts] = useState<Port[]>([{ hostPort: '', containerPort: '', protocol: 'tcp' }]);
   const [imageSelectionModalOpen, setImageSelectionModalOpen] = useState(false);
@@ -61,13 +61,14 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
   };
 
   const handleConfirm = () => {
-    if (!selectedNetworkId || (type === 'container' && !imageName)) {
+    if (type === 'container' && !imageName) {
+      alert('Docker 이미지를 선택해주세요.');
       return;
     }
 
     const data: ResourceCreationData = {
       name: resourceName.trim() || (type === 'container' ? `container_${Date.now()}` : `volume_${Date.now()}`),
-      networkId: selectedNetworkId,
+      networkId: selectedNetworkId || 'bridge', // 선택되지 않은 경우 'bridge' 사용
     };
 
     if (type === 'container') {
@@ -91,7 +92,7 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
     setResourceName('');
     setImageName('');
     setMountPath('/data');
-    setSelectedNetworkId('');
+    setSelectedNetworkId('bridge'); // 초기화 시 'bridge'로 설정
     setPorts([{ hostPort: '', containerPort: '', protocol: 'tcp' }]);
     setImageSelectionModalOpen(false);
     onClose();
@@ -116,7 +117,7 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
     setPorts(newPorts);
   };
 
-  const isFormValid = selectedNetworkId && (type === 'volume' || imageName);
+  const isFormValid = type === 'volume' ? resourceName.trim() !== '' : imageName !== '';
 
   return createPortal(
     <div className="resource-modal-backdrop" onClick={handleBackdropClick}>
@@ -186,14 +187,13 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
 
           <div className="form-group">
             <label>
-              네트워크 <span className="required">*</span>
+              네트워크 (선택사항)
             </label>
             <select
               value={selectedNetworkId}
               onChange={(e) => setSelectedNetworkId(e.target.value)}
               className="form-select"
             >
-              <option value="">네트워크를 선택하세요</option>
               {networks.map(network => (
                 <option key={network.id} value={network.id}>
                   {network.name}
