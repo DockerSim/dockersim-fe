@@ -1,0 +1,98 @@
+.dockerfile-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dockerfile-modal-container {
+  background: white;
+  color: #333;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 900px; /* 너비 확장 */
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e0e0e0;
+}
+
+.dockerfile-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.dockerfile-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #343a40;
+}
+
+.dockerfile-modal-content {
+  display: flex; /* 이분할 레이아웃 */
+  gap: 1rem;
+  padding: 1.5rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.feedback-column {
+  flex: 1; /* 1:1 비율로 공간 차지 */
+  background-color: #fdfdfd;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.feedback-column h3 {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  background-color: #f1f3f5;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.feedback-column pre {
+  margin: 0;
+  padding: 1rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  color: #212529;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.dockerfile-modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  background-color: #f8f9fa;
+}
+
+.action-btn {
+  padding: 0.6rem 1.2rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: #6c757d;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+.action-btn:hover {
+  background-color: #5a6268;
+}

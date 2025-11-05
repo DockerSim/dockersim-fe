@@ -6,6 +6,10 @@ import Terminal from '../components/Terminal'
 import Visualizer from '../components/Visualizer'
 import Sidebar from '../components/Sidebar'
 import ResizablePanel from '../components/ResizablePanel'
+import ComposeFileModal from '../components/modals/ComposeFileModal'
+import ImageModal from '../components/modals/ImageModal'
+import DockerfileFeedbackModal from '../components/modals/DockerfileFeedbackModal' // 피드백 모달 임포트
+import { useDockerStore } from '../store/dockerStore'
 import '../styles/HomePage.css'
 import { ToastContainer, ToastProps } from '../components/common/Toast';
 import { ProcessStep } from '../components/ProcessVisualization';
@@ -18,6 +22,12 @@ export default function HomePage() {
   const [processes, setProcesses] = useState<ProcessStep[]>([]);
   const [sidebarWidth, setSidebarWidth] = useState(450);
   const isResizing = useRef(false);
+  
+  const [composeModalOpen, setComposeModalOpen] = useState(false);
+  const [composeFileContent, setComposeFileContent] = useState('');
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [dockerfileFeedbackModalOpen, setDockerfileFeedbackModalOpen] = useState(false); // 피드백 모달 상태 추가
+  const { generateComposeFile } = useDockerStore();
 
   useNetworkSync();
 
@@ -31,9 +41,9 @@ export default function HomePage() {
   }, [])
 
   const showProcessBubble = (
-      type: ProcessStep['type'],
-      message: string,
-      containerId: string
+    type: ProcessStep['type'],
+    message: string,
+    containerId: string
   ) => {
     const id = Date.now().toString() + Math.random();
     setProcesses(prev => [...prev, { id, type, message, containerId }]);
@@ -49,6 +59,20 @@ export default function HomePage() {
   const toggleTerminal = () => {
     setIsTerminalCollapsed(!isTerminalCollapsed)
   }
+
+  const handleComposeFileClick = () => {
+    const content = generateComposeFile();
+    setComposeFileContent(content);
+    setComposeModalOpen(true);
+  };
+
+  const handleImageClick = () => {
+    setImageModalOpen(true);
+  };
+
+  const handleDockerfileFeedbackClick = () => {
+    setDockerfileFeedbackModalOpen(true);
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -79,55 +103,72 @@ export default function HomePage() {
   const bothCollapsed = isControlPanelCollapsed && isTerminalCollapsed
 
   return (
-      <div className="home-layout">
-        <Sidebar
-            isControlPanelCollapsed={isControlPanelCollapsed}
-            isTerminalCollapsed={isTerminalCollapsed}
-            onControlPanelToggle={toggleControlPanel}
-            onTerminalToggle={toggleTerminal}
-        />
-
-        <div
-            className={`main-content sidebar-visible ${bothCollapsed ? 'both-collapsed' : ''}`}
-            style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
-        >
-          <div className="sidebar-content">
-            <ResizablePanel
-                isCollapsed={isControlPanelCollapsed}
-                onCollapseToggle={toggleControlPanel}
-                defaultHeight={350}
-                minHeight={200}
-                maxHeight={600}
-                className="control-panel-container"
-                title="리소스 제어"
-            >
-              <ControlPanel
-                  isCollapsed={isControlPanelCollapsed}
-                  showToast={showToast}
-                  showProcessBubble={showProcessBubble}
-              />
-            </ResizablePanel>
-
-            <ResizablePanel
-                isCollapsed={isTerminalCollapsed}
-                onCollapseToggle={toggleTerminal}
-                defaultHeight={300}
-                minHeight={150}
-                maxHeight={500}
-                className="terminal-container"
-                title="터미널"
-            >
-              <Terminal />
-            </ResizablePanel>
-          </div>
-
-          <div className="resizer" onMouseDown={handleMouseDown} />
-
-          <div className={`visualizer ${bothCollapsed ? 'expanded' : ''}`}>
-            <Visualizer processes={processes} />
-          </div>
+    <div className="home-layout">
+      <Sidebar 
+        onControlPanelToggle={toggleControlPanel}
+        onTerminalToggle={toggleTerminal}
+        onComposeFileClick={handleComposeFileClick}
+        onImageClick={handleImageClick}
+        onDockerfileFeedbackClick={handleDockerfileFeedbackClick} // 핸들러 연결
+      />
+      
+      <div 
+        className={`main-content`}
+        style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
+      >
+        <div className="sidebar-content">
+          <ResizablePanel 
+            isCollapsed={isControlPanelCollapsed}
+            onCollapseToggle={toggleControlPanel}
+            defaultHeight={350}
+            minHeight={200}
+            maxHeight={600}
+            className="control-panel-container"
+            title="리소스 제어"
+          >
+            <ControlPanel 
+              isCollapsed={isControlPanelCollapsed}
+              showToast={showToast}
+              showProcessBubble={showProcessBubble}
+            />
+          </ResizablePanel>
+          
+          <ResizablePanel 
+            isCollapsed={isTerminalCollapsed}
+            onCollapseToggle={toggleTerminal}
+            defaultHeight={300}
+            minHeight={150}
+            maxHeight={500}
+            className="terminal-container"
+            title="터미널"
+          >
+            <Terminal />
+          </ResizablePanel>
         </div>
-        <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+        <div className="resizer" onMouseDown={handleMouseDown} />
+        
+        <div className={`visualizer ${bothCollapsed ? 'expanded' : ''}`}>
+          <Visualizer processes={processes} />
+        </div>
       </div>
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      <ComposeFileModal 
+        open={composeModalOpen} 
+        onClose={() => setComposeModalOpen(false)} 
+        composeFileContent={composeFileContent} 
+      />
+
+      <ImageModal 
+        isOpen={imageModalOpen} 
+        onClose={() => setImageModalOpen(false)} 
+      />
+
+      <DockerfileFeedbackModal 
+        open={dockerfileFeedbackModalOpen} 
+        onClose={() => setDockerfileFeedbackModalOpen(false)} 
+      />
+    </div>
   )
 }

@@ -1,0 +1,97 @@
+.compose-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.compose-modal-container {
+  background: white;
+  color: #333;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e0e0e0;
+}
+
+.compose-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  background-color: #f8f9fa;
+}
+
+.compose-modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #343a40;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #868e96;
+  cursor: pointer;
+}
+
+.compose-modal-content {
+  padding: 1.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  background-color: #fdfdfd;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.compose-modal-content pre {
+  margin: 0;
+  white-space: pre-wrap;       
+  word-wrap: break-word;      
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  color: #212529;
+}
+
+.compose-modal-actions {
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  background-color: #f8f9fa;
+}
+
+.action-btn {
+  padding: 0.6rem 1.2rem;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: #fff;
+  color: #495057;
+  transition: background-color 0.2s;
+}
+
+.action-btn:hover {
+  background-color: #f1f3f5;
+}
+
+.download-btn {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.download-btn:hover {
+  background-color: #0056b3;
+}
