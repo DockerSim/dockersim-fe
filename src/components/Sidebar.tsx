@@ -22,7 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     <div className="sidebar">
       <div className="sidebar-menu">
         <button className="menu-item" onClick={onImageClick} title="이미지">
-          <span className="icon">🖼️</span>
+          <span className="icon">🗄️</span>
           <span className="label">이미지</span>
         </button>
         <button className="menu-item" onClick={onControlPanelToggle} title="리소스 제어">
