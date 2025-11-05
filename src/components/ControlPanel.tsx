@@ -45,8 +45,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
   
   const handleCreateNetwork = () => {
     const networkName = prompt('새 네트워크 이름을 입력하세요:');
-    if (networkName) {
-      executeCommand(`docker network create ${networkName}`);
+    if (networkName && networkName.trim()) {
+      executeCommand(`docker network create ${networkName.trim()}`);
     }
   };
 
@@ -58,7 +58,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
       command += ` ${data.image}`;
       executeCommand(command);
     } else { // Volume Creation
-      executeCommand(`docker volume create ${data.name}`);
+      let command = `docker volume create`;
+      if (data.name) command += ` ${data.name}`;
+      executeCommand(command);
     }
     setResourceCreationModalOpen(false);
   };
@@ -101,9 +103,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
       {!isCollapsed && (
         <div className="control-panel-content">
           <div className="tab-navigation">
-            <button className={`tab-button ${activeTab === 'containers' ? 'active' : ''}`} onClick={() => setActiveTab('containers')}>📦 컨테이너 ({containers.length})</button>
-            <button className={`tab-button ${activeTab === 'volumes' ? 'active' : ''}`} onClick={() => setActiveTab('volumes')}>💾 볼륨 ({volumes.length})</button>
-            <button className={`tab-button ${activeTab === 'networks' ? 'active' : ''}`} onClick={() => setActiveTab('networks')}>🌐 네트워크 ({networks.length})</button>
+            <button className={`tab-button ${activeTab === 'containers' ? 'active' : ''}`} onClick={() => setActiveTab('containers')}>📦 컨테이너 ({(containers || []).length})</button>
+            <button className={`tab-button ${activeTab === 'volumes' ? 'active' : ''}`} onClick={() => setActiveTab('volumes')}>💾 볼륨 ({(volumes || []).length})</button>
+            <button className={`tab-button ${activeTab === 'networks' ? 'active' : ''}`} onClick={() => setActiveTab('networks')}>🌐 네트워크 ({(networks || []).length})</button>
           </div>
 
           <div className="tab-content">
@@ -114,7 +116,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
                   <AddBtn onClick={() => handleCreateResource('container')} size="sm" />
                 </div>
                 <div className="resource-list">
-                  {containers.map(container => (
+                  {(containers || []).map(container => (
                     <div key={container.id} className="resource-item">
                       <div className="resource-info">
                         <div className="resource-name">{container.name}</div>
@@ -131,7 +133,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
                       </div>
                     </div>
                   ))}
-                  {containers.length === 0 && <div className="empty-state"><p>컨테이너가 없습니다</p></div>}
+                  {(containers || []).length === 0 && <div className="empty-state"><p>컨테이너가 없습니다</p></div>}
                 </div>
               </div>
             )}
@@ -146,7 +148,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
                   </div>
                 </div>
                 <div className="resource-list">
-                  {volumes.map(volume => (
+                  {(volumes || []).map(volume => (
                     <div key={volume.id} className="resource-item" onClick={() => openVolumeDetail(volume)}>
                       <div className="resource-info">
                         <div className="resource-name">{volume.name}</div>
@@ -159,7 +161,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
                       </div>
                     </div>
                   ))}
-                  {volumes.length === 0 && <div className="empty-state"><p>볼륨이 없습니다</p></div>}
+                  {(volumes || []).length === 0 && <div className="empty-state"><p>볼륨이 없습니다</p></div>}
                 </div>
               </div>
             )}
@@ -173,16 +175,16 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
                     <div className="network-connection-control">
                         <select value={selectedNetworkId || ''} onChange={(e) => setSelectedNetworkId(e.target.value)} className="select-input">
                             <option value="">네트워크 선택</option>
-                            {networks.map(network => <option key={network.id} value={network.id}>{network.name}</option>)}
+                            {(networks || []).map(network => <option key={network.id} value={network.id}>{network.name}</option>)}
                         </select>
                         <select value={selectedContainerId || ''} onChange={(e) => setSelectedContainerId(e.target.value)} className="select-input">
                             <option value="">컨테이너 선택</option>
-                            {containers.map(container => <option key={container.id} value={container.id}>{container.name}</option>)}
+                            {(containers || []).map(container => <option key={container.id} value={container.id}>{container.name}</option>)}
                         </select>
                         <NetworkConnectBtn onClick={handleNetworkConnect} size="sm" />
                     </div>
                     <div className="resource-list">
-                        {networks.map(network => (
+                        {(networks || []).map(network => (
                             <div key={network.id} className="resource-item">
                                 <div className="resource-info">
                                     <div className="resource-name">{network.name}</div>
@@ -202,8 +204,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
         </div>
       )}
 
-      <VolumeConnectModal containers={containers} volumes={volumes} open={volumeConnectModalOpen} onConnect={handleVolumeConnect} onClose={() => setVolumeConnectModalOpen(false)} />
-      <ResourceCreationModal type={resourceCreationType} networks={networks} open={resourceCreationModalOpen} onConfirm={handleResourceCreationConfirm} onClose={() => setResourceCreationModalOpen(false)} />
+      <VolumeConnectModal containers={containers || []} volumes={volumes || []} open={volumeConnectModalOpen} onConnect={handleVolumeConnect} onClose={() => setVolumeConnectModalOpen(false)} />
+      <ResourceCreationModal type={resourceCreationType} networks={networks || []} open={resourceCreationModalOpen} onConfirm={handleResourceCreationConfirm} onClose={() => setResourceCreationModalOpen(false)} />
       <VolumeDetailModal volume={selectedVolume} open={volumeDetailModalOpen} onClose={() => setVolumeDetailModalOpen(false)} onRemove={(volumeName) => handleVolumeAction(volumeName, 'remove')} />
     </div>
   );

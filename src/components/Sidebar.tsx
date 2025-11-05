@@ -20,9 +20,6 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   return (
     <div className="sidebar">
-      <div className="sidebar-logo">
-        <span>🐳</span>
-      </div>
       <div className="sidebar-menu">
         <button className="menu-item" onClick={onImageClick} title="이미지">
           <span className="icon">🖼️</span>

@@ -1,14 +1,14 @@
 .home-layout {
-  display: flex; /* Flexbox 레이아웃으로 설정 */
+  display: flex;
   height: 100vh;
   background-color: #f0f2f5;
 }
 
 .main-content {
   display: flex;
-  flex: 1; /* 남은 공간을 모두 차지하도록 설정 */
+  flex: 1;
   overflow: hidden;
-  /* margin-left 제거 */
+  /* margin-left 속성을 완전히 제거하여 간격을 없앱니다. */
 }
 
 .sidebar-content {
@@ -20,13 +20,14 @@
   background-color: #fff;
   border-right: 1px solid #e0e0e0;
   flex-shrink: 0;
+  transition: width 0.3s ease, padding 0.3s ease;
 }
 
 .resizer {
   width: 5px;
   cursor: col-resize;
   background-color: #e0e0e0;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, width 0.3s ease;
   flex-shrink: 0;
   z-index: 10;
 }
@@ -53,9 +54,10 @@
 .main-content.both-collapsed .sidebar-content {
   width: 0;
   padding: 0;
+  border-right: none;
   overflow: hidden;
 }
 
 .main-content.both-collapsed .resizer {
-  display: none;
+  width: 0;
 }

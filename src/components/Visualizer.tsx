@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useDockerStore, Container, Volume, Network } from '../store/dockerStore'
 import { ContainerCard } from './ContainerCard'
-import { VolumeConnection } from './VolumeConnection' // 연결선 컴포넌트
+import { VolumeConnection } from './VolumeConnection'
 import { useActiveNetworkSync } from '../hooks/useActiveNetworkSync'
 import ContainerDetailModal from './modals/ContainerDetailModal'
 import VolumeDetailModal from './modals/VolumeDetailModal'
@@ -11,8 +11,6 @@ import NetworkDetailModal from './modals/NetworkDetailModal'
 import '../styles/Visualizer.css'
 import './modals/NetworkDetailModal.css'
 import { ProcessVisualization, ProcessStep } from './ProcessVisualization';
-
-// Imports from OverviewPage
 import NetworkGraph from './visualization/NetworkGraph';
 import GraphLegend from './visualization/GraphLegend';
 import ResourceDetailModal from './modals/ResourceDetailModal';
@@ -41,8 +39,8 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
   useActiveNetworkSync(activeNetwork, setActiveNetwork)
 
   useEffect(() => {
-    if (containers.length > prevContainersRef.current.length) {
-      const newContainer = containers.find(c => !prevContainersRef.current.some(prev => prev.id === c.id));
+    if ((containers || []).length > (prevContainersRef.current || []).length) {
+      const newContainer = (containers || []).find(c => !(prevContainersRef.current || []).some(prev => prev.id === c.id));
       if (newContainer) {
         setHighlightedId(newContainer.id);
         setTimeout(() => setHighlightedId(null), 1500);
@@ -94,16 +92,16 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
     return undefined;
   };
 
-  const activeNetworkContainers = containers.filter(c => {
-    const currentNetwork = networks.find(n => n.id === activeNetwork);
+  const activeNetworkContainers = (containers || []).filter(c => {
+    const currentNetwork = (networks || []).find(n => n.id === activeNetwork);
     if (!currentNetwork) return false;
     return c.network === currentNetwork.id || c.network === currentNetwork.name;
   });
 
-  const unconnectedVolumes = volumes.filter(v => v.connectedContainers.length === 0);
+  const unconnectedVolumes = (volumes || []).filter(v => !v.connectedContainers || v.connectedContainers.length === 0);
 
   const getContainerLayoutClass = (containers: Container[]) => {
-    if (containers.length === 0) return 'empty-layout';
+    if (!containers || containers.length === 0) return 'empty-layout';
     if (containers.length <= 2) return 'small-layout';
     return 'normal-layout';
   }
@@ -114,7 +112,7 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
         {!showOverview && (
           <div className="network-tabs-container">
             <div className="network-tabs">
-              {networks.map(tab => (
+              {(networks || []).map(tab => (
                 <div
                   key={tab.id}
                   className={`chrome-tab ${activeNetwork === tab.id ? 'active' : ''}`}
