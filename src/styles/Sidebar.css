@@ -7,12 +7,11 @@
   padding: 0.8rem 0;
   height: 100vh;
   border-right: 1px solid #dee2e6;
-  flex-shrink: 0; /* 너비가 줄어들지 않도록 설정 */
-  /* position: fixed 제거 */
+  flex-shrink: 0;
 }
 
 .sidebar-logo {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .sidebar-logo span {

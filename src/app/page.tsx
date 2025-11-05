@@ -8,7 +8,7 @@ import Sidebar from '../components/Sidebar'
 import ResizablePanel from '../components/ResizablePanel'
 import ComposeFileModal from '../components/modals/ComposeFileModal'
 import ImageModal from '../components/modals/ImageModal'
-import DockerfileFeedbackModal from '../components/modals/DockerfileFeedbackModal' // 피드백 모달 임포트
+import DockerfileFeedbackModal from '../components/modals/DockerfileFeedbackModal'
 import { useDockerStore } from '../store/dockerStore'
 import '../styles/HomePage.css'
 import { ToastContainer, ToastProps } from '../components/common/Toast';
@@ -26,7 +26,7 @@ export default function HomePage() {
   const [composeModalOpen, setComposeModalOpen] = useState(false);
   const [composeFileContent, setComposeFileContent] = useState('');
   const [imageModalOpen, setImageModalOpen] = useState(false);
-  const [dockerfileFeedbackModalOpen, setDockerfileFeedbackModalOpen] = useState(false); // 피드백 모달 상태 추가
+  const [dockerfileFeedbackModalOpen, setDockerfileFeedbackModalOpen] = useState(false);
   const { generateComposeFile } = useDockerStore();
 
   useNetworkSync();
@@ -100,7 +100,7 @@ export default function HomePage() {
     };
   }, [handleMouseMove]);
 
-  const bothCollapsed = isControlPanelCollapsed && isTerminalCollapsed
+  const bothCollapsed = isControlPanelCollapsed && isTerminalCollapsed;
 
   return (
     <div className="home-layout">
@@ -109,49 +109,49 @@ export default function HomePage() {
         onTerminalToggle={toggleTerminal}
         onComposeFileClick={handleComposeFileClick}
         onImageClick={handleImageClick}
-        onDockerfileFeedbackClick={handleDockerfileFeedbackClick} // 핸들러 연결
+        onDockerfileFeedbackClick={handleDockerfileFeedbackClick}
       />
       
+      {/* main-content div를 제거하고 자식들을 home-layout의 직접적인 자식으로 만듭니다. */}
       <div 
-        className={`main-content`}
+        className={`sidebar-content ${bothCollapsed ? 'collapsed' : ''}`}
         style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
       >
-        <div className="sidebar-content">
-          <ResizablePanel 
+        <ResizablePanel 
+          isCollapsed={isControlPanelCollapsed}
+          onCollapseToggle={toggleControlPanel}
+          defaultHeight={350}
+          minHeight={200}
+          maxHeight={600}
+          className="control-panel-container"
+          title="리소스 제어"
+        >
+          <ControlPanel 
             isCollapsed={isControlPanelCollapsed}
-            onCollapseToggle={toggleControlPanel}
-            defaultHeight={350}
-            minHeight={200}
-            maxHeight={600}
-            className="control-panel-container"
-            title="리소스 제어"
-          >
-            <ControlPanel 
-              isCollapsed={isControlPanelCollapsed}
-              showToast={showToast}
-              showProcessBubble={showProcessBubble}
-            />
-          </ResizablePanel>
-          
-          <ResizablePanel 
-            isCollapsed={isTerminalCollapsed}
-            onCollapseToggle={toggleTerminal}
-            defaultHeight={300}
-            minHeight={150}
-            maxHeight={500}
-            className="terminal-container"
-            title="터미널"
-          >
-            <Terminal />
-          </ResizablePanel>
-        </div>
-
-        <div className="resizer" onMouseDown={handleMouseDown} />
+            showToast={showToast}
+            showProcessBubble={showProcessBubble}
+          />
+        </ResizablePanel>
         
-        <div className={`visualizer ${bothCollapsed ? 'expanded' : ''}`}>
-          <Visualizer processes={processes} />
-        </div>
+        <ResizablePanel 
+          isCollapsed={isTerminalCollapsed}
+          onCollapseToggle={toggleTerminal}
+          defaultHeight={300}
+          minHeight={150}
+          maxHeight={500}
+          className="terminal-container"
+          title="터미널"
+        >
+          <Terminal />
+        </ResizablePanel>
       </div>
+
+      <div className="resizer" onMouseDown={handleMouseDown} />
+      
+      <div className={`visualizer`}>
+        <Visualizer processes={processes} />
+      </div>
+
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       <ComposeFileModal 

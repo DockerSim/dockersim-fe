@@ -1,59 +1,12 @@
 import { create } from 'zustand';
 
 // --- 타입 정의 ---
-export interface Port {
-  hostPort: number;
-  containerPort: number;
-  protocol: 'tcp' | 'udp';
-}
-
-export interface Volume {
-  id: string;
-  name: string;
-  driver: string;
-  scope: 'local' | 'global';
-  createdAt: Date;
-  mountPath: string; // 컨테이너에 연결될 때의 경로
-  labels: Record<string, string> | null;
-  options: Record<string, string> | null;
-  connectedContainers: string[];
-}
-
-export interface Container {
-  id: string;
-  name: string;
-  image: string;
-  status: 'running' | 'stopped' | 'paused';
-  ports: Port[];
-  volumes: Volume[];
-  network: string | null;
-  created: Date;
-}
-
-export interface Network {
-  id: string;
-  name: string;
-  driver: string;
-  scope: 'local' | 'global';
-  createdAt: Date;
-  containers: Container[];
-}
-
-export interface DockerImage {
-  id: string;
-  name: string;
-  tag: string;
-  created: Date;
-  size: string;
-}
-
-export interface TerminalHistory {
-  id: string;
-  command: string;
-  output: string;
-  timestamp: string;
-  isError: boolean;
-}
+export interface Port { hostPort: number; containerPort: number; protocol: 'tcp' | 'udp'; }
+export interface Volume { id: string; name: string; driver: string; scope: 'local' | 'global'; createdAt: Date; mountPath: string; labels: Record<string, string> | null; options: Record<string, string> | null; connectedContainers: string[]; }
+export interface Container { id: string; name: string; image: string; status: 'running' | 'stopped' | 'paused'; ports: Port[]; volumes: Volume[]; network: string | null; created: Date; }
+export interface Network { id: string; name: string; driver: string; scope: 'local' | 'global'; createdAt: Date; containers: Container[]; }
+export interface DockerImage { id: string; name: string; tag: string; created: Date; size: string; }
+export interface TerminalHistory { id: string; command: string; output: string; timestamp: string; isError: boolean; }
 
 interface DockerStore {
   containers: Container[];
@@ -72,12 +25,15 @@ interface DockerStore {
   updateVolume: (id: string, updates: Partial<Volume>) => void;
   addNetwork: (network: Network) => void;
   removeNetwork: (id: string) => void;
+  updateNetwork: (id: string, updates: Partial<Network>) => void;
 }
 
+// --- 더미 데이터 ---
 const initialLocalImages: DockerImage[] = [
     { id: 'sha256:nginx123', name: 'nginx', tag: 'latest', created: new Date(), size: '133MB' },
     { id: 'sha256:ubuntu123', name: 'ubuntu', tag: 'latest', created: new Date(), size: '72.9MB' },
     { id: 'sha256:python123', name: 'python', tag: '3.9-slim', created: new Date(), size: '114MB' },
+    { id: 'sha256:mysql123', name: 'mysql', tag: 'latest', created: new Date(), size: '544MB' }, // 신규 더미 이미지
 ];
 
 export const useDockerStore = create<DockerStore>((set, get) => ({
@@ -93,10 +49,7 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     set(state => ({ terminalHistory: [...state.terminalHistory, { id: `msg_${Date.now()}`, command: '', output: message, timestamp: new Date().toISOString(), isError: false }] }));
   },
 
-  generateComposeFile: () => {
-    // ... (Compose file generation logic)
-    return '';
-  },
+  generateComposeFile: () => { /* ... */ return ''; },
 
   executeCommand: (command) => {
     const state = get();
@@ -119,7 +72,7 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
                 output = `Image is up to date for ${imageNameWithTag}`;
             } else {
                 const newImage: DockerImage = { id: `sha256:${name}${Math.random()}`.slice(0, 15), name, tag, created: new Date(), size: `${(Math.random() * 100 + 50).toFixed(1)}MB` };
-                set({ localImages: [...state.localImages, newImage] });
+                set(state => ({ localImages: [...state.localImages, newImage] }));
                 output = `Downloaded newer image for ${imageNameWithTag}`;
             }
             break;
@@ -211,17 +164,52 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     set(state => ({ terminalHistory: [...state.terminalHistory, { id: `cmd_${Date.now()}`, command, output, timestamp: new Date().toISOString(), isError }] }));
   },
 
-  addContainer: (container) => set(state => ({ containers: [...state.containers, container] })),
+  addContainer: (container) => set(state => {
+    const newNetworks = state.networks.map(n => {
+        if (n.name === container.network) {
+            return { ...n, containers: [...n.containers, container] };
+        }
+        return n;
+    });
+    return { containers: [...state.containers, container], networks: newNetworks };
+  }),
   removeContainer: (id) => set(state => {
     const containerToRemove = state.containers.find(c => c.id === id);
     if (!containerToRemove) return state;
     const updatedVolumes = state.volumes.map(v => ({ ...v, connectedContainers: v.connectedContainers.filter(cId => cId !== id) }));
-    return { containers: state.containers.filter(c => c.id !== id), volumes: updatedVolumes };
+    const updatedNetworks = state.networks.map(n => ({ ...n, containers: n.containers.filter(c => c.id !== id) }));
+    return { 
+        containers: state.containers.filter(c => c.id !== id), 
+        volumes: updatedVolumes, 
+        networks: updatedNetworks 
+    };
   }),
-  updateContainer: (id, updates) => set(state => ({ containers: state.containers.map(c => c.id === id ? { ...c, ...updates } : c) })),
+  updateContainer: (id, updates) => set((state) => {
+    const originalContainer = state.containers.find(c => c.id === id);
+    if (!originalContainer) return state;
+    const updatedContainer = { ...originalContainer, ...updates };
+    const newContainers = state.containers.map(c => (c.id === id ? updatedContainer : c));
+    let newNetworks = state.networks;
+    if (updates.network !== undefined && originalContainer.network !== updates.network) {
+      newNetworks = state.networks.map(net => {
+        let newContainersInNet = [...net.containers];
+        if (net.name === originalContainer.network) {
+          newContainersInNet = newContainersInNet.filter(c => c.id !== id);
+        }
+        if (net.name === updates.network) {
+          if (!newContainersInNet.some(c => c.id === id)) {
+            newContainersInNet.push(updatedContainer);
+          }
+        }
+        return { ...net, containers: newContainersInNet };
+      });
+    }
+    return { containers: newContainers, networks: newNetworks };
+  }),
   addVolume: (volume) => set(state => ({ volumes: [...state.volumes, volume] })),
   removeVolume: (id) => set(state => ({ volumes: state.volumes.filter(v => v.id !== id) })),
   updateVolume: (id, updates) => set(state => ({ volumes: state.volumes.map(v => v.id === id ? { ...v, ...updates } : v) })),
   addNetwork: (network) => set(state => ({ networks: [...state.networks, network] })),
-  removeNetwork: (id) => set(state => ({ networks: state.networks.filter(n => n.id !== id) }))
+  removeNetwork: (id) => set(state => ({ networks: state.networks.filter(n => n.id !== id) })),
+  updateNetwork: (id, updates) => set(state => ({ networks: state.networks.map(n => n.id === id ? { ...n, ...updates } : n) }))
 }));
