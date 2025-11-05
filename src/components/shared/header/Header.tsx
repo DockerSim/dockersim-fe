@@ -21,7 +21,7 @@ export default function Header() {
         { href: '/', label: '학습하기', icon: '🎓' },
         { href: '/community', label: '커뮤니티', icon: '💬' },
         { href: '/faq', label: 'FAQ', icon: '❓' },
-        { href: '/settings', label: '설정', icon: '⚙️' }
+        { href: '/settings', label: '내 정보', icon: '👤' }
     ];
 
     const toggleMenu = () => {

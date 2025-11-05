@@ -1,191 +1,120 @@
-.settings-page {
-  min-height: 100vh;
-  background: #f8f9fa;
-  padding: 20px;
+.settings-layout {
+  display: flex;
+  height: 100vh;
+  background-color: #f0f2f5;
+}
+
+.settings-main-content {
+  flex: 1;
+  padding: 2rem 3rem;
+  overflow-y: auto;
+}
+
+.settings-main-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #343a40;
+  margin-bottom: 2rem;
 }
 
 .settings-container {
-  max-width: 800px;
-  margin: 0 auto;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-}
-
-.settings-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 30px;
-  text-align: center;
-}
-
-.settings-header h1 {
-  margin: 0;
-  font-size: 2.5rem;
-  font-weight: 700;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  overflow: hidden;
+  height: calc(100% - 8rem);
 }
 
-.settings-header p {
-  margin: 10px 0 0 0;
-  font-size: 1.1rem;
-  opacity: 0.9;
+.settings-menu {
+  width: 200px;
+  background-color: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+  padding: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.settings-content {
-  padding: 30px;
-}
-
-.settings-section {
-  margin-bottom: 40px;
-}
-
-.settings-section h2 {
-  font-size: 1.5rem;
+.settings-menu button {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 1rem 1.5rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
+  color: #495057;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.settings-menu button:hover {
+  background-color: #e9ecef;
+}
+
+.settings-menu button.active {
+  background-color: #fff;
+  color: #007bff;
+  border-left-color: #007bff;
+}
+
+.settings-content-area {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.settings-content-area h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+/* Community-specific styles */
+.community-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
   border-bottom: 2px solid #e9ecef;
 }
 
-.setting-group {
-  display: grid;
-  gap: 20px;
-}
-
-.setting-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-  transition: all 0.2s ease;
-}
-
-.setting-item:hover {
-  background: #e9ecef;
-  border-color: #dee2e6;
-}
-
-.setting-item label {
-  font-size: 1rem;
-  font-weight: 500;
-  color: #495057;
-  margin-right: 20px;
-}
-
-.setting-item select,
-.setting-item input[type="number"] {
-  padding: 8px 12px;
-  border: 1px solid #ced4da;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  min-width: 150px;
-  background: white;
-  transition: border-color 0.2s ease;
-}
-
-.setting-item select:focus,
-.setting-item input[type="number"]:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-}
-
-.setting-item input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: #007bff;
-}
-
-.settings-footer {
-  background: #f8f9fa;
-  padding: 20px 30px;
-  border-top: 1px solid #e9ecef;
-  display: flex;
-  justify-content: flex-end;
-  gap: 15px;
-}
-
-.btn {
-  padding: 10px 20px;
+.community-tabs button {
+  padding: 0.75rem 1.25rem;
   border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 500;
+  background: none;
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #868e96;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
 }
 
-.btn-primary {
-  background: #007bff;
-  color: white;
+.community-tabs button.active {
+  color: #007bff;
+  border-bottom-color: #007bff;
 }
 
-.btn-primary:hover {
-  background: #0056b3;
+/* Data Table styles */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
 }
 
-.btn-secondary {
-  background: #6c757d;
-  color: white;
+.data-table th, .data-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
 }
 
-.btn-secondary:hover {
-  background: #545b62;
+.data-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #495057;
 }
 
-/* 반응형 디자인 */
-@media (max-width: 768px) {
-  .settings-page {
-    padding: 10px;
-  }
-  
-  .settings-header {
-    padding: 20px;
-  }
-  
-  .settings-header h1 {
-    font-size: 2rem;
-  }
-  
-  .settings-content {
-    padding: 20px;
-  }
-  
-  .setting-item {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
-  .setting-item label {
-    margin-right: 0;
-  }
-  
-  .setting-item select,
-  .setting-item input[type="number"] {
-    width: 100%;
-  }
-  
-  .settings-footer {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .btn {
-    width: 100%;
-    justify-content: center;
-  }
-} 
+.data-table tbody tr:hover {
+  background-color: #f1f3f5;
+}
