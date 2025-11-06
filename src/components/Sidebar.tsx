@@ -41,6 +41,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span className="icon">📝</span>
           <span className="label">피드백</span>
         </button>
+        <button className="menu-item" onClick={onDockerfileFeedbackClick} title="미션">
+          <span className="icon">🏆</span>
+          <span className="label">미션</span>
+        </button>
       </div>
       <div className="sidebar-footer">
         {/* 추가적인 아이콘이 필요하다면 여기에 */}

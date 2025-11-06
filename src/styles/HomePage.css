@@ -2,25 +2,20 @@
   display: flex;
   height: 100vh;
   background-color: #f0f2f5;
-}
-
-.main-content {
-  display: flex;
-  flex: 1;
   overflow: hidden;
-  /* margin-left 속성을 완전히 제거하여 간격을 없앱니다. */
 }
 
 .sidebar-content {
-  width: var(--sidebar-width, 450px);
+  width: var(--sidebar-width, 550px);
   display: flex;
   flex-direction: column;
-  padding: 1rem;
+  padding: 1rem 1rem 1rem 0.5rem;
   gap: 1rem;
   background-color: #fff;
   border-right: 1px solid #e0e0e0;
   flex-shrink: 0;
-  transition: width 0.3s ease, padding 0.3s ease;
+  transition: width 0.3s ease, padding 0.3s ease, border 0.3s ease;
+  overflow: hidden; /* 내부 요소가 삐져나오지 않도록 */
 }
 
 .resizer {
@@ -49,15 +44,17 @@
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  margin-left: 0.5rem;
 }
 
-.main-content.both-collapsed .sidebar-content {
-  width: 0;
+/* 두 패널이 모두 접혔을 때의 스타일 */
+.sidebar-content.collapsed {
+  width: 0 !important; /* 인라인 스타일을 덮어쓰기 위해 !important 사용 */
   padding: 0;
   border-right: none;
-  overflow: hidden;
 }
 
-.main-content.both-collapsed .resizer {
+.resizer.collapsed {
   width: 0;
+  cursor: default;
 }

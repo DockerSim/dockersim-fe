@@ -118,3 +118,12 @@
 .data-table tbody tr:hover {
   background-color: #f1f3f5;
 }
+
+/* 클릭 가능한 행에 대한 스타일 추가 */
+.data-table tbody tr.clickable {
+  cursor: pointer;
+}
+
+.data-table tbody tr.clickable:hover {
+  background-color: #e9ecef; /* 호버 효과 강화 */
+}

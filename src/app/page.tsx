@@ -20,7 +20,7 @@ export default function HomePage() {
   const [isTerminalCollapsed, setIsTerminalCollapsed] = useState(false)
   const [toasts, setToasts] = useState<Array<ToastProps & { id: string }>>([])
   const [processes, setProcesses] = useState<ProcessStep[]>([]);
-  const [sidebarWidth, setSidebarWidth] = useState(450);
+  const [sidebarWidth, setSidebarWidth] = useState(550);
   const isResizing = useRef(false);
   
   const [composeModalOpen, setComposeModalOpen] = useState(false);
@@ -112,10 +112,9 @@ export default function HomePage() {
         onDockerfileFeedbackClick={handleDockerfileFeedbackClick}
       />
       
-      {/* main-content div를 제거하고 자식들을 home-layout의 직접적인 자식으로 만듭니다. */}
       <div 
         className={`sidebar-content ${bothCollapsed ? 'collapsed' : ''}`}
-        style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}
+        style={{ width: bothCollapsed ? '0' : `${sidebarWidth}px` }}
       >
         <ResizablePanel 
           isCollapsed={isControlPanelCollapsed}
@@ -146,7 +145,7 @@ export default function HomePage() {
         </ResizablePanel>
       </div>
 
-      <div className="resizer" onMouseDown={handleMouseDown} />
+      <div className={`resizer ${bothCollapsed ? 'collapsed' : ''}`} onMouseDown={handleMouseDown} />
       
       <div className={`visualizer`}>
         <Visualizer processes={processes} />

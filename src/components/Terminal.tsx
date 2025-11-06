@@ -1,30 +1,34 @@
 'use client'
 
 import React, { useEffect, useRef } from 'react';
-import { Terminal } from '@xterm/xterm';
+import { Terminal as XtermTerminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import '../styles/Terminal.css';
 import { useDockerStore } from '../store/dockerStore';
 
-const TerminalComponent: React.FC = () => {
+interface TerminalProps {
+  isCollapsed: boolean;
+  onCollapseToggle: () => void;
+}
+
+const Terminal: React.FC<TerminalProps> = ({ isCollapsed, onCollapseToggle }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
-  const termInstance = useRef<Terminal | null>(null);
+  const termInstance = useRef<XtermTerminal | null>(null);
   const currentLine = useRef('');
   
-  // 1. 스토어에서 올바른 상태(terminalHistory)와 액션을 가져옵니다.
   const { terminalHistory, executeCommand } = useDockerStore();
   const lastRenderedCount = useRef(0);
 
-  // 터미널 초기화 및 사용자 입력 처리
   useEffect(() => {
     if (terminalRef.current && !termInstance.current) {
-      const term = new Terminal({
+      const term = new XtermTerminal({
         cursorBlink: true,
         rows: 15,
         theme: {
           background: '#1e1e1e',
           foreground: '#d4d4d4',
           cursor: '#d4d4d4',
+          selection: 'rgba(255, 255, 255, 0.3)',
         },
         fontFamily: '"Cascadia Code", Menlo, Monaco, "Courier New", monospace',
         fontSize: 14,
@@ -33,7 +37,7 @@ const TerminalComponent: React.FC = () => {
       
       termInstance.current = term;
       term.open(terminalRef.current);
-      term.write('dockersim $ ');
+      term.write('\x1b[36mdockersim\x1b[0m $ ');
 
       term.onData(data => {
         const term = termInstance.current;
@@ -45,7 +49,7 @@ const TerminalComponent: React.FC = () => {
               term.write('\r\n');
               executeCommand(currentLine.current);
             } else {
-              term.write('\r\ndockersim $ ');
+              term.write('\r\n\x1b[36mdockersim\x1b[0m $ ');
             }
             currentLine.current = '';
             break;
@@ -63,37 +67,45 @@ const TerminalComponent: React.FC = () => {
     }
   }, [executeCommand]);
 
-  // 2. terminalHistory가 변경될 때마다 새로운 내용을 터미널에 출력합니다.
   useEffect(() => {
     const term = termInstance.current;
     if (!term) return;
 
-    // 새로 추가된 히스토리만 출력하여 중복을 방지합니다.
-    if (terminalHistory.length > lastRenderedCount.current) {
-      const newEntries = terminalHistory.slice(lastRenderedCount.current);
+    if ((terminalHistory || []).length > lastRenderedCount.current) {
+      const newEntries = (terminalHistory || []).slice(lastRenderedCount.current);
       newEntries.forEach(entry => {
-        // 사용자가 입력한 명령어는 onData에서 이미 처리되었으므로, 출력(output)만 표시합니다.
         if (entry.output) { 
-            term.write('\r\n' + entry.output.replace(/\n/g, '\r\n'));
+            const formattedOutput = entry.output.replace(/\n/g, '\r\n');
+            if (entry.isError) {
+                term.write(`\r\n\x1b[31m${formattedOutput}\x1b[0m`);
+            } else {
+                term.write(`\r\n${formattedOutput}`);
+            }
         }
       });
-      term.write('\r\ndockersim $ ');
+      term.write('\r\n\x1b[36mdockersim\x1b[0m $ ');
     }
-    lastRenderedCount.current = terminalHistory.length;
+    lastRenderedCount.current = (terminalHistory || []).length;
 
   }, [terminalHistory]);
 
   return (
-    <div className="terminal-section">
-      <div className="terminal-header">
+    <div className={`terminal-section ${isCollapsed ? 'collapsed' : ''}`}>
+      <div className="terminal-header" onClick={onCollapseToggle}>
         <div className="terminal-title">
           <span className="terminal-icon">💻</span>
           Terminal
         </div>
       </div>
-      <div id="terminal-container" ref={terminalRef} />
+      <div 
+        className="terminal-content-wrapper" 
+        style={{ display: isCollapsed ? 'none' : 'block' }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div id="terminal-container" ref={terminalRef} style={{ height: '100%' }} />
+      </div>
     </div>
   );
 };
 
-export default TerminalComponent;
+export default Terminal;
