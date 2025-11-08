@@ -6,7 +6,7 @@ import './Modal.module.css';
 interface NetworkSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (networkId: string) => void;
+  onSelect: (networkId: string, networkName: string) => void;
   allNetworks: Network[];
   connectedNetworks: string[];
 }
@@ -39,7 +39,7 @@ const NetworkSelectionModal: React.FC<NetworkSelectionModalProps> = ({
                   <span>{network.name}</span>
                   <button
                     className="connect-btn"
-                    onClick={() => onSelect(network.id)}
+                    onClick={() => onSelect(network.id, network.name)}
                   >
                     연결
                   </button>

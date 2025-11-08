@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useDockerStore, Container, Volume, Network } from '../store/dockerStore'
 import { ContainerCard } from './ContainerCard'
 import { VolumeConnection } from './VolumeConnection'
-import { useActiveNetworkSync } from '../hooks/useActiveNetworkSync'
 import ContainerDetailModal from './modals/ContainerDetailModal'
 import VolumeDetailModal from './modals/VolumeDetailModal'
 import NetworkDetailModal from './modals/NetworkDetailModal'
@@ -22,6 +21,10 @@ interface VisualizerProps {
   isContainerDetailModalOpen: boolean;
   onCloseContainerDetailModal: () => void;
   onContainerClick: (container: Container) => void;
+  onOpenNetworkSelectionModal: () => void;
+  onAction: (action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm' | 'connect', id: string, network?: string) => void;
+  activeNetwork: string;
+  setActiveNetwork: (networkId: string) => void;
 }
 
 const Visualizer: React.FC<VisualizerProps> = ({ 
@@ -29,10 +32,13 @@ const Visualizer: React.FC<VisualizerProps> = ({
   selectedContainer, 
   isContainerDetailModalOpen, 
   onCloseContainerDetailModal,
-  onContainerClick 
+  onContainerClick,
+  onOpenNetworkSelectionModal,
+  onAction,
+  activeNetwork,
+  setActiveNetwork
 }) => {
   const { containers, volumes, networks, executeCommand } = useDockerStore()
-  const [activeNetwork, setActiveNetwork] = useState<string>('bridge')
   const [selectedVolume, setSelectedVolume] = useState<Volume | null>(null)
   const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
@@ -43,8 +49,6 @@ const Visualizer: React.FC<VisualizerProps> = ({
   const [showOverview, setShowOverview] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState<Container | Volume | null>(null);
-
-  useActiveNetworkSync(activeNetwork, setActiveNetwork)
 
   useEffect(() => {
     if ((containers || []).length > (prevContainersRef.current || []).length) {
@@ -200,6 +204,12 @@ const Visualizer: React.FC<VisualizerProps> = ({
                   )}
                 </div>
               ))}
+              
+              {activeNetworkContainers.length === 0 && (
+                <div className="empty-message">
+                  컨테이너가 없습니다. docker run 명령어로 컨테이너를 생성해보세요.
+                </div>
+              )}
             </div>
 
             <div className="volumes-container-area">
@@ -235,7 +245,8 @@ const Visualizer: React.FC<VisualizerProps> = ({
         container={selectedContainer} 
         open={isContainerDetailModalOpen} 
         onClose={onCloseContainerDetailModal} 
-        onAction={(action, id) => executeCommand(`docker ${action} ${id}`)}
+        onAction={onAction}
+        onOpenNetworkSelectionModal={onOpenNetworkSelectionModal}
       />
       <VolumeDetailModal volume={selectedVolume} open={volumeDetailModalOpen} onClose={() => setVolumeDetailModalOpen(false)} onRemove={(id) => executeCommand(`docker volume rm ${id}`)} />
       <NetworkDetailModal network={selectedNetwork} open={networkDetailModalOpen} onClose={() => setNetworkDetailModalOpen(false)} />

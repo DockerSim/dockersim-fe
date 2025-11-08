@@ -1,20 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
-import { Container, useDockerStore } from '../../store/dockerStore';
+import { Container } from '../../store/dockerStore';
 import './ContainerDetailModal.css';
-import NetworkSelectionModal from './NetworkSelectionModal';
 
 interface ContainerDetailModalProps {
   container: Container | null;
   open: boolean;
   onClose: () => void;
-  onAction: (action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm' | 'connect', id: string, network?: string) => void;
+  onAction: (action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm', id: string) => void;
+  onOpenNetworkSelectionModal: () => void;
 }
 
-const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, open, onClose, onAction }) => {
-  const [isNetworkSelectionModalOpen, setIsNetworkSelectionModalOpen] = useState(false);
-  const { networks } = useDockerStore();
-
+const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ 
+  container, 
+  open, 
+  onClose, 
+  onAction,
+  onOpenNetworkSelectionModal
+}) => {
   if (!open || !container) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -28,46 +31,37 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, 
     onClose();
   };
 
-  const handleNetworkConnect = (networkId: string) => {
-    const network = networks.find(n => n.id === networkId);
-    if (network) {
-      onAction('connect', container.id, network.name);
-    }
-    setIsNetworkSelectionModalOpen(false);
-  };
-
   return createPortal(
-    <>
-      <div className="modal-backdrop" onClick={handleBackdropClick}>
-        <div className="modal-container">
-          <div className="modal-header">
-            <div className="modal-title">
-              <span className="modal-icon">📦</span>
-              <span>{container.name}</span>
-            </div>
-            <button className="modal-close" onClick={onClose}>✕</button>
+    <div className="modal-backdrop" onClick={handleBackdropClick}>
+      <div className="modal-container">
+        <div className="modal-header">
+          <div className="modal-title">
+            <span className="modal-icon">📦</span>
+            <span>{container.name}</span>
           </div>
-          <div className="modal-content">
-            <div className="detail-grid">
-              <div className="detail-item">
-                <span className="detail-label">ID:</span>
-                <span className="detail-value">{container.id.substring(0, 12)}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Image:</span>
-                <span className="detail-value">{container.image}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Status:</span>
-                <span className={`status-badge ${container.status}`}>{container.status}</span>
-              </div>
-              <div className="detail-item">
-                <span className="detail-label">Network:</span>
-                <span className="detail-value">{Array.isArray(container.network) ? container.network.join(', ') : container.network}</span>
-              </div>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-content">
+          <div className="detail-grid">
+            <div className="detail-item">
+              <span className="detail-label">ID:</span>
+              <span className="detail-value">{container.id.substring(0, 12)}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Image:</span>
+              <span className="detail-value">{container.image}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Status:</span>
+              <span className={`status-badge ${container.status}`}>{container.status}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Network:</span>
+              <span className="detail-value">{Array.isArray(container.network) ? container.network.join(', ') : container.network}</span>
             </div>
           </div>
-          <div className="modal-actions">
+        </div>
+        <div className="modal-actions">
             {container.status === 'running' && (
                 <>
                   <button
@@ -137,7 +131,7 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, 
             )}
             <button
                 className="action-btn"
-                onClick={() => setIsNetworkSelectionModalOpen(true)}
+                onClick={onOpenNetworkSelectionModal}
                 style={{
                   backgroundColor: '#f1c40f',
                   color: '#111',
@@ -147,17 +141,8 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, 
               🌐 Add Network
             </button>
           </div>
-
-        </div>
       </div>
-      <NetworkSelectionModal
-        isOpen={isNetworkSelectionModalOpen}
-        onClose={() => setIsNetworkSelectionModalOpen(false)}
-        onSelect={handleNetworkConnect}
-        allNetworks={networks}
-        connectedNetworks={Array.isArray(container.network) ? container.network : [container.network]}
-      />
-    </>,
+    </div>,
     document.body
   );
 };

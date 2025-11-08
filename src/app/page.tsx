@@ -9,7 +9,8 @@ import ResizablePanel from '../components/ResizablePanel'
 import ComposeFileModal from '../components/modals/ComposeFileModal'
 import ImageModal from '../components/modals/ImageModal'
 import DockerfileFeedbackModal from '../components/modals/DockerfileFeedbackModal'
-import { useDockerStore, Container } from '../store/dockerStore'
+import NetworkSelectionModal from '../components/modals/NetworkSelectionModal'
+import { useDockerStore, Container, Network } from '../store/dockerStore'
 import '../styles/HomePage.css'
 import { ToastContainer, ToastProps } from '../components/common/Toast';
 import { ProcessStep } from '../components/ProcessVisualization';
@@ -27,10 +28,13 @@ export default function HomePage() {
   const [composeFileContent, setComposeFileContent] = useState('');
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [dockerfileFeedbackModalOpen, setDockerfileFeedbackModalOpen] = useState(false);
-  const { generateComposeFile } = useDockerStore();
+  
+  const { networks, generateComposeFile, executeCommand } = useDockerStore();
 
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
   const [isContainerDetailModalOpen, setIsContainerDetailModalOpen] = useState(false);
+  const [isNetworkSelectionModalOpen, setIsNetworkSelectionModalOpen] = useState(false);
+  const [activeNetwork, setActiveNetwork] = useState<string>('bridge');
 
   useNetworkSync();
 
@@ -43,21 +47,34 @@ export default function HomePage() {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }, [])
 
-  const showProcessBubble = (
-    type: ProcessStep['type'],
-    message: string,
-    containerId: string
-  ) => {
-    const id = Date.now().toString() + Math.random();
-    setProcesses(prev => [...prev, { id, type, message, containerId }]);
-    setTimeout(() => {
-      setProcesses(prev => prev.filter(p => p.id !== id));
-    }, 1500);
-  };
-
   const handleContainerClick = (container: Container) => {
     setSelectedContainer(container);
     setIsContainerDetailModalOpen(true);
+  };
+
+  const handleOpenNetworkSelectionModal = () => {
+    setIsContainerDetailModalOpen(false);
+    setIsNetworkSelectionModalOpen(true);
+  };
+
+  const handleNetworkConnect = (networkId: string) => {
+    if (selectedContainer) {
+      const network = networks.find(n => n.id === networkId);
+      if (network) {
+        executeCommand(`docker network connect ${network.name} ${selectedContainer.name}`);
+        setActiveNetwork(network.id); // Switch to the new network tab
+      }
+    }
+    setIsNetworkSelectionModalOpen(false);
+    setSelectedContainer(null); 
+  };
+
+  const handleAction = (action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm' | 'connect', id: string, networkName?: string) => {
+    if (action === 'connect' && networkName) {
+      executeCommand(`docker network connect ${networkName} ${id}`);
+    } else {
+      executeCommand(`docker ${action} ${id}`);
+    }
   };
 
   const toggleControlPanel = () => {
@@ -157,11 +174,18 @@ export default function HomePage() {
       
       <div className={`visualizer`}>
         <Visualizer 
-          processes={processes} 
+          processes={[]} 
           selectedContainer={selectedContainer}
           isContainerDetailModalOpen={isContainerDetailModalOpen}
-          onCloseContainerDetailModal={() => setIsContainerDetailModalOpen(false)}
+          onCloseContainerDetailModal={() => {
+            setIsContainerDetailModalOpen(false);
+            setSelectedContainer(null);
+          }}
           onContainerClick={handleContainerClick}
+          onOpenNetworkSelectionModal={handleOpenNetworkSelectionModal}
+          onAction={handleAction}
+          activeNetwork={activeNetwork}
+          setActiveNetwork={setActiveNetwork}
         />
       </div>
 
@@ -182,6 +206,19 @@ export default function HomePage() {
         open={dockerfileFeedbackModalOpen} 
         onClose={() => setDockerfileFeedbackModalOpen(false)} 
       />
+
+      {selectedContainer && (
+        <NetworkSelectionModal
+          isOpen={isNetworkSelectionModalOpen}
+          onClose={() => {
+            setIsNetworkSelectionModalOpen(false);
+            setSelectedContainer(null);
+          }}
+          onSelect={handleNetworkConnect}
+          allNetworks={networks}
+          connectedNetworks={Array.isArray(selectedContainer.network) ? selectedContainer.network : [selectedContainer.network]}
+        />
+      )}
     </div>
   )
 }
