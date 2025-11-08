@@ -10,7 +10,10 @@ import ComposeFileModal from '../components/modals/ComposeFileModal'
 import ImageModal from '../components/modals/ImageModal'
 import DockerfileFeedbackModal from '../components/modals/DockerfileFeedbackModal'
 import NetworkSelectionModal from '../components/modals/NetworkSelectionModal'
-import { useDockerStore, Container, Network } from '../store/dockerStore'
+import ContainerDetailModal from '../components/modals/ContainerDetailModal'
+import VolumeDetailModal from '../components/modals/VolumeDetailModal'
+import NetworkDetailModal from '../components/modals/NetworkDetailModal'
+import { useDockerStore, Container, Volume, Network } from '../store/dockerStore'
 import '../styles/HomePage.css'
 import { ToastContainer, ToastProps } from '../components/common/Toast';
 import { ProcessStep } from '../components/ProcessVisualization';
@@ -31,8 +34,14 @@ export default function HomePage() {
   
   const { networks, generateComposeFile, executeCommand } = useDockerStore();
 
+  // --- Modal State Centralization ---
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
   const [isContainerDetailModalOpen, setIsContainerDetailModalOpen] = useState(false);
+  const [selectedVolume, setSelectedVolume] = useState<Volume | null>(null);
+  const [isVolumeDetailModalOpen, setVolumeDetailModalOpen] = useState(false);
+  const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null);
+  const [isNetworkDetailModalOpen, setNetworkDetailModalOpen] = useState(false);
+  
   const [isNetworkSelectionModalOpen, setIsNetworkSelectionModalOpen] = useState(false);
   const [activeNetwork, setActiveNetwork] = useState<string>('bridge');
 
@@ -47,9 +56,20 @@ export default function HomePage() {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }, [])
 
+  // --- Modal Handler Functions ---
   const handleContainerClick = (container: Container) => {
     setSelectedContainer(container);
     setIsContainerDetailModalOpen(true);
+  };
+
+  const handleVolumeClick = (volume: Volume) => {
+    setSelectedVolume(volume);
+    setVolumeDetailModalOpen(true);
+  };
+
+  const handleNetworkClick = (network: Network) => {
+    setSelectedNetwork(network);
+    setNetworkDetailModalOpen(true);
   };
 
   const handleOpenNetworkSelectionModal = () => {
@@ -65,7 +85,6 @@ export default function HomePage() {
           executeCommand(`docker network connect ${network.name} ${selectedContainer.name}`);
         }
       });
-      // Switch to the first selected network tab
       setActiveNetwork(networkIds[0]);
     }
     setIsNetworkSelectionModalOpen(false);
@@ -153,6 +172,8 @@ export default function HomePage() {
             isCollapsed={isControlPanelCollapsed}
             showToast={showToast}
             onContainerClick={handleContainerClick}
+            onVolumeClick={handleVolumeClick}
+            onNetworkClick={handleNetworkClick}
           />
         </ResizablePanel>
         
@@ -174,15 +195,10 @@ export default function HomePage() {
       <div className={`visualizer`}>
         <Visualizer 
           processes={[]} 
-          selectedContainer={selectedContainer}
-          isContainerDetailModalOpen={isContainerDetailModalOpen}
-          onCloseContainerDetailModal={() => {
-            setIsContainerDetailModalOpen(false);
-            setSelectedContainer(null);
-          }}
           onContainerClick={handleContainerClick}
+          onVolumeClick={handleVolumeClick}
+          onNetworkClick={handleNetworkClick}
           onOpenNetworkSelectionModal={handleOpenNetworkSelectionModal}
-          onAction={handleAction}
           activeNetwork={activeNetwork}
           setActiveNetwork={setActiveNetwork}
         />
@@ -204,6 +220,26 @@ export default function HomePage() {
       <DockerfileFeedbackModal 
         open={dockerfileFeedbackModalOpen} 
         onClose={() => setDockerfileFeedbackModalOpen(false)} 
+      />
+
+      {/* Centrally Managed Modals */}
+      <ContainerDetailModal 
+        container={selectedContainer} 
+        open={isContainerDetailModalOpen} 
+        onClose={() => setIsContainerDetailModalOpen(false)} 
+        onAction={handleAction}
+        onOpenNetworkSelectionModal={handleOpenNetworkSelectionModal}
+      />
+      <VolumeDetailModal 
+        volume={selectedVolume} 
+        open={isVolumeDetailModalOpen} 
+        onClose={() => setVolumeDetailModalOpen(false)} 
+        onRemove={(id) => executeCommand(`docker volume rm ${id}`)} 
+      />
+      <NetworkDetailModal 
+        network={selectedNetwork} 
+        open={isNetworkDetailModalOpen} 
+        onClose={() => setNetworkDetailModalOpen(false)} 
       />
 
       {selectedContainer && (

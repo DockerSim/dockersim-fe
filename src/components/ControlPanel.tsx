@@ -6,23 +6,30 @@ import { AddBtn, DeleteBtn, NetworkConnectBtn } from './common/BtnCrud';
 import '../styles/ControlPanel.css';
 import VolumeConnectModal from './VolumeConnectModal';
 import ResourceCreationModal, { ResourceCreationData } from './modals/ResourceCreationModal';
-import VolumeDetailModal from './modals/VolumeDetailModal';
 
 interface ControlPanelProps {
   isCollapsed?: boolean;
   showToast?: (message: string, type?: 'success' | 'error' | 'info') => void;
   onContainerClick: (container: Container) => void;
+  onVolumeClick: (volume: Volume) => void;
+  onNetworkClick: (network: Network) => void;
+  onToggle?: () => void;
 }
 
-const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showToast, onContainerClick }) => {
+const ControlPanel: React.FC<ControlPanelProps> = ({ 
+  isCollapsed = false, 
+  showToast, 
+  onContainerClick,
+  onVolumeClick,
+  onNetworkClick,
+  onToggle
+}) => {
   const { containers, volumes, networks, executeCommand, addMessage, updateContainer, updateVolume } = useDockerStore();
   const [activeTab, setActiveTab] = useState<'containers' | 'volumes' | 'networks'>('containers');
 
   const [volumeConnectModalOpen, setVolumeConnectModalOpen] = useState(false);
   const [resourceCreationModalOpen, setResourceCreationModalOpen] = useState(false);
   const [resourceCreationType, setResourceCreationType] = useState<'container' | 'volume'>('container');
-  const [selectedVolume, setSelectedVolume] = useState<Volume | null>(null);
-  const [volumeDetailModalOpen, setVolumeDetailModalOpen] = useState(false);
 
   const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null);
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
@@ -117,11 +124,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
     }
   };
 
-  const openVolumeDetail = (volume: Volume) => {
-    setSelectedVolume(volume);
-    setVolumeDetailModalOpen(true);
-  };
-
   return (
       <div className={`control-panel ${isCollapsed ? 'collapsed' : ''}`}>
         {!isCollapsed && (
@@ -174,7 +176,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
                       </div>
                       <div className="resource-list">
                         {(volumes || []).map(volume => (
-                            <div key={volume.id} className="resource-item" onClick={() => openVolumeDetail(volume)}>
+                            <div key={volume.id} className="resource-item" onClick={() => onVolumeClick(volume)}>
                               <div className="resource-info">
                                 <div className="resource-name">{volume.name}</div>
                                 <div className="resource-details">
@@ -210,7 +212,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
                       </div>
                       <div className="resource-list">
                         {(networks || []).map(network => (
-                            <div key={network.id} className="resource-item">
+                            <div key={network.id} className="resource-item" onClick={() => onNetworkClick(network)}>
                               <div className="resource-info">
                                 <div className="resource-name">{network.name}</div>
                                 <div className="resource-details">
@@ -218,7 +220,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
                                 </div>
                               </div>
                               <div className="resource-actions">
-                                {network.name !== 'bridge' && <DeleteBtn onClick={() => handleNetworkAction(network.name, 'remove')} size="sm" />}
+                                {network.name !== 'bridge' && <DeleteBtn onClick={(e) => { e.stopPropagation(); handleNetworkAction(network.name, 'remove'); }} size="sm" />}
                               </div>
                             </div>
                         ))}
@@ -230,8 +232,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
         )}
 
         <VolumeConnectModal containers={containers || []} volumes={volumes || []} open={volumeConnectModalOpen} onConnect={handleVolumeConnect} onClose={() => setVolumeConnectModalOpen(false)} />
-        <ResourceCreationModal type={resourceCreationType} networks={networks || []} open={resourceCreationModalOpen} onClose={() => setResourceCreationModalOpen(false)} />
-        <VolumeDetailModal volume={selectedVolume} open={volumeDetailModalOpen} onClose={() => setVolumeDetailModalOpen(false)} onRemove={(volumeName) => handleVolumeAction(volumeName, 'remove')} />
+        <ResourceCreationModal type={resourceCreationType} networks={networks || []} open={resourceCreationModalOpen} onConfirm={handleResourceCreationConfirm} onClose={() => setResourceCreationModalOpen(false)} />
       </div>
   );
 };

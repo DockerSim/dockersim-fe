@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import html2canvas from 'html2canvas';
-import { useDockerStore, Container, Volume } from '@/store/dockerStore';
+import { useDockerStore, Container, Volume, Network } from '@/store/dockerStore';
 import NetworkGraph from '@/components/visualization/NetworkGraph';
 import OverviewSidebar from '@/components/visualization/OverviewSidebar';
 import GraphLegend from '@/components/visualization/GraphLegend';
@@ -15,9 +15,9 @@ export default function OverviewPage() {
     const [isControlPanelCollapsed, setControlPanelCollapsed] = useState(false);
     const [isTerminalCollapsed, setTerminalCollapsed] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedResource, setSelectedResource] = useState<Container | Volume | null>(null);
+    const [selectedResource, setSelectedResource] = useState<Container | Volume | Network | null>(null);
 
-    const { containers, volumes, executeCommand } = useDockerStore();
+    const { containers, volumes, networks, executeCommand } = useDockerStore();
 
     const handleDownload = () => {
         const captureElement = document.getElementById('capture-area');
@@ -35,16 +35,23 @@ export default function OverviewPage() {
         }
     };
 
-    const handleNodeClick = (nodeId: string) => {
-        const resource = [...containers, ...volumes].find(r => r.id === nodeId);
-        if (resource) {
-            setSelectedResource(resource);
-            setIsModalOpen(true);
-        }
+    const handleResourceClick = (resource: Container | Volume | Network) => {
+        setSelectedResource(resource);
+        setIsModalOpen(true);
     };
 
     const handleModalAction = (action: 'start' | 'stop' | 'remove', resourceId: string) => {
-        const command = action === 'remove' ? `docker rm ${resourceId}` : `docker ${action} ${resourceId}`;
+        const resource = [...containers, ...volumes, ...networks].find(r => r.id === resourceId);
+        if (!resource) return;
+
+        let command = '';
+        if (action === 'remove') {
+            if ('image' in resource) command = `docker rm ${resource.name}`;
+            else if ('mountPath' in resource) command = `docker volume rm ${resource.name}`;
+            else if ('driver' in resource) command = `docker network rm ${resource.name}`;
+        } else {
+            command = `docker ${action} ${resource.name}`;
+        }
         executeCommand(command);
         setIsModalOpen(false);
     };
@@ -59,9 +66,16 @@ export default function OverviewPage() {
                 onTerminalToggle={() => setTerminalCollapsed(prevState => !prevState)}
             />
 
-            {/* 중간 패널: 컨트롤 패널 + 터미널 */}
             <div className="side-panels">
-                {!isControlPanelCollapsed && <ControlPanel isCollapsed={isControlPanelCollapsed} onToggle={() => setControlPanelCollapsed(true)} />}
+                {!isControlPanelCollapsed && 
+                    <ControlPanel 
+                        isCollapsed={isControlPanelCollapsed} 
+                        onToggle={() => setControlPanelCollapsed(true)}
+                        onContainerClick={handleResourceClick}
+                        onVolumeClick={handleResourceClick}
+                        onNetworkClick={handleResourceClick}
+                    />
+                }
                 {!isTerminalCollapsed && 
                     <TerminalCommandPanel 
                         isCollapsed={isTerminalCollapsed} 
@@ -71,9 +85,11 @@ export default function OverviewPage() {
                 }
             </div>
 
-            {/* 오른쪽 메인 영역: 그래프 */}
             <main id="capture-area" className="overview-main-content">
-                <NetworkGraph onNodeClick={handleNodeClick} />
+                <NetworkGraph onNodeClick={(nodeId) => {
+                    const resource = [...containers, ...volumes, ...networks].find(r => r.id === nodeId);
+                    if (resource) handleResourceClick(resource);
+                }} />
                 <GraphLegend />
             </main>
 

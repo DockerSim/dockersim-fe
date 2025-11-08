@@ -4,51 +4,37 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useDockerStore, Container, Volume, Network } from '../store/dockerStore'
 import { ContainerCard } from './ContainerCard'
 import { VolumeConnection } from './VolumeConnection'
-import ContainerDetailModal from './modals/ContainerDetailModal'
-import VolumeDetailModal from './modals/VolumeDetailModal'
-import NetworkDetailModal from './modals/NetworkDetailModal'
 import '../styles/Visualizer.css'
 import './modals/NetworkDetailModal.css'
 import { ProcessVisualization, ProcessStep } from './ProcessVisualization';
 import NetworkGraph from './visualization/NetworkGraph';
 import GraphLegend from './visualization/GraphLegend';
-import ResourceDetailModal from './modals/ResourceDetailModal';
 import '../styles/OverviewPage.css';
 
 interface VisualizerProps {
   processes: ProcessStep[];
-  selectedContainer: Container | null;
-  isContainerDetailModalOpen: boolean;
-  onCloseContainerDetailModal: () => void;
   onContainerClick: (container: Container) => void;
+  onVolumeClick: (volume: Volume) => void;
+  onNetworkClick: (network: Network) => void;
   onOpenNetworkSelectionModal: () => void;
-  onAction: (action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm' | 'connect', id: string, network?: string) => void;
   activeNetwork: string;
   setActiveNetwork: (networkId: string) => void;
 }
 
 const Visualizer: React.FC<VisualizerProps> = ({ 
   processes, 
-  selectedContainer, 
-  isContainerDetailModalOpen, 
-  onCloseContainerDetailModal,
   onContainerClick,
+  onVolumeClick,
+  onNetworkClick,
   onOpenNetworkSelectionModal,
-  onAction,
   activeNetwork,
   setActiveNetwork
 }) => {
   const { containers, volumes, networks, executeCommand } = useDockerStore()
-  const [selectedVolume, setSelectedVolume] = useState<Volume | null>(null)
-  const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
-  const [volumeDetailModalOpen, setVolumeDetailModalOpen] = useState(false)
-  const [networkDetailModalOpen, setNetworkDetailModalOpen] = useState(false)
   const prevContainersRef = useRef(containers)
   
   const [showOverview, setShowOverview] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedResource, setSelectedResource] = useState<Container | Volume | null>(null);
 
   useEffect(() => {
     if ((containers || []).length > (prevContainersRef.current || []).length) {
@@ -65,11 +51,6 @@ const Visualizer: React.FC<VisualizerProps> = ({
     setActiveNetwork(tabId)
   }
 
-  const handleTabNameClick = (network: Network) => {
-    setSelectedNetwork(network);
-    setNetworkDetailModalOpen(true);
-  };
-
   const handleTabClose = (tabId: string, tabName: string) => {
     if (tabId === 'bridge') return;
     executeCommand(`docker network rm ${tabName}`);
@@ -84,11 +65,6 @@ const Visualizer: React.FC<VisualizerProps> = ({
       executeCommand(`docker network create ${networkName.trim()}`);
     }
   };
-
-  const handleVolumeClick = (volume: Volume) => {
-    setSelectedVolume(volume);
-    setVolumeDetailModalOpen(true);
-  }
 
   const getContainerPosition = (containerId: string) => {
     const el = document.querySelector(`.container-card[data-container-id="${containerId}"]`);
@@ -128,7 +104,7 @@ const Visualizer: React.FC<VisualizerProps> = ({
                   onClick={() => handleTabClick(tab.id)}
                 >
                   <span className="tab-icon">⚡</span>
-                  <span className="tab-title" onClick={(e) => { e.stopPropagation(); handleTabNameClick(tab as Network); }}>
+                  <span className="tab-title" onClick={(e) => { e.stopPropagation(); onNetworkClick(tab as Network); }}>
                     {tab.name}
                   </span>
                   {tab.id !== 'bridge' && (
@@ -148,7 +124,14 @@ const Visualizer: React.FC<VisualizerProps> = ({
 
       {showOverview ? (
         <main id="capture-area" className="overview-main-content">
-          <NetworkGraph onNodeClick={() => {}} />
+          <NetworkGraph onNodeClick={(nodeId) => {
+              const resource = [...containers, ...volumes, ...networks].find(r => r.id === nodeId);
+              if (resource) {
+                if ('image' in resource) onContainerClick(resource);
+                else if ('mountPath' in resource) onVolumeClick(resource);
+                else if ('driver' in resource) onNetworkClick(resource);
+              }
+          }} />
           <GraphLegend />
         </main>
       ) : (
@@ -192,7 +175,7 @@ const Visualizer: React.FC<VisualizerProps> = ({
                             />
                             <div 
                               className={`volume-circle attached-volume ${highlightedId === volume.id ? 'highlight' : ''}`}
-                              onClick={() => handleVolumeClick(volume)}
+                              onClick={() => onVolumeClick(volume)}
                               title={`Path: ${volume.mountPath}`}>
                               <div className="volume-connection-dot"></div>
                               <div className="volume-name">{volume.name}</div>
@@ -218,7 +201,7 @@ const Visualizer: React.FC<VisualizerProps> = ({
                       position: 'relative',
                       zIndex: 5
                     }}
-                    onClick={() => handleVolumeClick(volume)}
+                    onClick={() => onVolumeClick(volume)}
                   >
                     <div className="volume-name">{volume.name}</div>
                   </div>
@@ -234,17 +217,6 @@ const Visualizer: React.FC<VisualizerProps> = ({
       )}
 
       <ProcessVisualization processes={processes} getContainerPosition={getContainerPosition} />
-      
-      <ContainerDetailModal 
-        container={selectedContainer} 
-        open={isContainerDetailModalOpen} 
-        onClose={onCloseContainerDetailModal} 
-        onAction={onAction}
-        onOpenNetworkSelectionModal={onOpenNetworkSelectionModal}
-      />
-      <VolumeDetailModal volume={selectedVolume} open={volumeDetailModalOpen} onClose={() => setVolumeDetailModalOpen(false)} onRemove={(id) => executeCommand(`docker volume rm ${id}`)} />
-      <NetworkDetailModal network={selectedNetwork} open={networkDetailModalOpen} onClose={() => setNetworkDetailModalOpen(false)} />
-      <ResourceDetailModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} resource={selectedResource} onAction={(action, resourceId) => executeCommand(`docker ${action} ${resourceId}`)} />
     </div>
   )
 }
