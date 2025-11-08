@@ -5,9 +5,8 @@ import { Network, Node, Edge } from 'vis-network';
 import 'vis-network/styles/vis-network.css';
 import * as d3 from 'd3';
 import { useDockerStore } from '@/store/dockerStore';
-import { getNetworkColor } from '@/utils/colorUtils'; // 공통 유틸리티 임포트
+import { getNetworkColor } from '@/utils/colorUtils';
 
-// Props 타입 정의
 interface NetworkGraphProps {
   onNodeClick: (nodeId: string) => void;
 }
@@ -95,11 +94,14 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({ onNodeClick }) => {
 
             networks.forEach(net => {
                 if (!groups[net.id]) groups[net.id] = [];
-                net.containers.forEach(container => {
-                    const pos = nodePositions[container.id];
-                    if (pos) {
-                        const canvasPos = network.canvasToDOM(pos);
-                        groups[net.id].push([canvasPos.x, canvasPos.y]);
+                containers.forEach(container => {
+                    const containerNetworks = Array.isArray(container.network) ? container.network : [container.network];
+                    if (containerNetworks.includes(net.id) || containerNetworks.includes(net.name)) {
+                        const pos = nodePositions[container.id];
+                        if (pos) {
+                            const canvasPos = network.canvasToDOM(pos);
+                            groups[net.id].push([canvasPos.x, canvasPos.y]);
+                        }
                     }
                 });
             });

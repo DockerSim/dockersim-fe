@@ -7,7 +7,7 @@ import './ResourceCreationModal.css';
 export interface ResourceCreationData {
   name: string;
   image?: string;
-  networkId: string;
+  networkIds: string[];
   ports?: Array<{
     hostPort: number;
     containerPort: number;
@@ -41,7 +41,7 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
 }) => {
   const [resourceName, setResourceName] = useState('');
   const [imageName, setImageName] = useState('');
-  const [selectedNetworkId, setSelectedNetworkId] = useState('bridge'); // 기본값을 'bridge'로 설정
+  const [selectedNetworkIds, setSelectedNetworkIds] = useState<string[]>(['bridge']);
   const [mountPath, setMountPath] = useState('/data');
   const [ports, setPorts] = useState<Port[]>([{ hostPort: '', containerPort: '', protocol: 'tcp' }]);
   const [imageSelectionModalOpen, setImageSelectionModalOpen] = useState(false);
@@ -68,7 +68,7 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
 
     const data: ResourceCreationData = {
       name: resourceName.trim() || (type === 'container' ? `container_${Date.now()}` : `volume_${Date.now()}`),
-      networkId: selectedNetworkId || 'bridge', // 선택되지 않은 경우 'bridge' 사용
+      networkIds: selectedNetworkIds.length > 0 ? selectedNetworkIds : ['bridge'],
     };
 
     if (type === 'container') {
@@ -92,7 +92,7 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
     setResourceName('');
     setImageName('');
     setMountPath('/data');
-    setSelectedNetworkId('bridge'); // 초기화 시 'bridge'로 설정
+    setSelectedNetworkIds(['bridge']);
     setPorts([{ hostPort: '', containerPort: '', protocol: 'tcp' }]);
     setImageSelectionModalOpen(false);
     onClose();
@@ -115,6 +115,11 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
     const newPorts = [...ports];
     newPorts[index] = { ...newPorts[index], [field]: value };
     setPorts(newPorts);
+  };
+
+  const handleNetworkSelectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+    setSelectedNetworkIds(selectedOptions);
   };
 
   const isFormValid = type === 'volume' ? resourceName.trim() !== '' : imageName !== '';
@@ -190,9 +195,11 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
               네트워크 (선택사항)
             </label>
             <select
-              value={selectedNetworkId}
-              onChange={(e) => setSelectedNetworkId(e.target.value)}
+              multiple
+              value={selectedNetworkIds}
+              onChange={handleNetworkSelectionChange}
               className="form-select"
+              style={{ height: '100px' }}
             >
               {networks.map(network => (
                 <option key={network.id} value={network.id}>

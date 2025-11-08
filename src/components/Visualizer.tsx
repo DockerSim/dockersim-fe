@@ -18,16 +18,24 @@ import '../styles/OverviewPage.css';
 
 interface VisualizerProps {
   processes: ProcessStep[];
+  selectedContainer: Container | null;
+  isContainerDetailModalOpen: boolean;
+  onCloseContainerDetailModal: () => void;
+  onContainerClick: (container: Container) => void;
 }
 
-const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
+const Visualizer: React.FC<VisualizerProps> = ({ 
+  processes, 
+  selectedContainer, 
+  isContainerDetailModalOpen, 
+  onCloseContainerDetailModal,
+  onContainerClick 
+}) => {
   const { containers, volumes, networks, executeCommand } = useDockerStore()
   const [activeNetwork, setActiveNetwork] = useState<string>('bridge')
-  const [selectedContainer, setSelectedContainer] = useState<Container | null>(null)
   const [selectedVolume, setSelectedVolume] = useState<Volume | null>(null)
   const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
-  const [containerDetailModalOpen, setContainerDetailModalOpen] = useState(false)
   const [volumeDetailModalOpen, setVolumeDetailModalOpen] = useState(false)
   const [networkDetailModalOpen, setNetworkDetailModalOpen] = useState(false)
   const prevContainersRef = useRef(containers)
@@ -73,11 +81,6 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
     }
   };
 
-  const handleContainerClick = (container: Container) => {
-    setSelectedContainer(container);
-    setContainerDetailModalOpen(true);
-  }
-
   const handleVolumeClick = (volume: Volume) => {
     setSelectedVolume(volume);
     setVolumeDetailModalOpen(true);
@@ -95,7 +98,9 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
   const activeNetworkContainers = (containers || []).filter(c => {
     const currentNetwork = (networks || []).find(n => n.id === activeNetwork);
     if (!currentNetwork) return false;
-    return c.network === currentNetwork.id || c.network === currentNetwork.name;
+    
+    const containerNetworks = Array.isArray(c.network) ? c.network : [c.network];
+    return containerNetworks.includes(currentNetwork.id) || containerNetworks.includes(currentNetwork.name);
   });
 
   const unconnectedVolumes = (volumes || []).filter(v => !v.connectedContainers || v.connectedContainers.length === 0);
@@ -154,7 +159,7 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
                 >
                   <ContainerCard
                     container={container}
-                    onClick={() => handleContainerClick(container)}
+                    onClick={() => onContainerClick(container)}
                     isCreating={highlightedId === container.id}
                   />
                   
@@ -195,12 +200,6 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
                   )}
                 </div>
               ))}
-              
-              {activeNetworkContainers.length === 0 && (
-                <div className="empty-message">
-                  컨테이너가 없습니다. docker run 명령어로 컨테이너를 생성해보세요.
-                </div>
-              )}
             </div>
 
             <div className="volumes-container-area">
@@ -232,7 +231,12 @@ const Visualizer: React.FC<VisualizerProps> = ({ processes }) => {
 
       <ProcessVisualization processes={processes} getContainerPosition={getContainerPosition} />
       
-      <ContainerDetailModal container={selectedContainer} open={containerDetailModalOpen} onClose={() => setContainerDetailModalOpen(false)} onStart={(id) => executeCommand(`docker start ${id}`)} onStop={(id) => executeCommand(`docker stop ${id}`)} onPause={(id) => executeCommand(`docker pause ${id}`)} onRemove={(id) => executeCommand(`docker rm ${id}`)} />
+      <ContainerDetailModal 
+        container={selectedContainer} 
+        open={isContainerDetailModalOpen} 
+        onClose={onCloseContainerDetailModal} 
+        onAction={(action, id) => executeCommand(`docker ${action} ${id}`)}
+      />
       <VolumeDetailModal volume={selectedVolume} open={volumeDetailModalOpen} onClose={() => setVolumeDetailModalOpen(false)} onRemove={(id) => executeCommand(`docker volume rm ${id}`)} />
       <NetworkDetailModal network={selectedNetwork} open={networkDetailModalOpen} onClose={() => setNetworkDetailModalOpen(false)} />
       <ResourceDetailModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} resource={selectedResource} onAction={(action, resourceId) => executeCommand(`docker ${action} ${resourceId}`)} />

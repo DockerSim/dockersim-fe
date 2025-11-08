@@ -9,7 +9,7 @@ import ResizablePanel from '../components/ResizablePanel'
 import ComposeFileModal from '../components/modals/ComposeFileModal'
 import ImageModal from '../components/modals/ImageModal'
 import DockerfileFeedbackModal from '../components/modals/DockerfileFeedbackModal'
-import { useDockerStore } from '../store/dockerStore'
+import { useDockerStore, Container } from '../store/dockerStore'
 import '../styles/HomePage.css'
 import { ToastContainer, ToastProps } from '../components/common/Toast';
 import { ProcessStep } from '../components/ProcessVisualization';
@@ -28,6 +28,9 @@ export default function HomePage() {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [dockerfileFeedbackModalOpen, setDockerfileFeedbackModalOpen] = useState(false);
   const { generateComposeFile } = useDockerStore();
+
+  const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
+  const [isContainerDetailModalOpen, setIsContainerDetailModalOpen] = useState(false);
 
   useNetworkSync();
 
@@ -50,6 +53,11 @@ export default function HomePage() {
     setTimeout(() => {
       setProcesses(prev => prev.filter(p => p.id !== id));
     }, 1500);
+  };
+
+  const handleContainerClick = (container: Container) => {
+    setSelectedContainer(container);
+    setIsContainerDetailModalOpen(true);
   };
 
   const toggleControlPanel = () => {
@@ -128,7 +136,7 @@ export default function HomePage() {
           <ControlPanel 
             isCollapsed={isControlPanelCollapsed}
             showToast={showToast}
-            showProcessBubble={showProcessBubble}
+            onContainerClick={handleContainerClick}
           />
         </ResizablePanel>
         
@@ -148,7 +156,13 @@ export default function HomePage() {
       <div className={`resizer ${bothCollapsed ? 'collapsed' : ''}`} onMouseDown={handleMouseDown} />
       
       <div className={`visualizer`}>
-        <Visualizer processes={processes} />
+        <Visualizer 
+          processes={processes} 
+          selectedContainer={selectedContainer}
+          isContainerDetailModalOpen={isContainerDetailModalOpen}
+          onCloseContainerDetailModal={() => setIsContainerDetailModalOpen(false)}
+          onContainerClick={handleContainerClick}
+        />
       </div>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
