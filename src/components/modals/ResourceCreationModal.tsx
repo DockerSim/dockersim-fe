@@ -50,6 +50,16 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
       setImageName(preselectedImage);
     }
   }, [preselectedImage]);
+  
+  useEffect(() => {
+    // If modal opens for container creation, ensure 'bridge' is pre-selected
+    if (open && type === 'container') {
+      if (!selectedNetworkIds.includes('bridge')) {
+        setSelectedNetworkIds(['bridge']);
+      }
+    }
+  }, [open, type]);
+
 
   if (!open) return null;
 
@@ -119,9 +129,12 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
     setPorts(newPorts);
   };
 
-  const handleNetworkSelectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-    setSelectedNetworkIds(selectedOptions);
+  const handleNetworkSelect = (networkId: string) => {
+    setSelectedNetworkIds(prev => 
+      prev.includes(networkId) 
+        ? prev.filter(id => id !== networkId)
+        : [...prev, networkId]
+    );
   };
 
   const isFormValid = type === 'volume' ? resourceName.trim() !== '' : imageName !== '';
@@ -139,7 +152,7 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
         <div className="resource-form">
           <div className="form-group">
             <label>
-              {type === 'container' ? '컨테이너 이름 (선택사항)' : '볼륨 이름'}
+              {type === 'container' ? '컨테이너 이름' : '볼륨 이름'}
               {type === 'volume' && <span className="required">*</span>}
             </label>
             <input
@@ -176,69 +189,21 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
               </div>
               <div className="form-group">
                 <label>
-                  네트워크 (선택사항)
+                  네트워크
                 </label>
-                <select
-                  multiple
-                  value={selectedNetworkIds}
-                  onChange={handleNetworkSelectionChange}
-                  className="form-select"
-                  style={{ height: '100px' }}
-                >
+                <div className="network-selection-list">
                   {networks.map(network => (
-                    <option key={network.id} value={network.id}>
-                      {network.name}
-                    </option>
+                    <div key={network.id} className="network-list-item-selectable" onClick={() => handleNetworkSelect(network.id)}>
+                      <input
+                        type="checkbox"
+                        checked={selectedNetworkIds.includes(network.id)}
+                        onChange={() => handleNetworkSelect(network.id)}
+                        className="network-checkbox"
+                      />
+                      <span>{network.name}</span>
+                    </div>
                   ))}
-                </select>
-              </div>
-              <div className="ports-container">
-                <h4>포트 매핑 (선택사항)</h4>
-                {ports.map((port, index) => (
-                  <div key={index} className="port-mapping-group">
-                    <input
-                      type="number"
-                      placeholder="호스트 포트"
-                      value={port.hostPort}
-                      onChange={(e) => updatePort(index, 'hostPort', e.target.value)}
-                      className="port-input"
-                    />
-                    <span className="port-arrow">→</span>
-                    <input
-                      type="number"
-                      placeholder="컨테이너 포트"
-                      value={port.containerPort}
-                      onChange={(e) => updatePort(index, 'containerPort', e.target.value)}
-                      className="port-input"
-                    />
-                    <select
-                      value={port.protocol}
-                      onChange={(e) => updatePort(index, 'protocol', e.target.value as 'tcp' | 'udp')}
-                      className="protocol-select"
-                    >
-                      <option value="tcp">TCP</option>
-                      <option value="udp">UDP</option>
-                    </select>
-                    {ports.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removePort(index)}
-                        className="remove-port-btn"
-                        title="포트 제거"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addPort}
-                  className="add-port-btn"
-                >
-                  <span className="btn-icon">➕</span>
-                  포트 추가
-                </button>
+                </div>
               </div>
             </>
           )}
