@@ -31,6 +31,12 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({
     onClose();
   };
 
+  const handleRemoveConfirm = (id: string) => {
+    if (window.confirm('정말로 삭제하시겠습니까?')) {
+      handleActionAndClose('rm', id);
+    }
+  };
+
   return createPortal(
     <div className="modal-backdrop" onClick={handleBackdropClick}>
       <div className="modal-container">
@@ -72,7 +78,6 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({
                         color: '#111',
                         cursor: 'pointer',
                       }}
-                      disabled={container.status !== 'running'}
                   >
                     ⏹️ Stop
                   </button>
@@ -91,6 +96,7 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({
                 </>
             )}
             {container.status === 'stopped' && (
+              <>
                 <button
                     className="action-btn"
                     onClick={() => handleActionAndClose('start', container.id)}
@@ -102,6 +108,18 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({
                 >
                   ▶️ Start
                 </button>
+                <button
+                    className="action-btn"
+                    onClick={() => handleActionAndClose('rm', container.id)}
+                    style={{
+                      backgroundColor: '#f1c40f',
+                      color: '#111',
+                      cursor: 'pointer',
+                    }}
+                >
+                  🗑️ Remove
+                </button>
+              </>
             )}
             {container.status === 'paused' && (
                 <>
@@ -118,7 +136,7 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({
                   </button>
                   <button
                       className="action-btn"
-                      onClick={() => handleActionAndClose('rm', container.id)}
+                      onClick={() => handleRemoveConfirm(container.id)}
                       style={{
                         backgroundColor: '#f1c40f',
                         color: '#111',

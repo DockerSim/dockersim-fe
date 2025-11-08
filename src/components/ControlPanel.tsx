@@ -31,6 +31,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
     executeCommand(`docker ${action} ${containerName}`);
   };
 
+  const handleRemoveConfirm = (containerName: string) => {
+    if (window.confirm('정말로 삭제하시겠습니까?')) {
+      handleContainerAction(containerName, 'rm');
+    }
+  };
+
   const handleVolumeAction = (volumeName: string, action: 'remove') => {
     executeCommand(`docker volume ${action} ${volumeName}`);
   };
@@ -138,7 +144,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
                                 {container.status === 'running' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleContainerAction(container.name, 'stop'); }}>⏹️</button>}
                                 {container.status === 'running' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleContainerAction(container.name, 'pause'); }}>⏸️</button>}
                                 {container.status === 'paused' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleContainerAction(container.name, 'unpause'); }}>⏯️</button>}
-                                <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleContainerAction(container.name, 'rm'); }}>🗑️</button>
+                                {container.status === 'stopped' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleContainerAction(container.name, 'rm'); }}>🗑️</button>}
+                                {container.status === 'paused' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleRemoveConfirm(container.name); }}>🗑️</button>}
                               </div>
                             </div>
                         ))}
