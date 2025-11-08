@@ -219,29 +219,23 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
   updateContainer: (id, updates) => set((state) => {
     const originalContainer = state.containers.find(c => c.id === id);
     if (!originalContainer) return state;
-    
+
     const updatedContainer = { ...originalContainer, ...updates };
     const newContainers = state.containers.map(c => (c.id === id ? updatedContainer : c));
-    let newNetworks = state.networks;
 
-    if (updates.network) {
-      const oldNetworks = new Set(originalContainer.network);
-      const newNetworkSet = new Set(updates.network);
+    const newNetworks = state.networks.map(net => {
+      // First, remove the old version of the container from the network's list
+      const filteredContainers = net.containers.filter(c => c.id !== id);
+      
+      // If the updated container should be in this network, add its updated version
+      if (updatedContainer.network.includes(net.name)) {
+        return { ...net, containers: [...filteredContainers, updatedContainer] };
+      }
+      
+      // Otherwise, just return the network with the container removed
+      return { ...net, containers: filteredContainers };
+    });
 
-      newNetworks = state.networks.map(net => {
-        const isInOld = oldNetworks.has(net.name);
-        const isInNew = newNetworkSet.has(net.name);
-        
-        let newContainersInNet = net.containers.filter(c => c.id !== id);
-
-        if (isInNew) {
-          newContainersInNet.push(updatedContainer);
-        }
-        
-        return { ...net, containers: newContainersInNet };
-      });
-    }
-    
     return { containers: newContainers, networks: newNetworks };
   }),
   addVolume: (volume) => set(state => ({ volumes: [...state.volumes, volume] })),

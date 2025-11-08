@@ -1,8 +1,8 @@
 'use client'
 
 import React from 'react';
-import { Network } from '../../store/dockerStore';
-import './NetworkDetailModal.css'; // 새로운 CSS 파일 임포트
+import { Network, useDockerStore } from '../../store/dockerStore';
+import './NetworkDetailModal.css';
 
 interface NetworkDetailModalProps {
   network: Network | null;
@@ -11,9 +11,16 @@ interface NetworkDetailModalProps {
 }
 
 const NetworkDetailModal: React.FC<NetworkDetailModalProps> = ({ network, open, onClose }) => {
+  const { containers } = useDockerStore();
+
   if (!open || !network) {
     return null;
   }
+
+  // Find containers connected to the current network from the global state
+  const connectedContainers = containers.filter(c => 
+    c.network.includes(network.name) || c.network.includes(network.id)
+  );
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -24,7 +31,6 @@ const NetworkDetailModal: React.FC<NetworkDetailModalProps> = ({ network, open, 
   return (
     <div className="network-modal-backdrop" onClick={handleBackdropClick}>
       <div className="network-modal-container">
-        {/* 헤더 */}
         <div className="network-modal-header">
           <div className="network-modal-title">
             <span>🌐</span>
@@ -33,7 +39,6 @@ const NetworkDetailModal: React.FC<NetworkDetailModalProps> = ({ network, open, 
           <button className="network-modal-close" onClick={onClose}>✕</button>
         </div>
 
-        {/* 기본 정보 */}
         <div className="network-modal-content">
           <div className="network-info-section">
             <h4>기본 정보</h4>
@@ -54,27 +59,14 @@ const NetworkDetailModal: React.FC<NetworkDetailModalProps> = ({ network, open, 
                 <span className="info-label">생성 시간</span>
                 <span className="info-value">{new Date(network.createdAt).toLocaleString('ko-KR')}</span>
               </div>
-              {network.subnet && (
-                <div className="info-row">
-                  <span className="info-label">서브넷</span>
-                  <span className="info-value">{network.subnet}</span>
-                </div>
-              )}
-              {network.gateway && (
-                <div className="info-row">
-                  <span className="info-label">게이트웨이</span>
-                  <span className="info-value">{network.gateway}</span>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* 연결된 컨테이너 정보 */}
           <div className="network-info-section">
-            <h4>연결된 컨테이너 ({network.containers.length})</h4>
-            {network.containers && network.containers.length > 0 ? (
+            <h4>연결된 컨테이너 ({connectedContainers.length})</h4>
+            {connectedContainers.length > 0 ? (
               <div className="containers-list">
-                {network.containers.map((container) => (
+                {connectedContainers.map((container) => (
                   <div key={container.id} className="container-item">
                     <span className="container-icon">📦</span>
                     <span className="container-name">{container.name}</span>
@@ -88,7 +80,6 @@ const NetworkDetailModal: React.FC<NetworkDetailModalProps> = ({ network, open, 
           </div>
         </div>
 
-        {/* 액션 버튼 */}
         <div className="network-modal-actions">
           <button 
             className="action-btn close-btn"
