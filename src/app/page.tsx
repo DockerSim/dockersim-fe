@@ -57,24 +57,23 @@ export default function HomePage() {
     setIsNetworkSelectionModalOpen(true);
   };
 
-  const handleNetworkConnect = (networkId: string) => {
-    if (selectedContainer) {
-      const network = networks.find(n => n.id === networkId);
-      if (network) {
-        executeCommand(`docker network connect ${network.name} ${selectedContainer.name}`);
-        setActiveNetwork(network.id); // Switch to the new network tab
-      }
+  const handleNetworkConnect = (networkIds: string[]) => {
+    if (selectedContainer && networkIds.length > 0) {
+      networkIds.forEach(networkId => {
+        const network = networks.find(n => n.id === networkId);
+        if (network) {
+          executeCommand(`docker network connect ${network.name} ${selectedContainer.name}`);
+        }
+      });
+      // Switch to the first selected network tab
+      setActiveNetwork(networkIds[0]);
     }
     setIsNetworkSelectionModalOpen(false);
     setSelectedContainer(null); 
   };
 
-  const handleAction = (action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm' | 'connect', id: string, networkName?: string) => {
-    if (action === 'connect' && networkName) {
-      executeCommand(`docker network connect ${networkName} ${id}`);
-    } else {
-      executeCommand(`docker ${action} ${id}`);
-    }
+  const handleAction = (action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm', id: string) => {
+    executeCommand(`docker ${action} ${id}`);
   };
 
   const toggleControlPanel = () => {

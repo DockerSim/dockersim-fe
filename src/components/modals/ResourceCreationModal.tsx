@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Network } from '../../store/dockerStore';
+import { Network, useDockerStore } from '../../store/dockerStore';
 import ImageModal from './ImageModal';
 import './ResourceCreationModal.css';
 
@@ -26,7 +26,6 @@ interface ResourceCreationModalProps {
   type: 'container' | 'volume';
   networks: Network[];
   open: boolean;
-  onConfirm: (data: ResourceCreationData) => void;
   onClose: () => void;
   preselectedImage?: string;
 }
@@ -35,10 +34,10 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
   type,
   networks,
   open,
-  onConfirm,
   onClose,
   preselectedImage
 }) => {
+  const { createContainerInNetworks, executeCommand } = useDockerStore();
   const [resourceName, setResourceName] = useState('');
   const [imageName, setImageName] = useState('');
   const [selectedNetworkIds, setSelectedNetworkIds] = useState<string[]>(['bridge']);
@@ -67,24 +66,27 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
     }
 
     const data: ResourceCreationData = {
-      name: resourceName.trim() || (type === 'container' ? `container_${Date.now()}` : `volume_${Date.now()}`),
+      name: resourceName.trim(),
       networkIds: selectedNetworkIds.length > 0 ? selectedNetworkIds : ['bridge'],
-    };
-
-    if (type === 'container') {
-      data.image = imageName;
-      data.ports = ports
+      image: type === 'container' ? imageName : undefined,
+      ports: type === 'container' ? ports
         .filter(p => p.hostPort && p.containerPort)
         .map(p => ({
           hostPort: parseInt(p.hostPort),
           containerPort: parseInt(p.containerPort),
           protocol: p.protocol
-        }));
-    } else {
-      data.mountPath = mountPath;
-    }
+        })) : undefined,
+      mountPath: type === 'volume' ? mountPath : undefined,
+    };
 
-    onConfirm(data);
+    if (type === 'container') {
+      createContainerInNetworks(data);
+    } else {
+      let command = `docker volume create`;
+      if (data.name) command += ` ${data.name}`;
+      executeCommand(command);
+    }
+    
     handleClose();
   };
 
@@ -127,7 +129,6 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
   return createPortal(
     <div className="resource-modal-backdrop" onClick={handleBackdropClick}>
       <div className="resource-modal-container">
-        {/* 헤더 */}
         <div className="resource-modal-header">
           <div className="resource-modal-title">
             <span>{type === 'container' ? '📦' : '💾'}</span>
@@ -135,8 +136,6 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
           </div>
           <button className="resource-modal-close" onClick={onClose}>✕</button>
         </div>
-
-        {/* 폼 콘텐츠 */}
         <div className="resource-form">
           <div className="form-group">
             <label>
@@ -151,32 +150,98 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
               className="form-input"
             />
           </div>
-
           {type === 'container' && (
-            <div className="form-group">
-              <label>
-                Docker 이미지 <span className="required">*</span>
-              </label>
-              <div className="image-select-group">
-                <input
-                  type="text"
-                  value={imageName}
-                  readOnly
-                  placeholder="이미지를 선택하세요"
-                  className="form-input image-input"
-                />
+            <>
+              <div className="form-group">
+                <label>
+                  Docker 이미지 <span className="required">*</span>
+                </label>
+                <div className="image-select-group">
+                  <input
+                    type="text"
+                    value={imageName}
+                    readOnly
+                    placeholder="이미지를 선택하세요"
+                    className="form-input image-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setImageSelectionModalOpen(true)}
+                    className="image-select-btn"
+                  >
+                    <span className="btn-icon">🖼️</span>
+                    이미지 선택
+                  </button>
+                </div>
+              </div>
+              <div className="form-group">
+                <label>
+                  네트워크 (선택사항)
+                </label>
+                <select
+                  multiple
+                  value={selectedNetworkIds}
+                  onChange={handleNetworkSelectionChange}
+                  className="form-select"
+                  style={{ height: '100px' }}
+                >
+                  {networks.map(network => (
+                    <option key={network.id} value={network.id}>
+                      {network.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="ports-container">
+                <h4>포트 매핑 (선택사항)</h4>
+                {ports.map((port, index) => (
+                  <div key={index} className="port-mapping-group">
+                    <input
+                      type="number"
+                      placeholder="호스트 포트"
+                      value={port.hostPort}
+                      onChange={(e) => updatePort(index, 'hostPort', e.target.value)}
+                      className="port-input"
+                    />
+                    <span className="port-arrow">→</span>
+                    <input
+                      type="number"
+                      placeholder="컨테이너 포트"
+                      value={port.containerPort}
+                      onChange={(e) => updatePort(index, 'containerPort', e.target.value)}
+                      className="port-input"
+                    />
+                    <select
+                      value={port.protocol}
+                      onChange={(e) => updatePort(index, 'protocol', e.target.value as 'tcp' | 'udp')}
+                      className="protocol-select"
+                    >
+                      <option value="tcp">TCP</option>
+                      <option value="udp">UDP</option>
+                    </select>
+                    {ports.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removePort(index)}
+                        className="remove-port-btn"
+                        title="포트 제거"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
                 <button
                   type="button"
-                  onClick={() => setImageSelectionModalOpen(true)}
-                  className="image-select-btn"
+                  onClick={addPort}
+                  className="add-port-btn"
                 >
-                  <span className="btn-icon">🖼️</span>
-                  이미지 선택
+                  <span className="btn-icon">➕</span>
+                  포트 추가
                 </button>
               </div>
-            </div>
+            </>
           )}
-
           {type === 'volume' && (
             <div className="form-group">
               <label>마운트 경로</label>
@@ -189,28 +254,7 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
               />
             </div>
           )}
-
-          <div className="form-group">
-            <label>
-              네트워크 (선택사항)
-            </label>
-            <select
-              multiple
-              value={selectedNetworkIds}
-              onChange={handleNetworkSelectionChange}
-              className="form-select"
-              style={{ height: '100px' }}
-            >
-              {networks.map(network => (
-                <option key={network.id} value={network.id}>
-                  {network.name}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
-
-        {/* 액션 버튼 */}
         <div className="resource-actions">
           <button
             onClick={onClose}
@@ -219,23 +263,14 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
             취소
           </button>
           <button
-              onClick={handleConfirm}
-              disabled={!isFormValid}
-              className={`action-btn primary ${!isFormValid ? 'disabled' : ''}`}
-              style={{
-                color: isFormValid ? 'black' : '6c757d',        // 활성: 흰색, 비활성: 검은색
-                background: isFormValid ? '#007bff' : '#6c757d', // 활성: 파랑, 비활성: 회색
-                cursor: isFormValid ? 'pointer' : 'not-allowed',
-              }}
+            onClick={handleConfirm}
+            disabled={!isFormValid}
+            className={`action-btn primary ${!isFormValid ? 'disabled' : ''}`}
           >
             <span className="btn-icon">{type === 'container' ? '📦' : '💾'}</span>
             {type === 'container' ? '컨테이너 생성' : '볼륨 생성'}
           </button>
-
-
         </div>
-
-        {/* 이미지 선택 모달 */}
         <ImageModal
           isOpen={imageSelectionModalOpen}
           onSelect={handleImageSelect}

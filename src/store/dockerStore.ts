@@ -1,9 +1,10 @@
 import { create } from 'zustand';
+import { ResourceCreationData } from '../components/modals/ResourceCreationModal';
 
 // --- 타입 정의 ---
 export interface Port { hostPort: number; containerPort: number; protocol: 'tcp' | 'udp'; }
 export interface Volume { id: string; name: string; driver: string; scope: 'local' | 'global'; createdAt: Date; mountPath: string; labels: Record<string, string> | null; options: Record<string, string> | null; connectedContainers: string[]; }
-export interface Container { id: string; name: string; image: string; status: 'running' | 'stopped' | 'paused'; ports: Port[]; volumes: Volume[]; network: string | null; created: Date; }
+export interface Container { id: string; name: string; image: string; status: 'running' | 'stopped' | 'paused'; ports: Port[]; volumes: Volume[]; network: string[]; created: Date; }
 export interface Network { id: string; name: string; driver: string; scope: 'local' | 'global'; createdAt: Date; containers: Container[]; }
 export interface DockerImage { id: string; name: string; tag: string; created: Date; size: string; }
 export interface TerminalHistory { id: string; command: string; output: string; timestamp: string; isError: boolean; }
@@ -14,7 +15,8 @@ interface DockerStore {
   networks: Network[];
   localImages: DockerImage[];
   terminalHistory: TerminalHistory[];
-  executeCommand: (command: string) => void;
+  executeCommand: (command: string, isInternal?: boolean) => void;
+  createContainerInNetworks: (data: ResourceCreationData) => void;
   addMessage: (message: string) => void;
   generateComposeFile: () => string;
   addContainer: (container: Container) => void;
@@ -33,7 +35,7 @@ const initialLocalImages: DockerImage[] = [
     { id: 'sha256:nginx123', name: 'nginx', tag: 'latest', created: new Date(), size: '133MB' },
     { id: 'sha256:ubuntu123', name: 'ubuntu', tag: 'latest', created: new Date(), size: '72.9MB' },
     { id: 'sha256:python123', name: 'python', tag: '3.9-slim', created: new Date(), size: '114MB' },
-    { id: 'sha256:mysql123', name: 'mysql', tag: 'latest', created: new Date(), size: '544MB' }, // 신규 더미 이미지
+    { id: 'sha256:mysql123', name: 'mysql', tag: 'latest', created: new Date(), size: '544MB' },
 ];
 
 export const useDockerStore = create<DockerStore>((set, get) => ({
@@ -51,7 +53,32 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
 
   generateComposeFile: () => { /* ... */ return ''; },
 
-  executeCommand: (command) => {
+  createContainerInNetworks: (data) => {
+    const { executeCommand, networks } = get();
+    const { image, name, networkIds } = data;
+
+    if (!image) return;
+
+    const containerName = name || `container_${Date.now()}`;
+    const primaryNetworkName = networks.find(n => n.id === (networkIds[0] || 'bridge'))?.name || 'bridge';
+
+    // 1. Run container on the primary network
+    let runCommand = `docker run -d --name ${containerName} --network ${primaryNetworkName} ${image}`;
+    executeCommand(runCommand);
+
+    // 2. Connect to additional networks
+    if (networkIds.length > 1) {
+      networkIds.slice(1).forEach(networkId => {
+        const network = networks.find(n => n.id === networkId);
+        if (network) {
+          const connectCommand = `docker network connect ${network.name} ${containerName}`;
+          executeCommand(connectCommand, true); // isInternal = true to suppress terminal output
+        }
+      });
+    }
+  },
+
+  executeCommand: (command, isInternal = false) => {
     const state = get();
     let output = '';
     let isError = false;
@@ -89,7 +116,7 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
 
             const containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`;
             const targetNetworkName = networkMatch ? networkMatch[1] : 'bridge';
-            const newContainer: Container = { id: containerName, name: containerName, image: imageName, status: 'running', ports: [], volumes: [], network: targetNetworkName, created: new Date() };
+            const newContainer: Container = { id: containerName, name: containerName, image: imageName, status: 'running', ports: [], volumes: [], network: [targetNetworkName], created: new Date() };
             get().addContainer(newContainer);
             output = containerName;
             break;
@@ -129,7 +156,10 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
                 const network = state.networks.find(n => n.name === networkName);
                 const container = state.containers.find(c => c.name === containerName);
                 if (!network || !container) throw new Error('Network or Container not found');
-                get().updateContainer(container.id, { network: network.name });
+                
+                const newNetworks = Array.from(new Set([...container.network, network.name]));
+                get().updateContainer(container.id, { network: newNetworks });
+                output = `Connected container ${containerName} to network ${networkName}`;
             } else {
                 throw new Error(`Unknown network command: ${netCmd}`);
             }
@@ -161,12 +191,14 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
       output = e.message;
       isError = true;
     }
-    set(state => ({ terminalHistory: [...state.terminalHistory, { id: `cmd_${Date.now()}`, command, output, timestamp: new Date().toISOString(), isError }] }));
+    if (!isInternal) {
+      set(state => ({ terminalHistory: [...state.terminalHistory, { id: `cmd_${Date.now()}`, command, output, timestamp: new Date().toISOString(), isError }] }));
+    }
   },
 
   addContainer: (container) => set(state => {
     const newNetworks = state.networks.map(n => {
-        if (n.name === container.network) {
+        if (container.network.includes(n.name)) {
             return { ...n, containers: [...n.containers, container] };
         }
         return n;
@@ -187,23 +219,29 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
   updateContainer: (id, updates) => set((state) => {
     const originalContainer = state.containers.find(c => c.id === id);
     if (!originalContainer) return state;
+    
     const updatedContainer = { ...originalContainer, ...updates };
     const newContainers = state.containers.map(c => (c.id === id ? updatedContainer : c));
     let newNetworks = state.networks;
-    if (updates.network !== undefined && originalContainer.network !== updates.network) {
+
+    if (updates.network) {
+      const oldNetworks = new Set(originalContainer.network);
+      const newNetworkSet = new Set(updates.network);
+
       newNetworks = state.networks.map(net => {
-        let newContainersInNet = [...net.containers];
-        if (net.name === originalContainer.network) {
-          newContainersInNet = newContainersInNet.filter(c => c.id !== id);
+        const isInOld = oldNetworks.has(net.name);
+        const isInNew = newNetworkSet.has(net.name);
+        
+        let newContainersInNet = net.containers.filter(c => c.id !== id);
+
+        if (isInNew) {
+          newContainersInNet.push(updatedContainer);
         }
-        if (net.name === updates.network) {
-          if (!newContainersInNet.some(c => c.id === id)) {
-            newContainersInNet.push(updatedContainer);
-          }
-        }
+        
         return { ...net, containers: newContainersInNet };
       });
     }
+    
     return { containers: newContainers, networks: newNetworks };
   }),
   addVolume: (volume) => set(state => ({ volumes: [...state.volumes, volume] })),
