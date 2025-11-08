@@ -207,18 +207,6 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
               </div>
             </>
           )}
-          {type === 'volume' && (
-            <div className="form-group">
-              <label>마운트 경로</label>
-              <input
-                type="text"
-                value={mountPath}
-                onChange={(e) => setMountPath(e.target.value)}
-                placeholder="/data"
-                className="form-input"
-              />
-            </div>
-          )}
         </div>
         <div className="resource-actions">
           <button
