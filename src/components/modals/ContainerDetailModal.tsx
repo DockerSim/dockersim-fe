@@ -23,6 +23,11 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, 
     }
   };
 
+  const handleActionAndClose = (action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm', id: string) => {
+    onAction(action, id);
+    onClose();
+  };
+
   const handleNetworkConnect = (networkId: string) => {
     const network = networks.find(n => n.id === networkId);
     if (network) {
@@ -67,22 +72,22 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, 
                 <>
                   <button
                       className="action-btn"
-                      onClick={() => onAction('stop', container.id)}
+                      onClick={() => handleActionAndClose('stop', container.id)}
                       style={{
-                        backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                        backgroundColor: '#f1c40f',
                         color: '#111',
                         cursor: 'pointer',
                       }}
-                      disabled={container.status !== 'running'} // 상태에 따라 클릭 불가
+                      disabled={container.status !== 'running'}
                   >
                     ⏹️ Stop
                   </button>
 
                   <button
                       className="action-btn"
-                      onClick={() => onAction('pause', container.id)}
+                      onClick={() => handleActionAndClose('pause', container.id)}
                       style={{
-                        backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                        backgroundColor: '#f1c40f',
                         color: '#111',
                         cursor: 'pointer',
                       }}
@@ -94,9 +99,9 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, 
             {container.status === 'stopped' && (
                 <button
                     className="action-btn"
-                    onClick={() => onAction('start', container.id)}
+                    onClick={() => handleActionAndClose('start', container.id)}
                     style={{
-                      backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                      backgroundColor: '#f1c40f',
                       color: '#111',
                       cursor: 'pointer',
                     }}
@@ -108,9 +113,9 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, 
                 <>
                   <button
                       className="action-btn"
-                      onClick={() => onAction('unpause', container.id)}
+                      onClick={() => handleActionAndClose('unpause', container.id)}
                       style={{
-                        backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                        backgroundColor: '#f1c40f',
                         color: '#111',
                         cursor: 'pointer',
                       }}
@@ -119,9 +124,9 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, 
                   </button>
                   <button
                       className="action-btn"
-                      onClick={() => onAction('rm', container.id)}
+                      onClick={() => handleActionAndClose('rm', container.id)}
                       style={{
-                        backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                        backgroundColor: '#f1c40f',
                         color: '#111',
                         cursor: 'pointer',
                       }}
@@ -134,7 +139,7 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, 
                 className="action-btn"
                 onClick={() => setIsNetworkSelectionModalOpen(true)}
                 style={{
-                  backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                  backgroundColor: '#f1c40f',
                   color: '#111',
                   cursor: 'pointer',
                 }}
