@@ -7,7 +7,7 @@ import './ResourceCreationModal.css';
 export interface ResourceCreationData {
   name: string;
   image?: string;
-  networkIds: string[];
+  networkIds?: string[];
   ports?: Array<{
     hostPort: number;
     containerPort: number;
@@ -23,10 +23,11 @@ interface Port {
 }
 
 interface ResourceCreationModalProps {
-  type: 'container' | 'volume';
+  type: 'container' | 'volume' | 'network';
   networks: Network[];
   open: boolean;
   onClose: () => void;
+  onConfirm: (data: ResourceCreationData) => void;
   preselectedImage?: string;
 }
 
@@ -35,6 +36,7 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
   networks,
   open,
   onClose,
+  onConfirm,
   preselectedImage
 }) => {
   const { createContainerInNetworks, executeCommand } = useDockerStore();
@@ -52,7 +54,6 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
   }, [preselectedImage]);
   
   useEffect(() => {
-    // If modal opens for container creation, ensure 'bridge' is pre-selected
     if (open && type === 'container') {
       if (!selectedNetworkIds.includes('bridge')) {
         setSelectedNetworkIds(['bridge']);
@@ -69,34 +70,13 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
     }
   };
 
-  const handleConfirm = () => {
-    if (type === 'container' && !imageName) {
-      alert('Docker 이미지를 선택해주세요.');
-      return;
-    }
-
+  const handleConfirmClick = () => {
     const data: ResourceCreationData = {
       name: resourceName.trim(),
-      networkIds: selectedNetworkIds.length > 0 ? selectedNetworkIds : ['bridge'],
       image: type === 'container' ? imageName : undefined,
-      ports: type === 'container' ? ports
-        .filter(p => p.hostPort && p.containerPort)
-        .map(p => ({
-          hostPort: parseInt(p.hostPort),
-          containerPort: parseInt(p.containerPort),
-          protocol: p.protocol
-        })) : undefined,
-      mountPath: type === 'volume' ? mountPath : undefined,
+      networkIds: type === 'container' ? selectedNetworkIds : undefined,
     };
-
-    if (type === 'container') {
-      createContainerInNetworks(data);
-    } else {
-      let command = `docker volume create`;
-      if (data.name) command += ` ${data.name}`;
-      executeCommand(command);
-    }
-    
+    onConfirm(data);
     handleClose();
   };
 
@@ -115,20 +95,6 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
     setImageSelectionModalOpen(false);
   };
 
-  const addPort = () => {
-    setPorts([...ports, { hostPort: '', containerPort: '', protocol: 'tcp' }]);
-  };
-
-  const removePort = (index: number) => {
-    setPorts(ports.filter((_, i) => i !== index));
-  };
-
-  const updatePort = (index: number, field: keyof Port, value: string) => {
-    const newPorts = [...ports];
-    newPorts[index] = { ...newPorts[index], [field]: value };
-    setPorts(newPorts);
-  };
-
   const handleNetworkSelect = (networkId: string) => {
     setSelectedNetworkIds(prev => 
       prev.includes(networkId) 
@@ -137,29 +103,50 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
     );
   };
 
-  const isFormValid = type === 'volume' ? resourceName.trim() !== '' : imageName !== '';
+  const getTitle = () => {
+    if (type === 'container') return { icon: '📦', text: '새 컨테이너 생성' };
+    if (type === 'volume') return { icon: '💾', text: '새 볼륨 생성' };
+    if (type === 'network') return { icon: '🌐', text: '새 네트워크 생성' };
+    return { icon: '', text: '' };
+  };
+
+  const getLabel = () => {
+    if (type === 'container') return '컨테이너 이름';
+    if (type === 'volume') return '볼륨 이름';
+    if (type === 'network') return '네트워크 이름';
+    return '';
+  };
+
+  const getPlaceholder = () => {
+    if (type === 'container') return '비워두면 자동으로 생성됩니다';
+    if (type === 'volume') return '볼륨 이름을 입력하세요';
+    if (type === 'network') return '네트워크 이름을 입력하세요';
+    return '';
+  };
+
+  const isFormValid = (type === 'container' && imageName !== '') || (type !== 'container' && resourceName.trim() !== '');
 
   return createPortal(
     <div className="resource-modal-backdrop" onClick={handleBackdropClick}>
       <div className="resource-modal-container">
         <div className="resource-modal-header">
           <div className="resource-modal-title">
-            <span>{type === 'container' ? '📦' : '💾'}</span>
-            <span>{type === 'container' ? '새 컨테이너 생성' : '새 볼륨 생성'}</span>
+            <span>{getTitle().icon}</span>
+            <span>{getTitle().text}</span>
           </div>
           <button className="resource-modal-close" onClick={onClose}>✕</button>
         </div>
         <div className="resource-form">
           <div className="form-group">
             <label>
-              {type === 'container' ? '컨테이너 이름' : '볼륨 이름'}
-              {type === 'volume' && <span className="required">*</span>}
+              {getLabel()}
+              {type !== 'container' && <span className="required">*</span>}
             </label>
             <input
               type="text"
               value={resourceName}
               onChange={(e) => setResourceName(e.target.value)}
-              placeholder={type === 'container' ? '비워두면 자동으로 생성됩니다' : '볼륨 이름을 입력하세요'}
+              placeholder={getPlaceholder()}
               className="form-input"
             />
           </div>
@@ -216,12 +203,12 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
             취소
           </button>
           <button
-            onClick={handleConfirm}
+            onClick={handleConfirmClick}
             disabled={!isFormValid}
             className={`action-btn primary ${!isFormValid ? 'disabled' : ''}`}
           >
-            <span className="btn-icon">{type === 'container' ? '📦' : '💾'}</span>
-            {type === 'container' ? '컨테이너 생성' : '볼륨 생성'}
+            <span className="btn-icon">{getTitle().icon}</span>
+            {getTitle().text.replace('새 ', '')}
           </button>
         </div>
         <ImageModal

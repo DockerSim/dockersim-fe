@@ -13,6 +13,7 @@ interface ControlPanelProps {
   onContainerClick: (container: Container) => void;
   onVolumeClick: (volume: Volume) => void;
   onNetworkClick: (network: Network) => void;
+  onNetworkRemove: (networkName: string) => void;
   onToggle?: () => void;
 }
 
@@ -22,15 +23,24 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   onContainerClick,
   onVolumeClick,
   onNetworkClick,
+  onNetworkRemove,
   onToggle
 }) => {
-  const { containers, volumes, networks, executeCommand, addMessage, updateContainer, updateVolume } = useDockerStore();
+  const { 
+    containers, 
+    volumes, 
+    networks, 
+    executeCommand, 
+    addMessage, 
+    updateContainer, 
+    updateVolume,
+    createContainerInNetworks 
+  } = useDockerStore();
+  
   const [activeTab, setActiveTab] = useState<'containers' | 'volumes' | 'networks'>('containers');
-
   const [volumeConnectModalOpen, setVolumeConnectModalOpen] = useState(false);
   const [resourceCreationModalOpen, setResourceCreationModalOpen] = useState(false);
-  const [resourceCreationType, setResourceCreationType] = useState<'container' | 'volume'>('container');
-
+  const [resourceCreationType, setResourceCreationType] = useState<'container' | 'volume' | 'network'>('container');
   const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null);
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
 
@@ -38,48 +48,27 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
     executeCommand(`docker ${action} ${containerName}`);
   };
 
-  const handleRemoveConfirm = (containerName: string) => {
-    if (window.confirm('정말로 삭제하시겠습니까?')) {
-      handleContainerAction(containerName, 'rm');
+  const handleRemoveConfirm = (resourceType: 'container' | 'volume', name: string) => {
+    if (window.confirm(`정말로 '${name}'을(를) 삭제하시겠습니까?`)) {
+      if (resourceType === 'container') handleContainerAction(name, 'rm');
+      else if (resourceType === 'volume') executeCommand(`docker volume rm ${name}`);
     }
   };
 
-  const handleVolumeAction = (volumeName: string, action: 'remove') => {
-    executeCommand(`docker volume ${action} ${volumeName}`);
-  };
-
-  const handleNetworkAction = (networkName: string, action: 'remove') => {
-    executeCommand(`docker network ${action} ${networkName}`);
-  };
-
-  const handleCreateResource = (type: 'container' | 'volume') => {
+  const handleCreateResource = (type: 'container' | 'volume' | 'network') => {
     setResourceCreationType(type);
     setResourceCreationModalOpen(true);
   };
 
-  const handleCreateNetwork = () => {
-    const networkName = prompt('새 네트워크 이름을 입력하세요:');
-    if (networkName && networkName.trim()) {
-      executeCommand(`docker network create ${networkName.trim()}`);
-    }
-  };
-
   const handleResourceCreationConfirm = (data: ResourceCreationData) => {
-    if (data.image) { // Container Creation
-      let command = `docker run -d`;
-      if(data.name) command += ` --name ${data.name}`;
-      if(data.networkIds && data.networkIds.length > 0) {
-        data.networkIds.forEach(networkId => {
-          const network = networks.find(n => n.id === networkId);
-          if (network) {
-            command += ` --network ${network.name}`;
-          }
-        });
-      }
-      command += ` ${data.image}`;
-      executeCommand(command);
-    } else { // Volume Creation
+    if (resourceCreationType === 'container') {
+      createContainerInNetworks(data);
+    } else if (resourceCreationType === 'volume') {
       let command = `docker volume create`;
+      if (data.name) command += ` ${data.name}`;
+      executeCommand(command);
+    } else if (resourceCreationType === 'network') {
+      let command = `docker network create`;
       if (data.name) command += ` ${data.name}`;
       executeCommand(command);
     }
@@ -156,8 +145,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                                 {container.status === 'running' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleContainerAction(container.name, 'stop'); }}>⏹️</button>}
                                 {container.status === 'running' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleContainerAction(container.name, 'pause'); }}>⏸️</button>}
                                 {container.status === 'paused' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleContainerAction(container.name, 'unpause'); }}>⏯️</button>}
-                                {container.status === 'stopped' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleContainerAction(container.name, 'rm'); }}>🗑️</button>}
-                                {container.status === 'paused' && <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleRemoveConfirm(container.name); }}>🗑️</button>}
+                                <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleRemoveConfirm('container', container.name); }}>🗑️</button>
                               </div>
                             </div>
                         ))}
@@ -184,7 +172,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                                 </div>
                               </div>
                               <div className="resource-actions">
-                                <DeleteBtn onClick={(e) => { e.stopPropagation(); handleVolumeAction(volume.name, 'remove'); }} size="sm" />
+                                {(!volume.connectedContainers || volume.connectedContainers.length === 0) && (
+                                  <button className="action-btn" onClick={(e) => { e.stopPropagation(); executeCommand(`docker volume rm ${volume.name}`); }}>🗑️</button>
+                                )}
                               </div>
                             </div>
                         ))}
@@ -197,7 +187,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                     <div className="resource-section">
                       <div className="section-header">
                         <h3>네트워크 관리</h3>
-                        <AddBtn onClick={handleCreateNetwork} size="sm" />
+                        <AddBtn onClick={() => handleCreateResource('network')} size="sm" />
                       </div>
                       <div className="network-connection-control">
                         <select value={selectedNetworkId || ''} onChange={(e) => setSelectedNetworkId(e.target.value)} className="select-input">
@@ -220,7 +210,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                                 </div>
                               </div>
                               <div className="resource-actions">
-                                {network.name !== 'bridge' && <DeleteBtn onClick={(e) => { e.stopPropagation(); handleNetworkAction(network.name, 'remove'); }} size="sm" />}
+                                {network.name !== 'bridge' && (
+                                  <button className="action-btn" onClick={(e) => { e.stopPropagation(); onNetworkRemove(network.name); }}>🗑️</button>
+                                )}
                               </div>
                             </div>
                         ))}
@@ -232,7 +224,13 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         )}
 
         <VolumeConnectModal containers={containers || []} volumes={volumes || []} open={volumeConnectModalOpen} onConnect={handleVolumeConnect} onClose={() => setVolumeConnectModalOpen(false)} />
-        <ResourceCreationModal type={resourceCreationType} networks={networks || []} open={resourceCreationModalOpen} onConfirm={handleResourceCreationConfirm} onClose={() => setResourceCreationModalOpen(false)} />
+        <ResourceCreationModal 
+          type={resourceCreationType} 
+          networks={networks || []} 
+          open={resourceCreationModalOpen} 
+          onConfirm={handleResourceCreationConfirm} 
+          onClose={() => setResourceCreationModalOpen(false)} 
+        />
       </div>
   );
 };

@@ -32,7 +32,7 @@ export default function HomePage() {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [dockerfileFeedbackModalOpen, setDockerfileFeedbackModalOpen] = useState(false);
   
-  const { networks, generateComposeFile, executeCommand } = useDockerStore();
+  const { containers, networks, generateComposeFile, executeCommand, disconnectVolumeFromContainer } = useDockerStore();
 
   // --- Modal State Centralization ---
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
@@ -70,6 +70,30 @@ export default function HomePage() {
   const handleNetworkClick = (network: Network) => {
     setSelectedNetwork(network);
     setNetworkDetailModalOpen(true);
+  };
+
+  const handleVolumeDisconnect = (volumeName: string, containerName: string) => {
+    const container = containers.find(c => c.name === containerName);
+    disconnectVolumeFromContainer(volumeName, containerName);
+    setIsVolumeDetailModalOpen(false);
+    setIsContainerDetailModalOpen(false);
+    if (container?.network[0]) {
+      setActiveNetwork(container.network[0]);
+    }
+  };
+
+  const handleNetworkRemove = (networkName: string) => {
+    const network = networks.find(n => n.name === networkName);
+    if (!network) return;
+
+    const isHot = network.containers.some(c => c.status === 'running' || c.status === 'paused');
+    if (isHot) {
+      if (window.confirm(`'${networkName}' 네트워크는 현재 사용 중인 컨테이너가 있습니다. 정말로 삭제하시겠습니까?`)) {
+        executeCommand(`docker network rm ${networkName}`);
+      }
+    } else {
+      executeCommand(`docker network rm ${networkName}`);
+    }
   };
 
   const handleOpenNetworkSelectionModal = () => {
@@ -174,6 +198,7 @@ export default function HomePage() {
             onContainerClick={handleContainerClick}
             onVolumeClick={handleVolumeClick}
             onNetworkClick={handleNetworkClick}
+            onNetworkRemove={handleNetworkRemove}
           />
         </ResizablePanel>
         
@@ -235,6 +260,7 @@ export default function HomePage() {
         open={isVolumeDetailModalOpen} 
         onClose={() => setVolumeDetailModalOpen(false)} 
         onRemove={(id) => executeCommand(`docker volume rm ${id}`)} 
+        onDisconnect={handleVolumeDisconnect}
       />
       <NetworkDetailModal 
         network={selectedNetwork} 

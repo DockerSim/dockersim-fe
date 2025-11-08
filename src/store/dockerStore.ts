@@ -17,6 +17,7 @@ interface DockerStore {
   terminalHistory: TerminalHistory[];
   executeCommand: (command: string, isInternal?: boolean) => void;
   createContainerInNetworks: (data: ResourceCreationData) => void;
+  disconnectVolumeFromContainer: (volumeName: string, containerName: string) => void;
   addMessage: (message: string) => void;
   generateComposeFile: () => string;
   addContainer: (container: Container) => void;
@@ -60,22 +61,56 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     if (!image) return;
 
     const containerName = name || `container_${Date.now()}`;
-    const primaryNetworkName = networks.find(n => n.id === (networkIds[0] || 'bridge'))?.name || 'bridge';
+    // Use the first selected network as the primary, or default to bridge
+    const primaryNetworkId = networkIds?.[0] || 'bridge';
+    const primaryNetwork = networks.find(n => n.id === primaryNetworkId);
+    const primaryNetworkName = primaryNetwork?.name || 'bridge';
 
-    // 1. Run container on the primary network
+    // Create container and attach to the primary network
     let runCommand = `docker run -d --name ${containerName} --network ${primaryNetworkName} ${image}`;
-    executeCommand(runCommand);
+    executeCommand(runCommand, true); // isInternal to avoid double output
 
-    // 2. Connect to additional networks
-    if (networkIds.length > 1) {
-      networkIds.slice(1).forEach(networkId => {
-        const network = networks.find(n => n.id === networkId);
-        if (network) {
-          const connectCommand = `docker network connect ${network.name} ${containerName}`;
-          executeCommand(connectCommand, true); // isInternal = true to suppress terminal output
-        }
-      });
-    }
+    // Connect to any additional selected networks
+    const additionalNetworkIds = networkIds?.slice(1) || [];
+    additionalNetworkIds.forEach(networkId => {
+      const network = networks.find(n => n.id === networkId);
+      if (network) {
+        const connectCommand = `docker network connect ${network.name} ${containerName}`;
+        executeCommand(connectCommand, true);
+      }
+    });
+    
+    // Add a final message to the terminal
+    get().addMessage(`Container ${containerName} created and connected to specified networks.`);
+  },
+
+  disconnectVolumeFromContainer: (volumeName, containerName) => {
+    set(state => {
+      const volume = state.volumes.find(v => v.name === volumeName);
+      const container = state.containers.find(c => c.name === containerName);
+
+      if (!volume || !container) {
+        console.error("Volume or Container not found for disconnection.");
+        return state;
+      }
+
+      // Update container: remove volume from its list
+      const updatedContainer = {
+        ...container,
+        volumes: container.volumes.filter(v => v.name !== volumeName)
+      };
+      const newContainers = state.containers.map(c => c.id === container.id ? updatedContainer : c);
+
+      // Update volume: remove container from its connected list
+      const updatedVolume = {
+        ...volume,
+        connectedContainers: volume.connectedContainers.filter(cId => cId !== container.id)
+      };
+      const newVolumes = state.volumes.map(v => v.id === volume.id ? updatedVolume : v);
+      
+      get().addMessage(`Disconnected volume ${volumeName} from container ${containerName}`);
+      return { containers: newContainers, volumes: newVolumes };
+    });
   },
 
   executeCommand: (command, isInternal = false) => {
@@ -91,6 +126,57 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
       if (docker !== 'docker') throw new Error(`command not found: ${docker}`);
 
       switch (sub) {
+        case 'run': {
+            const nameMatch = command.match(/--name\s+(\S+)/);
+            const networkMatch = command.match(/--network\s+(\S+)/);
+            const imageName = args.filter(arg => !arg.startsWith('-')).pop() || '';
+            if (!imageName) throw new Error('"docker run" requires an image name.');
+            
+            const [imgName, imgTag = 'latest'] = imageName.split(':');
+            const imageExists = state.localImages.some(img => img.name === imgName && img.tag === imgTag);
+            if (!imageExists) throw new Error(`Unable to find image '${imageName}' locally`);
+
+            const containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`;
+            const targetNetworkName = networkMatch ? networkMatch[1] : 'bridge';
+            
+            // The container is created with an array of networks from the start
+            const newContainer: Container = { id: containerName, name: containerName, image: imageName, status: 'running', ports: [], volumes: [], network: [targetNetworkName], created: new Date() };
+            get().addContainer(newContainer);
+            output = containerName;
+            break;
+        }
+        case 'network': {
+            const [netCmd, ...netArgs] = args;
+            if (netCmd === 'connect') {
+                const networkName = netArgs[0];
+                const containerName = netArgs[1];
+                const network = state.networks.find(n => n.name === networkName);
+                const container = state.containers.find(c => c.name === containerName);
+                if (!network || !container) throw new Error('Network or Container not found');
+                
+                // Add the new network if it's not already there
+                const newNetworksForContainer = Array.from(new Set([...container.network, network.id]));
+                get().updateContainer(container.id, { network: newNetworksForContainer });
+                output = ``; // Suppress output as createContainerInNetworks handles it
+            } else if (netCmd === 'create') {
+                const networkName = netArgs[0];
+                if (!networkName) throw new Error('docker network create requires a name');
+                if (state.networks.some(n => n.name === networkName)) throw new Error(`network with name ${networkName} already exists`);
+                const newNetwork: Network = { id: `net_${networkName}_${Date.now()}`, name: networkName, driver: 'bridge', scope: 'local', createdAt: new Date(), containers: [] };
+                get().addNetwork(newNetwork);
+                output = networkName;
+            } else if (netCmd === 'rm' || netCmd === 'remove') {
+                const networkName = netArgs[0];
+                const network = state.networks.find(n => n.name === networkName);
+                if (!network) throw new Error(`network "${networkName}" not found`);
+                get().removeNetwork(network.id);
+                output = networkName;
+            } else {
+                throw new Error(`Unknown network command: ${netCmd}`);
+            }
+            break;
+        }
+        // Other cases remain the same
         case 'pull': {
             const imageNameWithTag = args[0];
             if (!imageNameWithTag) throw new Error('docker pull requires an image name');
@@ -104,23 +190,6 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
             }
             break;
         }
-        case 'run': {
-            const nameMatch = command.match(/--name\s+(\S+)/);
-            const networkMatch = command.match(/--network\s+(\S+)/);
-            const imageName = args.filter(arg => !arg.startsWith('-')).pop() || '';
-            if (!imageName) throw new Error('"docker run" requires an image name.');
-            
-            const [imgName, imgTag = 'latest'] = imageName.split(':');
-            const imageExists = state.localImages.some(img => img.name === imgName && img.tag === imgTag);
-            if (!imageExists) throw new Error(`Unable to find image '${imageName}' locally`);
-
-            const containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`;
-            const targetNetworkName = networkMatch ? networkMatch[1] : 'bridge';
-            const newContainer: Container = { id: containerName, name: containerName, image: imageName, status: 'running', ports: [], volumes: [], network: [targetNetworkName], created: new Date() };
-            get().addContainer(newContainer);
-            output = containerName;
-            break;
-        }
         case 'start': case 'stop': case 'pause': case 'unpause': case 'rm': {
             const containerName = args[0];
             const target = state.containers.find(c => c.name === containerName || c.id === containerName);
@@ -132,37 +201,6 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
                 get().updateContainer(target.id, { status: newStatus });
             }
             output = containerName;
-            break;
-        }
-        case 'network': {
-            const [netCmd, ...netArgs] = args;
-            if (netCmd === 'create') {
-                const networkName = netArgs[0];
-                if (!networkName) throw new Error('docker network create requires a name');
-                if (state.networks.some(n => n.name === networkName)) throw new Error(`network with name ${networkName} already exists`);
-                const newNetwork: Network = { id: `net_${networkName}_${Date.now()}`, name: networkName, driver: 'bridge', scope: 'local', createdAt: new Date(), containers: [] };
-                get().addNetwork(newNetwork);
-                output = networkName;
-            } else if (netCmd === 'rm' || netCmd === 'remove') {
-                const networkName = netArgs[0];
-                const network = state.networks.find(n => n.name === networkName);
-                if (!network) throw new Error(`network "${networkName}" not found`);
-                if (network.containers.length > 0) throw new Error(`network "${networkName}" is in use`);
-                get().removeNetwork(network.id);
-                output = networkName;
-            } else if (netCmd === 'connect') {
-                const networkName = netArgs[0];
-                const containerName = netArgs[1];
-                const network = state.networks.find(n => n.name === networkName);
-                const container = state.containers.find(c => c.name === containerName);
-                if (!network || !container) throw new Error('Network or Container not found');
-                
-                const newNetworks = Array.from(new Set([...container.network, network.name]));
-                get().updateContainer(container.id, { network: newNetworks });
-                output = `Connected container ${containerName} to network ${networkName}`;
-            } else {
-                throw new Error(`Unknown network command: ${netCmd}`);
-            }
             break;
         }
         case 'volume': {
@@ -180,6 +218,12 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
                 if (volume.connectedContainers.length > 0) throw new Error(`remove ${volumeName}: volume is in use`);
                 get().removeVolume(volume.id);
                 output = volumeName;
+            } else if (volCmd === 'disconnect') {
+                const volumeName = volArgs[0];
+                const containerName = volArgs[1];
+                if (!volumeName || !containerName) throw new Error('docker volume disconnect requires volume and container names');
+                get().disconnectVolumeFromContainer(volumeName, containerName);
+                output = ``;
             } else {
                 throw new Error(`Unknown volume command: ${volCmd}`);
             }
@@ -191,14 +235,15 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
       output = e.message;
       isError = true;
     }
-    if (!isInternal) {
+    if (!isInternal && output) {
       set(state => ({ terminalHistory: [...state.terminalHistory, { id: `cmd_${Date.now()}`, command, output, timestamp: new Date().toISOString(), isError }] }));
     }
   },
 
   addContainer: (container) => set(state => {
     const newNetworks = state.networks.map(n => {
-        if (container.network.includes(n.name)) {
+        // Use network ID for matching
+        if (container.network.includes(n.id) || container.network.includes(n.name)) {
             return { ...n, containers: [...n.containers, container] };
         }
         return n;
@@ -224,15 +269,14 @@ export const useDockerStore = create<DockerStore>((set, get) => ({
     const newContainers = state.containers.map(c => (c.id === id ? updatedContainer : c));
 
     const newNetworks = state.networks.map(net => {
-      // First, remove the old version of the container from the network's list
       const filteredContainers = net.containers.filter(c => c.id !== id);
-      
-      // If the updated container should be in this network, add its updated version
-      if (updatedContainer.network.includes(net.name)) {
+      // Check by both ID and name for robustness
+      if (updatedContainer.network.includes(net.id) || updatedContainer.network.includes(net.name)) {
+        // Ensure not to add duplicates
+        const containerExists = filteredContainers.some(c => c.id === id);
+        if (containerExists) return { ...net, containers: filteredContainers.map(c => c.id === id ? updatedContainer : c) };
         return { ...net, containers: [...filteredContainers, updatedContainer] };
       }
-      
-      // Otherwise, just return the network with the container removed
       return { ...net, containers: filteredContainers };
     });
 

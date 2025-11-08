@@ -5,7 +5,6 @@ import { useDockerStore, Container, Volume, Network } from '../store/dockerStore
 import { ContainerCard } from './ContainerCard'
 import { VolumeConnection } from './VolumeConnection'
 import '../styles/Visualizer.css'
-import './modals/NetworkDetailModal.css'
 import { ProcessVisualization, ProcessStep } from './ProcessVisualization';
 import NetworkGraph from './visualization/NetworkGraph';
 import GraphLegend from './visualization/GraphLegend';
@@ -26,7 +25,6 @@ const Visualizer: React.FC<VisualizerProps> = ({
   onContainerClick,
   onVolumeClick,
   onNetworkClick,
-  onOpenNetworkSelectionModal,
   activeNetwork,
   setActiveNetwork
 }) => {

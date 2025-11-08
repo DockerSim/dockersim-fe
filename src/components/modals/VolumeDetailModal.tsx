@@ -1,109 +1,120 @@
-'use client'
-
-import React from 'react'
-import { Volume } from '../../store/dockerStore'
-import './VolumeDetailModal.css'
+import React from 'react';
+import { createPortal } from 'react-dom';
+import { useDockerStore, Volume } from '../../store/dockerStore';
+import './ContainerDetailModal.css'; // Reusing the same base style
+import './VolumeDetailModal.css';   // Additional specific styles
 
 interface VolumeDetailModalProps {
-  volume: Volume | null
-  open: boolean
-  onClose: () => void
-  onRemove?: (volumeId: string) => void
+  volume: Volume | null;
+  open: boolean;
+  onClose: () => void;
+  onRemove: (volumeName: string) => void;
+  onDisconnect: (volumeName: string, containerName: string) => void;
 }
 
-const VolumeDetailModal: React.FC<VolumeDetailModalProps> = ({ volume, open, onClose, onRemove }) => {
-  if (!open || !volume) return null
+const VolumeDetailModal: React.FC<VolumeDetailModalProps> = ({ 
+  volume, 
+  open, 
+  onClose, 
+  onRemove, 
+  onDisconnect 
+}) => {
+  const { containers } = useDockerStore();
+
+  if (!open || !volume) {
+    return null;
+  }
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
-      onClose()
+      onClose();
     }
-  }
+  };
 
-  const getStatusIcon = () => {
-    return volume.connectedContainers.length > 0 ? '🔗' : '🔌'
-  }
+  // This new handler ensures the modal closes after the action
+  const handleDisconnectClick = (volumeName: string, containerName: string) => {
+    // 1. Perform the disconnect action by calling the prop from the parent
+    onDisconnect(volumeName, containerName);
+    // 2. Explicitly call the onClose prop to ensure the modal closes
+    onClose();
+  };
+  
+  const handleRemoveClick = (name: string) => {
+    onRemove(name);
+    onClose();
+  };
 
-  const getStatusText = () => {
-    return volume.connectedContainers.length > 0 ? '연결됨' : '미연결'
-  }
+  const connectedContainersList = containers.filter(c => 
+    volume.connectedContainers.includes(c.id)
+  );
+  const isVolumeInUse = connectedContainersList.length > 0;
 
-  return (
-    <div className="volume-modal-backdrop" onClick={handleBackdropClick}>
-      <div className="volume-modal-container">
-        {/* 헤더 */}
-        <div className="volume-modal-header">
-          <div className="volume-modal-title">
-            <span>💾</span>
+  return createPortal(
+    <div className="modal-backdrop" onClick={handleBackdropClick}>
+      <div className="modal-container">
+        
+        <div className="modal-header">
+          <div className="modal-title">
+            <span className="modal-icon">💾</span>
             <span>{volume.name}</span>
-            <span className="status-badge">
-              {getStatusIcon()} {getStatusText()} ({volume.connectedContainers.length}개)
-            </span>
           </div>
-          <button className="volume-modal-close" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}>✕</button>
         </div>
-
-        {/* 기본 정보 */}
-        <div className="volume-modal-content">
-          <div className="volume-info-section">
-            <h4>기본 정보</h4>
-            <div className="info-grid">
-              <div className="info-row">
-                <span className="info-label">볼륨 ID</span>
-                <span className="info-value">{volume.id}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-label">마운트 경로</span>
-                <span className="info-value">{volume.mountPath}</span>
-              </div>
-              {volume.containerPath && (
-                <div className="info-row">
-                  <span className="info-label">컨테이너 경로</span>
-                  <span className="info-value">{volume.containerPath}</span>
-                </div>
-              )}
-              {volume.networkId && (
-                <div className="info-row">
-                  <span className="info-label">네트워크</span>
-                  <span className="info-value">{volume.networkId}</span>
-                </div>
-              )}
+        
+        <div className="modal-content">
+          <div className="detail-grid">
+            <div className="detail-item">
+              <span className="detail-label">ID:</span>
+              <span className="detail-value">{volume.id.substring(0, 12)}</span>
+            </div>
+            <div className="detail-item">
+              <span className="detail-label">Driver:</span>
+              <span className="detail-value">{volume.driver}</span>
+            </div>
+            <div className="detail-item full-width">
+              <span className="detail-label">Mount Path:</span>
+              <span className="detail-value">{volume.mountPath || 'N/A'}</span>
             </div>
           </div>
 
-          {/* 연결된 컨테이너 정보 */}
-          {volume.connectedContainers.length > 0 && (
-            <div className="volume-info-section">
-              <h4>연결된 컨테이너</h4>
-              <div className="containers-list">
-                {volume.connectedContainers.map((containerId) => (
-                  <div key={containerId} className="container-item">
-                    <span className="container-icon">📦</span>
-                    <span className="container-name">{containerId}</span>
-                  </div>
+          <div className="connections-section">
+            <h4>연결된 컨테이너</h4>
+            {isVolumeInUse ? (
+              <ul className="connections-list">
+                {connectedContainersList.map(c => (
+                  <li key={c.id} className="connection-item">
+                    <span>📦 {c.name}</span>
+                    <button 
+                      className="disconnect-btn" 
+                      onClick={() => handleDisconnectClick(volume.name, c.name)}
+                    >
+                      연결 해제
+                    </button>
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            ) : (
+              <p className="no-connections">연결된 컨테이너가 없습니다.</p>
+            )}
+          </div>
+        </div>
+        
+        <div className="modal-actions">
+          {!isVolumeInUse && (
+            <button
+              className="action-btn"
+              onClick={() => handleRemoveClick(volume.name)}
+              style={{ backgroundColor: '#e74c3c', color: 'white' }}
+            >
+              🗑️ Remove
+            </button>
           )}
         </div>
 
-        {/* 액션 버튼 */}
-        <div className="volume-modal-actions">
-          <button 
-            className="action-btn remove-btn"
-            onClick={() => {
-              if (confirm(`볼륨 "${volume.name}"를 삭제하시겠습니까?`)) {
-                onRemove && onRemove(volume.id)
-                onClose()
-              }
-            }}
-          >
-            🗑️ 삭제
-          </button>
-        </div>
       </div>
-    </div>
-  )
-}
+    </div>,
+    document.body
+  );
+};
 
-export default VolumeDetailModal 
+export default VolumeDetailModal;

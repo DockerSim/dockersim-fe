@@ -18,6 +18,7 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({
   onAction,
   onOpenNetworkSelectionModal
 }) => {
+
   if (!open || !container) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -66,98 +67,28 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({
               <span className="detail-value">{Array.isArray(container.network) ? container.network.join(', ') : container.network}</span>
             </div>
           </div>
+          {/* Removed the volume connections section from here to avoid confusion */}
         </div>
         <div className="modal-actions">
             {container.status === 'running' && (
                 <>
-                  <button
-                      className="action-btn"
-                      onClick={() => handleActionAndClose('stop', container.id)}
-                      style={{
-                        backgroundColor: '#f1c40f',
-                        color: '#111',
-                        cursor: 'pointer',
-                      }}
-                  >
-                    ⏹️ Stop
-                  </button>
-
-                  <button
-                      className="action-btn"
-                      onClick={() => handleActionAndClose('pause', container.id)}
-                      style={{
-                        backgroundColor: '#f1c40f',
-                        color: '#111',
-                        cursor: 'pointer',
-                      }}
-                  >
-                    ⏸️ Pause
-                  </button>
+                  <button className="action-btn" onClick={() => handleActionAndClose('stop', container.id)}>⏹️ Stop</button>
+                  <button className="action-btn" onClick={() => handleActionAndClose('pause', container.id)}>⏸️ Pause</button>
                 </>
             )}
             {container.status === 'stopped' && (
               <>
-                <button
-                    className="action-btn"
-                    onClick={() => handleActionAndClose('start', container.id)}
-                    style={{
-                      backgroundColor: '#f1c40f',
-                      color: '#111',
-                      cursor: 'pointer',
-                    }}
-                >
-                  ▶️ Start
-                </button>
-                <button
-                    className="action-btn"
-                    onClick={() => handleActionAndClose('rm', container.id)}
-                    style={{
-                      backgroundColor: '#f1c40f',
-                      color: '#111',
-                      cursor: 'pointer',
-                    }}
-                >
-                  🗑️ Remove
-                </button>
+                <button className="action-btn" onClick={() => handleActionAndClose('start', container.id)}>▶️ Start</button>
+                <button className="action-btn" onClick={() => handleRemoveConfirm(container.id)}>🗑️ Remove</button>
               </>
             )}
             {container.status === 'paused' && (
                 <>
-                  <button
-                      className="action-btn"
-                      onClick={() => handleActionAndClose('unpause', container.id)}
-                      style={{
-                        backgroundColor: '#f1c40f',
-                        color: '#111',
-                        cursor: 'pointer',
-                      }}
-                  >
-                    ⏯️ Unpause
-                  </button>
-                  <button
-                      className="action-btn"
-                      onClick={() => handleRemoveConfirm(container.id)}
-                      style={{
-                        backgroundColor: '#f1c40f',
-                        color: '#111',
-                        cursor: 'pointer',
-                      }}
-                  >
-                    🗑️ Remove
-                  </button>
+                  <button className="action-btn" onClick={() => handleActionAndClose('unpause', container.id)}>⏯️ Unpause</button>
+                  <button className="action-btn" onClick={() => handleRemoveConfirm(container.id)}>🗑️ Remove</button>
                 </>
             )}
-            <button
-                className="action-btn"
-                onClick={onOpenNetworkSelectionModal}
-                style={{
-                  backgroundColor: '#f1c40f',
-                  color: '#111',
-                  cursor: 'pointer',
-                }}
-            >
-              🌐 Add Network
-            </button>
+            <button className="action-btn" onClick={onOpenNetworkSelectionModal}>🌐 Add Network</button>
           </div>
       </div>
     </div>,
