@@ -1,25 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Container, Volume } from '../store/dockerStore';
+import './VolumeConnectModal.css';
 
 interface VolumeConnectModalProps {
   containers: Container[];
   volumes: Volume[];
   open: boolean;
-  onConnect: (volumeId: string, containerId: string, mountPath: string) => void;
+  onConnect: (volumeId: string, containerIds: string[], mountPath: string) => void;
   onClose: () => void;
 }
 
 const VolumeConnectModal: React.FC<VolumeConnectModalProps> = ({ containers, volumes, open, onConnect, onClose }) => {
   const [selectedVolumeId, setSelectedVolumeId] = useState<string>('');
-  const [selectedContainerId, setSelectedContainerId] = useState<string>('');
-  const [mountPath, setMountPath] = useState<string>('/data'); // 기본 경로 설정
+  const [selectedContainerIds, setSelectedContainerIds] = useState<string[]>([]);
+  const [mountPath, setMountPath] = useState<string>('/data');
 
-  // 모달이 열릴 때 상태 초기화
   useEffect(() => {
     if (open) {
       setSelectedVolumeId('');
-      setSelectedContainerId('');
+      setSelectedContainerIds([]);
       setMountPath('/data');
     }
   }, [open]);
@@ -27,43 +27,72 @@ const VolumeConnectModal: React.FC<VolumeConnectModalProps> = ({ containers, vol
   if (!open) return null;
 
   const handleConnect = () => {
-    if (selectedVolumeId && selectedContainerId && mountPath) {
-      onConnect(selectedVolumeId, selectedContainerId, mountPath);
+    if (selectedVolumeId && selectedContainerIds.length > 0 && mountPath) {
+      onConnect(selectedVolumeId, selectedContainerIds, mountPath);
+      onClose();
     }
   };
 
-  // 연결 가능한 볼륨 (아직 어떤 컨테이너에도 연결되지 않은 볼륨)만 필터링
+  const handleContainerSelect = (containerId: string) => {
+    setSelectedContainerIds(prev =>
+      prev.includes(containerId)
+        ? prev.filter(id => id !== containerId)
+        : [...prev, containerId]
+    );
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   const availableVolumes = volumes.filter(v => !v.connectedContainers || v.connectedContainers.length === 0);
+  const isFormValid = selectedVolumeId && selectedContainerIds.length > 0 && mountPath.trim() !== '';
 
   return createPortal(
-    <div className="modal-backdrop" style={{ position: 'fixed', top:0, left:0, width:'100vw', height:'100vh', background:'rgba(0,0,0,0.3)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div className="modal-content" style={{ background:'#fff', borderRadius:12, padding:32, minWidth:340, boxShadow:'0 4px 24px rgba(0,0,0,0.15)' }}>
-        <h2 style={{ fontSize:20, fontWeight:700, marginBottom:24 }}>볼륨 연결</h2>
-        <div style={{ marginBottom:16 }}>
-          <label style={{ fontWeight:600, display:'block', marginBottom:8 }}>볼륨 선택</label>
-          <select value={selectedVolumeId} onChange={e => setSelectedVolumeId(e.target.value)} style={{ width:'100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
-            <option value="">연결할 볼륨을 선택하세요</option>
-            {availableVolumes.map(v => (
-              <option key={v.id} value={v.id}>{v.name}</option>
-            ))}
-          </select>
+    <div className="volume-connect-modal-backdrop" onClick={handleBackdropClick}>
+      <div className="volume-connect-modal-container">
+        <div className="volume-connect-modal-header">
+          <h2 className="volume-connect-modal-title">
+            <span className="btn-icon">💾</span>
+            볼륨 연결
+          </h2>
+          <button className="volume-connect-modal-close" onClick={onClose}>✕</button>
         </div>
-        <div style={{ marginBottom:16 }}>
-          <label style={{ fontWeight:600, display:'block', marginBottom:8 }}>컨테이너 선택</label>
-          <select value={selectedContainerId} onChange={e => setSelectedContainerId(e.target.value)} style={{ width:'100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}>
-            <option value="">연결될 컨테이너를 선택하세요</option>
-            {containers.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+        <div className="volume-connect-form">
+          <div className="form-group">
+            <label>볼륨 선택</label>
+            <select value={selectedVolumeId} onChange={e => setSelectedVolumeId(e.target.value)} className="form-select">
+              <option value="">연결할 볼륨을 선택하세요</option>
+              {availableVolumes.map(v => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>컨테이너 선택</label>
+            <div className="container-selection-list">
+              {containers.map(c => (
+                <div key={c.id} className="list-item-selectable" onClick={() => handleContainerSelect(c.id)}>
+                  <input
+                    type="checkbox"
+                    checked={selectedContainerIds.includes(c.id)}
+                    onChange={() => handleContainerSelect(c.id)}
+                    className="item-checkbox"
+                  />
+                  <span>{c.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-        <div style={{ marginBottom:24 }}>
-          <label style={{ fontWeight:600, display:'block', marginBottom:8 }}>컨테이너 내 마운트 경로</label>
-          <input type="text" value={mountPath} onChange={e => setMountPath(e.target.value)} placeholder="예: /app/data" style={{ width:'100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }} />
-        </div>
-        <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
-          <button onClick={onClose} style={{ padding:'10px 20px', borderRadius:6, background:'#eee', border:'none', fontWeight:600, cursor:'pointer' }}>취소</button>
-          <button onClick={handleConnect} disabled={!selectedVolumeId || !selectedContainerId || !mountPath} style={{ padding:'10px 20px', borderRadius:6, background:'#2563eb', color:'#fff', border:'none', fontWeight:600, cursor:'pointer', opacity: (!selectedVolumeId || !selectedContainerId || !mountPath) ? 0.5 : 1 }}>연결</button>
+        <div className="volume-connect-actions">
+          <button onClick={onClose} className="action-btn secondary">취소</button>
+          <button onClick={handleConnect} disabled={!isFormValid} className={`action-btn primary ${!isFormValid ? 'disabled' : ''}`}>
+            <span className="btn-icon">🔗</span>
+            연결
+          </button>
         </div>
       </div>
     </div>,

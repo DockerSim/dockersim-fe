@@ -1,0 +1,140 @@
+.volume-connect-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.volume-connect-modal-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  width: 90%;
+  max-width: 500px;
+  overflow: hidden;
+}
+
+.volume-connect-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.volume-connect-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.volume-connect-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #888;
+}
+
+.volume-connect-form {
+  padding: 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.form-input, .form-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.container-selection-list {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.list-item-selectable {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.list-item-selectable:last-child {
+  border-bottom: none;
+}
+
+.list-item-selectable:hover {
+  background-color: #f9f9f9;
+}
+
+.item-checkbox {
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.volume-connect-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+  gap: 10px;
+}
+
+.action-btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.action-btn.secondary {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  color: #333;
+}
+
+.action-btn.primary {
+  background-color: #2563eb;
+  color: white;
+}
+
+.action-btn.primary.disabled {
+  background-color: #ccc;
+  border-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-icon {
+  display: inline-block;
+}

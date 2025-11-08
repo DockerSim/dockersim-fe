@@ -79,18 +79,28 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
     setResourceCreationModalOpen(false);
   };
 
-  const handleVolumeConnect = (volumeId: string, containerId: string, mountPath: string) => {
+  const handleVolumeConnect = (volumeId: string, containerIds: string[], mountPath: string) => {
     const volume = volumes.find(v => v.id === volumeId);
-    const container = containers.find(c => c.id === containerId);
-    if (volume && container) {
-      const volumeForContainer: Volume = { ...volume, mountPath };
-      const updatedContainerVolumes = [...(container.volumes || []).filter(v => v.id !== volumeId), volumeForContainer];
-      updateContainer(container.id, { volumes: updatedContainerVolumes });
-      const updatedConnectedContainers = Array.from(new Set([...(volume.connectedContainers || []), container.id]));
-      updateVolume(volume.id, { connectedContainers: updatedConnectedContainers });
-      addMessage(`볼륨 "${volume.name}"이(가) 컨테이너 "${container.name}"에 연결되었습니다.`);
-      setVolumeConnectModalOpen(false);
-    }
+    if (!volume) return;
+  
+    const updatedConnectedContainers = new Set(volume.connectedContainers || []);
+  
+    containerIds.forEach(containerId => {
+      const container = containers.find(c => c.id === containerId);
+      if (container) {
+        const volumeForContainer: Volume = { ...volume, mountPath };
+        const updatedContainerVolumes = [
+          ...(container.volumes || []).filter(v => v.id !== volumeId),
+          volumeForContainer
+        ];
+        updateContainer(container.id, { volumes: updatedContainerVolumes });
+        updatedConnectedContainers.add(container.id);
+        addMessage(`볼륨 "${volume.name}"이(가) 컨테이너 "${container.name}"에 연결되었습니다.`);
+      }
+    });
+  
+    updateVolume(volume.id, { connectedContainers: Array.from(updatedConnectedContainers) });
+    setVolumeConnectModalOpen(false);
   };
 
   const handleNetworkConnect = () => {
@@ -220,7 +230,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
         )}
 
         <VolumeConnectModal containers={containers || []} volumes={volumes || []} open={volumeConnectModalOpen} onConnect={handleVolumeConnect} onClose={() => setVolumeConnectModalOpen(false)} />
-        <ResourceCreationModal type={resourceCreationType} networks={networks || []} open={resourceCreationModalOpen} onConfirm={handleResourceCreationConfirm} onClose={() => setResourceCreationModalOpen(false)} />
+        <ResourceCreationModal type={resourceCreationType} networks={networks || []} open={resourceCreationModalOpen} onClose={() => setResourceCreationModalOpen(false)} />
         <VolumeDetailModal volume={selectedVolume} open={volumeDetailModalOpen} onClose={() => setVolumeDetailModalOpen(false)} onRemove={(volumeName) => handleVolumeAction(volumeName, 'remove')} />
       </div>
   );
