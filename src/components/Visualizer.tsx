@@ -204,12 +204,6 @@ const Visualizer: React.FC<VisualizerProps> = ({
                   )}
                 </div>
               ))}
-              
-              {activeNetworkContainers.length === 0 && (
-                <div className="empty-message">
-                  컨테이너가 없습니다. docker run 명령어로 컨테이너를 생성해보세요.
-                </div>
-              )}
             </div>
 
             <div className="volumes-container-area">

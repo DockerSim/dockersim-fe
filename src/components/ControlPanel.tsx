@@ -142,7 +142,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ isCollapsed = false, showTo
                               </div>
                             </div>
                         ))}
-                        {(containers || []).length === 0 && <div className="empty-state"><p>컨테이너가 없습니다</p></div>}
                       </div>
                     </div>
                 )}
