@@ -112,21 +112,36 @@
 .status-badge.paused { background-color: #ffc107; color: #333; }
 
 .resource-actions {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
   display: flex;
-  gap: 5px;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end; /* or center, depending layout */
+  padding: 0.25rem 0;
 }
 
 .action-btn {
-  background: none;
-  border: none;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0.25rem;
   cursor: pointer;
-  font-size: 16px;
-  color: #333;
-  padding: 5px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 1.4rem; /* 아이콘 크기 유지 */
+  color: #495057;
 }
 
+/* hover 시 아이콘만 은은하게 강조 */
 .action-btn:hover {
-  color: #007bff;
+  background: rgba(0,0,0,500);
+  opacity: 0.8;
 }
 
 .empty-state {

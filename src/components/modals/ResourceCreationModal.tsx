@@ -208,60 +208,6 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
               ))}
             </select>
           </div>
-
-          {/* 컨테이너 포트 매핑 */}
-          {type === 'container' && (
-            <div className="ports-container">
-              <h4>포트 매핑 (선택사항)</h4>
-              
-              {ports.map((port, index) => (
-                <div key={index} className="port-mapping-group">
-                  <input
-                    type="number"
-                    placeholder="호스트 포트"
-                    value={port.hostPort}
-                    onChange={(e) => updatePort(index, 'hostPort', e.target.value)}
-                    className="port-input"
-                  />
-                  <span className="port-arrow">→</span>
-                  <input
-                    type="number"
-                    placeholder="컨테이너 포트"
-                    value={port.containerPort}
-                    onChange={(e) => updatePort(index, 'containerPort', e.target.value)}
-                    className="port-input"
-                  />
-                  <select
-                    value={port.protocol}
-                    onChange={(e) => updatePort(index, 'protocol', e.target.value as 'tcp' | 'udp')}
-                    className="protocol-select"
-                  >
-                    <option value="tcp">TCP</option>
-                    <option value="udp">UDP</option>
-                  </select>
-                  {ports.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removePort(index)}
-                      className="remove-port-btn"
-                      title="포트 제거"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-              
-              <button
-                type="button"
-                onClick={addPort}
-                className="add-port-btn"
-              >
-                <span className="btn-icon">➕</span>
-                포트 추가
-              </button>
-            </div>
-          )}
         </div>
 
         {/* 액션 버튼 */}
@@ -273,13 +219,20 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
             취소
           </button>
           <button
-            onClick={handleConfirm}
-            disabled={!isFormValid}
-            className={`action-btn primary ${!isFormValid ? 'disabled' : ''}`}
+              onClick={handleConfirm}
+              disabled={!isFormValid}
+              className={`action-btn primary ${!isFormValid ? 'disabled' : ''}`}
+              style={{
+                color: isFormValid ? 'black' : '6c757d',        // 활성: 흰색, 비활성: 검은색
+                background: isFormValid ? '#007bff' : '#6c757d', // 활성: 파랑, 비활성: 회색
+                cursor: isFormValid ? 'pointer' : 'not-allowed',
+              }}
           >
             <span className="btn-icon">{type === 'container' ? '📦' : '💾'}</span>
             {type === 'container' ? '컨테이너 생성' : '볼륨 생성'}
           </button>
+
+
         </div>
 
         {/* 이미지 선택 모달 */}

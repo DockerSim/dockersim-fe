@@ -3,17 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Modal.module.css';
 
-interface Port {
-  hostPort: string;
-  containerPort: string;
-}
-
 interface Container {
   id: string;
   name: string;
   image: string;
   status: 'running' | 'stopped';
-  ports: Port[];
   createdAt: Date;
   networkName?: string;
   volumeName?: string;
