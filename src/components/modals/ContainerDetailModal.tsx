@@ -60,35 +60,89 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ container, 
                 <span className="detail-label">Network:</span>
                 <span className="detail-value">{Array.isArray(container.network) ? container.network.join(', ') : container.network}</span>
               </div>
-              <div className="detail-item">
-                <span className="detail-label">Ports:</span>
-                <span className="detail-value">
-                  {container.ports && container.ports.length > 0
-                    ? container.ports.map(p => `${p.hostPort}:${p.containerPort}/${p.protocol}`).join(', ')
-                    : 'None'}
-                </span>
-              </div>
             </div>
           </div>
           <div className="modal-actions">
             {container.status === 'running' && (
-              <>
-                <button className="action-btn" onClick={() => onAction('stop', container.id)}>⏹️ Stop</button>
-                <button className="action-btn" onClick={() => onAction('pause', container.id)}>⏸️ Pause</button>
-              </>
+                <>
+                  <button
+                      className="action-btn"
+                      onClick={() => onAction('stop', container.id)}
+                      style={{
+                        backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                        color: '#111',
+                        cursor: 'pointer',
+                      }}
+                      disabled={container.status !== 'running'} // 상태에 따라 클릭 불가
+                  >
+                    ⏹️ Stop
+                  </button>
+
+                  <button
+                      className="action-btn"
+                      onClick={() => onAction('pause', container.id)}
+                      style={{
+                        backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                        color: '#111',
+                        cursor: 'pointer',
+                      }}
+                  >
+                    ⏸️ Pause
+                  </button>
+                </>
             )}
             {container.status === 'stopped' && (
-              <button className="action-btn" onClick={() => onAction('start', container.id)}>▶️ Start</button>
+                <button
+                    className="action-btn"
+                    onClick={() => onAction('start', container.id)}
+                    style={{
+                      backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                      color: '#111',
+                      cursor: 'pointer',
+                    }}
+                >
+                  ▶️ Start
+                </button>
             )}
             {container.status === 'paused' && (
-              <>
-                <button className="action-btn" onClick={() => onAction('unpause', container.id)}>⏯️ Unpause</button>
-                <button className="action-btn" onClick={() => onAction('rm', container.id)}>🗑️ Remove</button>
-              </>
+                <>
+                  <button
+                      className="action-btn"
+                      onClick={() => onAction('unpause', container.id)}
+                      style={{
+                        backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                        color: '#111',
+                        cursor: 'pointer',
+                      }}
+                  >
+                    ⏯️ Unpause
+                  </button>
+                  <button
+                      className="action-btn"
+                      onClick={() => onAction('rm', container.id)}
+                      style={{
+                        backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                        color: '#111',
+                        cursor: 'pointer',
+                      }}
+                  >
+                    🗑️ Remove
+                  </button>
+                </>
             )}
-            <button className="action-btn" onClick={() => onAction('rm', container.id)}>🗑️ Remove</button>
-            <button className="action-btn" onClick={() => setIsNetworkSelectionModalOpen(true)}>🌐 Add Network</button>
+            <button
+                className="action-btn"
+                onClick={() => setIsNetworkSelectionModalOpen(true)}
+                style={{
+                  backgroundColor: '#f1c40f', // Pause 버튼 노랑
+                  color: '#111',
+                  cursor: 'pointer',
+                }}
+            >
+              🌐 Add Network
+            </button>
           </div>
+
         </div>
       </div>
       <NetworkSelectionModal
