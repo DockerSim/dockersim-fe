@@ -8,7 +8,8 @@ interface SidebarProps {
   onTerminalToggle: () => void;
   onComposeFileClick: () => void;
   onImageClick: () => void;
-  onDockerfileFeedbackClick: () => void; // 피드백 버튼 핸들러 추가
+  onDockerfileFeedbackClick: () => void;
+  onMissionClick: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -16,7 +17,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onTerminalToggle, 
   onComposeFileClick,
   onImageClick,
-  onDockerfileFeedbackClick // 핸들러 추가
+  onDockerfileFeedbackClick,
+                                           onMissionClick
 }) => {
   return (
     <div className="sidebar">
@@ -41,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span className="icon">📝</span>
           <span className="label">피드백</span>
         </button>
-        <button className="menu-item" onClick={onDockerfileFeedbackClick} title="미션">
+        <button className="menu-item" onClick={onMissionClick} title="미션">
           <span className="icon">🏆</span>
           <span className="label">미션</span>
         </button>

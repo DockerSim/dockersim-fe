@@ -1,0 +1,130 @@
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-container {
+  background: #ffffff;
+  color: #333;
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  width: 90%;
+  max-width: 900px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-icon {
+  font-size: 20px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #aaa;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.mission-modal-content {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.mission-toc {
+  width: 300px;
+  border-right: 1px solid #eee;
+  padding: 15px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.mission-toc-item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 5px;
+  transition: background-color 0.2s;
+}
+
+.mission-toc-item:hover {
+  background-color: #f5f5f5;
+}
+
+.mission-toc-item.active {
+  background-color: #eef2ff;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.mission-toc-item.locked {
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.mission-detail {
+  flex-grow: 1;
+  padding: 25px;
+  overflow-y: auto;
+}
+
+.mission-detail h3 {
+  margin-top: 0;
+  font-size: 22px;
+  margin-bottom: 20px;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-section h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #4f46e5;
+  margin-bottom: 8px;
+}
+
+.detail-section p, .detail-section li {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #444;
+}
+
+.detail-section ul {
+  padding-left: 20px;
+  margin: 0;
+}

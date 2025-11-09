@@ -13,6 +13,7 @@ import NetworkSelectionModal from '../components/modals/NetworkSelectionModal'
 import ContainerDetailModal from '../components/modals/ContainerDetailModal'
 import VolumeDetailModal from '../components/modals/VolumeDetailModal'
 import NetworkDetailModal from '../components/modals/NetworkDetailModal'
+import MissionModal from '../components/modals/MissionModal' // Import MissionModal
 import ResourceCreationModal, { ResourceCreationData } from '../components/modals/ResourceCreationModal'
 import { useDockerStore, Container, Volume, Network } from '../store/dockerStore'
 import '../styles/HomePage.css'
@@ -29,9 +30,9 @@ export default function HomePage() {
   const isResizing = useRef(false);
   
   const [composeModalOpen, setComposeModalOpen] = useState(false);
-  const [composeFileContent, setComposeFileContent] = useState('');
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [dockerfileFeedbackModalOpen, setDockerfileFeedbackModalOpen] = useState(false);
+  const [missionModalOpen, setMissionModalOpen] = useState(false); // State for MissionModal
   
   const { containers, volumes, networks, generateComposeFile, executeCommand, disconnectVolumeFromContainer, disconnectNetworkFromContainer } = useDockerStore();
 
@@ -88,13 +89,11 @@ export default function HomePage() {
 
   const handleNetworkDisconnect = (networkName: string, containerName: string) => {
     disconnectNetworkFromContainer(networkName, containerName);
-    // The modal will re-render with updated container data, no need to close it.
   };
 
   const handleNetworkRemove = (networkName: string) => {
     const containersInNetwork = containers.filter(c => c.network.includes(networkName));
     if (containersInNetwork.length > 0) {
-      // This case is handled by disabling the button, but as a fallback:
       alert(`'${networkName}' 네트워크는 현재 사용 중인 컨테이너가 있어 삭제할 수 없습니다.`);
       return;
     }
@@ -103,7 +102,7 @@ export default function HomePage() {
 
   const handleOpenNetworkSelectionModal = (containerToConnect: Container) => {
     setSelectedContainer(containerToConnect);
-    setIsContainerDetailModalOpen(false); // Close detail modal if open
+    setIsContainerDetailModalOpen(false);
     setIsNetworkSelectionModalOpen(true);
   };
 
@@ -142,14 +141,10 @@ export default function HomePage() {
   const toggleControlPanel = () => setIsControlPanelCollapsed(!isControlPanelCollapsed)
   const toggleTerminal = () => setIsTerminalCollapsed(!isTerminalCollapsed)
 
-  const handleComposeFileClick = () => {
-    const content = generateComposeFile();
-    setComposeFileContent(content);
-    setComposeModalOpen(true);
-  };
-
+  const handleComposeFileClick = () => setComposeModalOpen(true);
   const handleImageClick = () => setImageModalOpen(true);
   const handleDockerfileFeedbackClick = () => setDockerfileFeedbackModalOpen(true);
+  const handleMissionClick = () => setMissionModalOpen(true); // Handler for MissionModal
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -185,6 +180,7 @@ export default function HomePage() {
         onComposeFileClick={handleComposeFileClick}
         onImageClick={handleImageClick}
         onDockerfileFeedbackClick={handleDockerfileFeedbackClick}
+        onMissionClick={handleMissionClick} // Pass handler to Sidebar
       />
       
       <div 
@@ -206,9 +202,10 @@ export default function HomePage() {
       </div>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-      <ComposeFileModal open={composeModalOpen} onClose={() => setComposeModalOpen(false)} composeFileContent={composeFileContent} />
+      <ComposeFileModal open={composeModalOpen} onClose={() => setComposeModalOpen(false)} composeFileContent={generateComposeFile()} />
       <ImageModal isOpen={imageModalOpen} onClose={() => setImageModalOpen(false)} />
       <DockerfileFeedbackModal open={dockerfileFeedbackModalOpen} onClose={() => setDockerfileFeedbackModalOpen(false)} />
+      <MissionModal open={missionModalOpen} onClose={() => setMissionModalOpen(false)} />
 
       {/* Centrally Managed Modals */}
       <ContainerDetailModal container={selectedContainer} open={isContainerDetailModalOpen} onClose={() => setIsContainerDetailModalOpen(false)} onAction={handleAction} onOpenNetworkSelectionModal={() => selectedContainer && handleOpenNetworkSelectionModal(selectedContainer)} onDisconnectNetwork={handleNetworkDisconnect} />
