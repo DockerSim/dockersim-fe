@@ -14,7 +14,7 @@ export const ContainerCard: React.FC<ContainerCardProps> = ({
   isCreating = false 
 }) => (
   <div 
-    className={`container-card ${container.status === 'running' ? 'running' : 'stopped'} ${isCreating ? 'highlight' : ''}`} 
+    className={`container-card ${container.status} ${isCreating ? 'highlight' : ''}`} 
     onClick={onClick}
     data-container-id={container.id}
   >

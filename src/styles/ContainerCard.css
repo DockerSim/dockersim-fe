@@ -28,6 +28,11 @@
   background: linear-gradient(135deg, #fff5f5, #f8f9fa);
 }
 
+.container-card.paused {
+  border-color: #fd7e14; /* 주황색 테두리 */
+  background: linear-gradient(135deg, #fff9f0, #f8f9fa);
+}
+
 .container-card.highlight {
   animation: pulseContainer 1.5s infinite;
 }
@@ -179,4 +184,4 @@
   background: #f8f9fa;
   border-radius: 8px;
   border: 2px dashed #dee2e6;
-} 
+}
