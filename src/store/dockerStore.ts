@@ -61,7 +61,36 @@ export const useDockerStore = create<DockerStore>((set, get) => {
       set(state => ({ terminalHistory: [...state.terminalHistory, { id: `msg_${Date.now()}`, command: '', output: message, timestamp: new Date().toISOString(), isError: false }] }));
     },
 
-    generateComposeFile: () => { return ''; },
+    generateComposeFile: () => {
+      const { containers, volumes, networks } = get();
+      let services = '';
+      if (containers.length > 0) {
+        services = containers.map(c => `
+  ${c.name}:
+    image: ${c.image}
+    ports:
+${c.ports.map(p => `      - "${p.hostPort}:${p.containerPort}"`).join('\n')}
+    networks:
+${c.network.map(n => `      - ${n}`).join('\n')}
+    volumes:
+${c.volumes.map(v => `      - ${v.name}:${v.mountPath}`).join('\n')}`).join('');
+      }
+
+      let volumeDefs = '';
+      if (volumes.length > 0) {
+        volumeDefs = '\nvolumes:\n' + volumes.map(v => `  ${v.name}:\n    driver: ${v.driver}`).join('\n');
+      }
+
+      let networkDefs = '';
+      const customNetworks = networks.filter(n => n.name !== 'bridge');
+      if (customNetworks.length > 0) {
+        networkDefs = '\nnetworks:\n' + customNetworks.map(n => `  ${n.name}:\n    driver: ${n.driver}`).join('\n');
+      }
+
+      return `version: '3.8'
+
+services:${services}${networkDefs}${volumeDefs}`;
+    },
 
     createContainerInNetworks: (data) => {
       const { executeCommand, networks } = get();
@@ -99,6 +128,11 @@ export const useDockerStore = create<DockerStore>((set, get) => {
       const { updateContainer } = get();
       const container = get().containers.find(c => c.name === containerName);
       if (!container) return;
+
+      if (container.network.length === 1 && container.network[0] === networkName) {
+        get().addMessage(`Error: Cannot disconnect container from its only network "${networkName}".`);
+        return;
+      }
 
       const newNetworks = container.network.filter(n => n !== networkName);
       updateContainer(container.id, { network: newNetworks });

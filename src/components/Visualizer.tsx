@@ -173,33 +173,35 @@ const Visualizer: React.FC<VisualizerProps> = ({
           <div className="unconnected-resources-section">
             <div className="unconnected-containers-area">
               <h3 className="section-title">연결되지 않은 컨테이너</h3>
-              <div className="unconnected-list" style={{ display: 'flex', flexDirection: 'row' }}>
-                {unconnectedContainers.length > 0 ? (
-                  unconnectedContainers.map((container) => (
-                    <div key={container.id} className="unconnected-item" style={{ marginRight: '10px' }} onClick={() => onOpenNetworkSelectionModal(container)}>
-                      <ContainerCard container={container} onClick={() => onContainerClick(container)} />
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-message">연결되지 않은 컨테이너가 없습니다.</div>
-                )}
+              <div className="unconnected-list">
+                {unconnectedContainers.length > 0 &&
+                    unconnectedContainers.map((container) => (
+                        <div
+                            key={container.id}
+                            className="unconnected-item"
+                            onClick={() => onOpenNetworkSelectionModal(container)}
+                        >
+                          <ContainerCard container={container} onClick={() => onContainerClick(container)} />
+                        </div>
+                    ))
+                }
               </div>
+
             </div>
             <div className="volumes-container-area">
               <h3 className="section-title">연결되지 않은 볼륨</h3>
               <div className="unconnected-list" style={{ display: 'flex', flexDirection: 'row' }}>
-                {unconnectedVolumes.length > 0 ? (
-                  unconnectedVolumes.map((volume) => (
-                    <div key={`unconnected-${volume.id}`} className="unconnected-item" style={{ marginRight: '10px' }} onClick={() => onVolumeClick(volume)}>
-                      <div className="volume-circle unconnected-volume">
-                        <div className="volume-name">{volume.name}</div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty-message">연결되지 않은 볼륨이 없습니다</div>
-                )}
+                {unconnectedVolumes.length > 0 &&
+                    unconnectedVolumes.map((volume) => (
+                        <div key={`unconnected-${volume.id}`} className="unconnected-item" onClick={() => onVolumeClick(volume)}>
+                          <div className="volume-circle unconnected-volume">
+                            <div className="volume-name">{volume.name}</div>
+                          </div>
+                        </div>
+                    ))
+                }
               </div>
+
             </div>
           </div>
         </div>
