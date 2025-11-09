@@ -13,6 +13,7 @@ import NetworkSelectionModal from '../components/modals/NetworkSelectionModal'
 import ContainerDetailModal from '../components/modals/ContainerDetailModal'
 import VolumeDetailModal from '../components/modals/VolumeDetailModal'
 import NetworkDetailModal from '../components/modals/NetworkDetailModal'
+import ResourceCreationModal, { ResourceCreationData } from '../components/modals/ResourceCreationModal'
 import { useDockerStore, Container, Volume, Network } from '../store/dockerStore'
 import '../styles/HomePage.css'
 import { ToastContainer, ToastProps } from '../components/common/Toast';
@@ -32,17 +33,21 @@ export default function HomePage() {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [dockerfileFeedbackModalOpen, setDockerfileFeedbackModalOpen] = useState(false);
   
-  const { containers, networks, generateComposeFile, executeCommand, disconnectVolumeFromContainer } = useDockerStore();
+  const { containers, volumes, networks, generateComposeFile, executeCommand, disconnectVolumeFromContainer } = useDockerStore();
 
   // --- Modal State Centralization ---
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
   const [isContainerDetailModalOpen, setIsContainerDetailModalOpen] = useState(false);
-  const [selectedVolume, setSelectedVolume] = useState<Volume | null>(null);
+  // Change selectedVolume to selectedVolumeId
+  const [selectedVolumeId, setSelectedVolumeId] = useState<string | null>(null);
   const [isVolumeDetailModalOpen, setVolumeDetailModalOpen] = useState(false);
   const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null);
   const [isNetworkDetailModalOpen, setNetworkDetailModalOpen] = useState(false);
   
   const [isNetworkSelectionModalOpen, setIsNetworkSelectionModalOpen] = useState(false);
+  const [isResourceCreationModalOpen, setIsResourceCreationModalOpen] = useState(false);
+  const [resourceCreationType, setResourceCreationType] = useState<'container' | 'volume' | 'network'>('network'); // Default to network for Visualizer's + button
+
   const [activeNetwork, setActiveNetwork] = useState<string>('bridge');
 
   useNetworkSync();
@@ -63,7 +68,8 @@ export default function HomePage() {
   };
 
   const handleVolumeClick = (volume: Volume) => {
-    setSelectedVolume(volume);
+    // Store only the ID
+    setSelectedVolumeId(volume.id);
     setVolumeDetailModalOpen(true);
   };
 
@@ -80,13 +86,14 @@ export default function HomePage() {
     if (container?.network[0]) {
       setActiveNetwork(container.network[0]);
     }
+    // After disconnect, clear selectedVolumeId to ensure fresh data on next open
+    setSelectedVolumeId(null); 
   };
 
   const handleNetworkRemove = (networkName: string) => {
-    const network = networks.find(n => n.name === networkName);
-    if (!network) return;
-
-    const isHot = network.containers.some(c => c.status === 'running' || c.status === 'paused');
+    const containersInNetwork = containers.filter(c => c.network.includes(networkName));
+    const isHot = containersInNetwork.some(c => c.status === 'running' || c.status === 'paused');
+    
     if (isHot) {
       if (window.confirm(`'${networkName}' 네트워크는 현재 사용 중인 컨테이너가 있습니다. 정말로 삭제하시겠습니까?`)) {
         executeCommand(`docker network rm ${networkName}`);
@@ -99,6 +106,20 @@ export default function HomePage() {
   const handleOpenNetworkSelectionModal = () => {
     setIsContainerDetailModalOpen(false);
     setIsNetworkSelectionModalOpen(true);
+  };
+
+  const handleOpenNetworkCreationModal = () => {
+    setResourceCreationType('network');
+    setIsResourceCreationModalOpen(true);
+  };
+
+  const handleResourceCreationConfirm = (data: ResourceCreationData) => {
+    if (resourceCreationType === 'network') {
+      let command = `docker network create`;
+      if (data.name) command += ` ${data.name}`;
+      executeCommand(command);
+    }
+    setIsResourceCreationModalOpen(false);
   };
 
   const handleNetworkConnect = (networkIds: string[]) => {
@@ -169,6 +190,9 @@ export default function HomePage() {
 
   const bothCollapsed = isControlPanelCollapsed && isTerminalCollapsed;
 
+  // Derive the current selected volume from the store based on selectedVolumeId
+  const currentSelectedVolume = selectedVolumeId ? volumes.find(v => v.id === selectedVolumeId) : null;
+
   return (
     <div className="home-layout">
       <Sidebar 
@@ -224,6 +248,7 @@ export default function HomePage() {
           onVolumeClick={handleVolumeClick}
           onNetworkClick={handleNetworkClick}
           onOpenNetworkSelectionModal={handleOpenNetworkSelectionModal}
+          onOpenNetworkCreationModal={handleOpenNetworkCreationModal}
           activeNetwork={activeNetwork}
           setActiveNetwork={setActiveNetwork}
         />
@@ -256,7 +281,8 @@ export default function HomePage() {
         onOpenNetworkSelectionModal={handleOpenNetworkSelectionModal}
       />
       <VolumeDetailModal 
-        volume={selectedVolume} 
+        // Pass the dynamically found volume object
+        volume={currentSelectedVolume} 
         open={isVolumeDetailModalOpen} 
         onClose={() => setVolumeDetailModalOpen(false)} 
         onRemove={(id) => executeCommand(`docker volume rm ${id}`)} 
@@ -266,6 +292,13 @@ export default function HomePage() {
         network={selectedNetwork} 
         open={isNetworkDetailModalOpen} 
         onClose={() => setNetworkDetailModalOpen(false)} 
+      />
+      <ResourceCreationModal 
+        type={resourceCreationType} 
+        networks={networks || []} 
+        open={isResourceCreationModalOpen} 
+        onConfirm={handleResourceCreationConfirm} 
+        onClose={() => setIsResourceCreationModalOpen(false)} 
       />
 
       {selectedContainer && (

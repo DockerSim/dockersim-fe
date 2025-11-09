@@ -16,6 +16,7 @@ interface VisualizerProps {
   onVolumeClick: (volume: Volume) => void;
   onNetworkClick: (network: Network) => void;
   onOpenNetworkSelectionModal: () => void;
+  onOpenNetworkCreationModal: () => void; // New prop
   activeNetwork: string;
   setActiveNetwork: (networkId: string) => void;
 }
@@ -25,6 +26,8 @@ const Visualizer: React.FC<VisualizerProps> = ({
   onContainerClick,
   onVolumeClick,
   onNetworkClick,
+  onOpenNetworkSelectionModal,
+  onOpenNetworkCreationModal, // Destructure new prop
   activeNetwork,
   setActiveNetwork
 }) => {
@@ -57,12 +60,13 @@ const Visualizer: React.FC<VisualizerProps> = ({
     }
   };
 
-  const handleAddNetworkClick = () => {
-    const networkName = window.prompt("생성할 네트워크의 이름을 입력하세요:");
-    if (networkName && networkName.trim()) {
-      executeCommand(`docker network create ${networkName.trim()}`);
-    }
-  };
+  // Removed handleAddNetworkClick and replaced with onOpenNetworkCreationModal
+  // const handleAddNetworkClick = () => {
+  //   const networkName = window.prompt("생성할 네트워크의 이름을 입력하세요:");
+  //   if (networkName && networkName.trim()) {
+  //     executeCommand(`docker network create ${networkName.trim()}`);
+  //   }
+  // };
 
   const getContainerPosition = (containerId: string) => {
     const el = document.querySelector(`.container-card[data-container-id="${containerId}"]`);
@@ -111,7 +115,7 @@ const Visualizer: React.FC<VisualizerProps> = ({
                 </div>
               ))}
             </div>
-            <button className="add-network-btn" onClick={handleAddNetworkClick}>+</button>
+            <button className="add-network-btn" onClick={onOpenNetworkCreationModal}>+</button>
           </div>
         )}
         <div className="view-toggle">

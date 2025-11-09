@@ -190,13 +190,12 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                         <AddBtn onClick={() => handleCreateResource('network')} size="sm" />
                       </div>
                       <div className="resource-list">
-                        {(networks || []).map(network => (
+                        {(networks || []).map(network => {
+                          const connectedContainers = containers.filter(c => c.network.includes(network.name));
+                          return (
                             <div key={network.id} className="resource-item" onClick={() => onNetworkClick(network)}>
                               <div className="resource-info">
                                 <div className="resource-name">{network.name}</div>
-                                <div className="resource-details">
-                                  <span className="connected-count">{network.containers.length}개 컨테이너 연결됨</span>
-                                </div>
                               </div>
                               <div className="resource-actions">
                                 {network.name !== 'bridge' && (
@@ -204,7 +203,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                                 )}
                               </div>
                             </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                 )}

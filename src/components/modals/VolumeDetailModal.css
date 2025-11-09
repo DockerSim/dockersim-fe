@@ -35,8 +35,8 @@
 }
 
 .disconnect-btn {
-  background-color: #f1c40f;
-  color: #111;
+  background-color: #0064b8;
+  color: #ffffff;
   border: none;
   padding: 5px 10px;
   border-radius: 4px;
@@ -47,7 +47,7 @@
 }
 
 .disconnect-btn:hover {
-  background-color: #e6b800;
+  background-color: #208aec;
 }
 
 .no-connections {

@@ -71,10 +71,6 @@ const VolumeDetailModal: React.FC<VolumeDetailModalProps> = ({
               <span className="detail-label">Driver:</span>
               <span className="detail-value">{volume.driver}</span>
             </div>
-            <div className="detail-item full-width">
-              <span className="detail-label">Mount Path:</span>
-              <span className="detail-value">{volume.mountPath || 'N/A'}</span>
-            </div>
           </div>
 
           <div className="connections-section">
@@ -104,7 +100,7 @@ const VolumeDetailModal: React.FC<VolumeDetailModalProps> = ({
             <button
               className="action-btn"
               onClick={() => handleRemoveClick(volume.name)}
-              style={{ backgroundColor: '#e74c3c', color: 'white' }}
+              style={{ backgroundColor: '#e74c3c', color: 'black' }}
             >
               🗑️ Remove
             </button>
