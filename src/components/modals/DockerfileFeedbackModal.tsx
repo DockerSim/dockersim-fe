@@ -1,74 +1,113 @@
-'use client'
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import './DockerfileFeedbackModal.css';
+import { useDockerStore } from '../../store/dockerStore';
 
 interface DockerfileFeedbackModalProps {
   open: boolean;
   onClose: () => void;
 }
 
-const DockerfileFeedbackModal: React.FC<DockerfileFeedbackModalProps> = ({ open, onClose }) => {
-  if (!open) return null;
-
-  const beforeContent = `
-# 기본 Dockerfile
-FROM ubuntu:20.04
-
-WORKDIR /app
-
-COPY . .
-
-RUN apt-get update && apt-get install -y python3 python3-pip
-
-RUN pip3 install -r requirements.txt
-
-CMD ["python3", "app.py"]
-  `;
-
-  const afterContent = `
-# 추천 Dockerfile (Multi-stage build)
-FROM python:3.9-slim as builder
+const dummyDockerfile = `FROM python:3.9-slim
 
 WORKDIR /app
 
 COPY requirements.txt .
-
 RUN pip install --no-cache-dir -r requirements.txt
-
-FROM python:3.9-slim
-
-WORKDIR /app
-
-COPY --from=builder /app /app
 
 COPY . .
 
-CMD ["python", "app.py"]
-  `;
+CMD ["python", "app.py"]`;
 
-  return (
-    <div className="dockerfile-modal-backdrop" onClick={onClose}>
-      <div className="dockerfile-modal-container" onClick={(e) => e.stopPropagation()}>
-        <div className="dockerfile-modal-header">
-          <h2>Dockerfile 피드백</h2>
-          <button onClick={onClose} className="close-button">×</button>
-        </div>
-        <div className="dockerfile-modal-content">
-          <div className="feedback-column">
-            <h3>기본 Dockerfile (Before)</h3>
-            <pre>{beforeContent}</pre>
+const dummyFeedback = `FROM python:3.9-slim
+
+# It's a good practice to create a non-root user
+RUN useradd -m myuser
+USER myuser
+
+WORKDIR /app
+
+# Copy only requirements to leverage Docker cache
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]`;
+
+const DockerfileFeedbackModal: React.FC<DockerfileFeedbackModalProps> = ({ open, onClose }) => {
+  const [beforeText, setBeforeText] = useState(dummyDockerfile);
+  const [afterText, setAfterText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setBeforeText(dummyDockerfile);
+      setAfterText('');
+    }
+  }, [open]);
+
+  const handleGetFeedback = () => {
+    setIsLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      setAfterText(dummyFeedback);
+      setIsLoading(false);
+    }, 1000);
+  };
+
+  if (!open) return null;
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
+  return createPortal(
+    <div className="modal-backdrop" onClick={handleBackdropClick}>
+      {/* Applying width directly to the modal container */}
+      <div className="modal-container" style={{ maxWidth: '90vw', width: '1600px' }}>
+        <div className="modal-header">
+          <div className="modal-title">
+            <span className="modal-icon">📝</span>
+            <span>Dockerfile 피드백</span>
           </div>
-          <div className="feedback-column">
-            <h3>추천 Dockerfile (After)</h3>
-            <pre>{afterContent}</pre>
+          {/* ✕ close button removed as requested */}
+        </div>
+        <div className="modal-content" style={{ display: 'flex', flexDirection: 'row' }}>
+          <div className="feedback-section">
+            <h4>Before</h4>
+            <textarea
+              className="feedback-textarea"
+              value={beforeText}
+              onChange={(e) => setBeforeText(e.target.value)}
+              placeholder="Dockerfile 내용을 입력하세요..."
+            />
+          </div>
+          <div className="feedback-section">
+            <h4>After</h4>
+            <textarea
+              className="feedback-textarea"
+              value={afterText}
+              readOnly
+              placeholder="피드백 결과가 여기에 표시됩니다."
+            />
           </div>
         </div>
-        <div className="dockerfile-modal-footer">
-          <button onClick={onClose} className="action-btn">닫기</button>
+        <div className="modal-footer">
+          <button className="action-btn" onClick={onClose}>
+            취소
+          </button>
+          <button className="action-btn primary" onClick={handleGetFeedback} disabled={isLoading}>
+            {isLoading ? '분석 중...' : '피드백 받기'}
+          </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
