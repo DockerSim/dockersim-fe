@@ -189,17 +189,6 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                         <h3>네트워크 관리</h3>
                         <AddBtn onClick={() => handleCreateResource('network')} size="sm" />
                       </div>
-                      <div className="network-connection-control">
-                        <select value={selectedNetworkId || ''} onChange={(e) => setSelectedNetworkId(e.target.value)} className="select-input">
-                          <option value="">네트워크 선택</option>
-                          {(networks || []).map(network => <option key={network.id} value={network.id}>{network.name}</option>)}
-                        </select>
-                        <select value={selectedContainerId || ''} onChange={(e) => setSelectedContainerId(e.target.value)} className="select-input">
-                          <option value="">컨테이너 선택</option>
-                          {(containers || []).map(container => <option key={container.id} value={container.id}>{container.name}</option>)}
-                        </select>
-                        <NetworkConnectBtn onClick={handleNetworkConnect} size="sm" />
-                      </div>
                       <div className="resource-list">
                         {(networks || []).map(network => (
                             <div key={network.id} className="resource-item" onClick={() => onNetworkClick(network)}>

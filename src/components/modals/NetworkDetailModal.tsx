@@ -79,15 +79,6 @@ const NetworkDetailModal: React.FC<NetworkDetailModalProps> = ({ network, open, 
             )}
           </div>
         </div>
-
-        <div className="network-modal-actions">
-          <button 
-            className="action-btn close-btn"
-            onClick={onClose}
-          >
-            닫기
-          </button>
-        </div>
       </div>
     </div>
   );
