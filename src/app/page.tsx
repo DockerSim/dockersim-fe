@@ -81,7 +81,7 @@ export default function HomePage() {
   const handleVolumeDisconnect = (volumeName: string, containerName: string) => {
     const container = containers.find(c => c.name === containerName);
     disconnectVolumeFromContainer(volumeName, containerName);
-    setIsVolumeDetailModalOpen(false);
+    setIsVolumeDetailModalOpen(false); // Explicitly close VolumeDetailModal here
     setIsContainerDetailModalOpen(false);
     if (container?.network[0]) {
       setActiveNetwork(container.network[0]);
