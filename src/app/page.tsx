@@ -33,12 +33,11 @@ export default function HomePage() {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [dockerfileFeedbackModalOpen, setDockerfileFeedbackModalOpen] = useState(false);
   
-  const { containers, volumes, networks, generateComposeFile, executeCommand, disconnectVolumeFromContainer } = useDockerStore();
+  const { containers, volumes, networks, generateComposeFile, executeCommand, disconnectVolumeFromContainer, disconnectNetworkFromContainer } = useDockerStore();
 
   // --- Modal State Centralization ---
   const [selectedContainer, setSelectedContainer] = useState<Container | null>(null);
   const [isContainerDetailModalOpen, setIsContainerDetailModalOpen] = useState(false);
-  // Change selectedVolume to selectedVolumeId
   const [selectedVolumeId, setSelectedVolumeId] = useState<string | null>(null);
   const [isVolumeDetailModalOpen, setVolumeDetailModalOpen] = useState(false);
   const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null);
@@ -46,7 +45,7 @@ export default function HomePage() {
   
   const [isNetworkSelectionModalOpen, setIsNetworkSelectionModalOpen] = useState(false);
   const [isResourceCreationModalOpen, setIsResourceCreationModalOpen] = useState(false);
-  const [resourceCreationType, setResourceCreationType] = useState<'container' | 'volume' | 'network'>('network'); // Default to network for Visualizer's + button
+  const [resourceCreationType, setResourceCreationType] = useState<'container' | 'volume' | 'network'>('network');
 
   const [activeNetwork, setActiveNetwork] = useState<string>('bridge');
 
@@ -68,7 +67,6 @@ export default function HomePage() {
   };
 
   const handleVolumeClick = (volume: Volume) => {
-    // Store only the ID
     setSelectedVolumeId(volume.id);
     setVolumeDetailModalOpen(true);
   };
@@ -81,30 +79,31 @@ export default function HomePage() {
   const handleVolumeDisconnect = (volumeName: string, containerName: string) => {
     const container = containers.find(c => c.name === containerName);
     disconnectVolumeFromContainer(volumeName, containerName);
-    setIsVolumeDetailModalOpen(false); // Explicitly close VolumeDetailModal here
-    setIsContainerDetailModalOpen(false);
+    setIsVolumeDetailModalOpen(false);
     if (container?.network[0]) {
       setActiveNetwork(container.network[0]);
     }
-    // After disconnect, clear selectedVolumeId to ensure fresh data on next open
     setSelectedVolumeId(null); 
+  };
+
+  const handleNetworkDisconnect = (networkName: string, containerName: string) => {
+    disconnectNetworkFromContainer(networkName, containerName);
+    // The modal will re-render with updated container data, no need to close it.
   };
 
   const handleNetworkRemove = (networkName: string) => {
     const containersInNetwork = containers.filter(c => c.network.includes(networkName));
-    const isHot = containersInNetwork.some(c => c.status === 'running' || c.status === 'paused');
-    
-    if (isHot) {
-      if (window.confirm(`'${networkName}' 네트워크는 현재 사용 중인 컨테이너가 있습니다. 정말로 삭제하시겠습니까?`)) {
-        executeCommand(`docker network rm ${networkName}`);
-      }
-    } else {
-      executeCommand(`docker network rm ${networkName}`);
+    if (containersInNetwork.length > 0) {
+      // This case is handled by disabling the button, but as a fallback:
+      alert(`'${networkName}' 네트워크는 현재 사용 중인 컨테이너가 있어 삭제할 수 없습니다.`);
+      return;
     }
+    executeCommand(`docker network rm ${networkName}`);
   };
 
-  const handleOpenNetworkSelectionModal = () => {
-    setIsContainerDetailModalOpen(false);
+  const handleOpenNetworkSelectionModal = (containerToConnect: Container) => {
+    setSelectedContainer(containerToConnect);
+    setIsContainerDetailModalOpen(false); // Close detail modal if open
     setIsNetworkSelectionModalOpen(true);
   };
 
@@ -140,13 +139,8 @@ export default function HomePage() {
     executeCommand(`docker ${action} ${id}`);
   };
 
-  const toggleControlPanel = () => {
-    setIsControlPanelCollapsed(!isControlPanelCollapsed)
-  }
-
-  const toggleTerminal = () => {
-    setIsTerminalCollapsed(!isTerminalCollapsed)
-  }
+  const toggleControlPanel = () => setIsControlPanelCollapsed(!isControlPanelCollapsed)
+  const toggleTerminal = () => setIsTerminalCollapsed(!isTerminalCollapsed)
 
   const handleComposeFileClick = () => {
     const content = generateComposeFile();
@@ -154,22 +148,15 @@ export default function HomePage() {
     setComposeModalOpen(true);
   };
 
-  const handleImageClick = () => {
-    setImageModalOpen(true);
-  };
-
-  const handleDockerfileFeedbackClick = () => {
-    setDockerfileFeedbackModalOpen(true);
-  };
+  const handleImageClick = () => setImageModalOpen(true);
+  const handleDockerfileFeedbackClick = () => setDockerfileFeedbackModalOpen(true);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizing.current = true;
   };
 
-  const handleMouseUp = () => {
-    isResizing.current = false;
-  };
+  const handleMouseUp = () => { isResizing.current = false; };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isResizing.current) {
@@ -181,7 +168,6 @@ export default function HomePage() {
   useEffect(() => {
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
-
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
@@ -189,8 +175,6 @@ export default function HomePage() {
   }, [handleMouseMove]);
 
   const bothCollapsed = isControlPanelCollapsed && isTerminalCollapsed;
-
-  // Derive the current selected volume from the store based on selectedVolumeId
   const currentSelectedVolume = selectedVolumeId ? volumes.find(v => v.id === selectedVolumeId) : null;
 
   return (
@@ -207,34 +191,10 @@ export default function HomePage() {
         className={`sidebar-content ${bothCollapsed ? 'collapsed' : ''}`}
         style={{ width: bothCollapsed ? '0' : `${sidebarWidth}px` }}
       >
-        <ResizablePanel 
-          isCollapsed={isControlPanelCollapsed}
-          onCollapseToggle={toggleControlPanel}
-          defaultHeight={350}
-          minHeight={200}
-          maxHeight={600}
-          className="control-panel-container"
-          title="리소스 제어"
-        >
-          <ControlPanel 
-            isCollapsed={isControlPanelCollapsed}
-            showToast={showToast}
-            onContainerClick={handleContainerClick}
-            onVolumeClick={handleVolumeClick}
-            onNetworkClick={handleNetworkClick}
-            onNetworkRemove={handleNetworkRemove}
-          />
+        <ResizablePanel isCollapsed={isControlPanelCollapsed} onCollapseToggle={toggleControlPanel} defaultHeight={350} minHeight={200} maxHeight={600} className="control-panel-container" title="리소스 제어">
+          <ControlPanel isCollapsed={isControlPanelCollapsed} showToast={showToast} onContainerClick={handleContainerClick} onVolumeClick={handleVolumeClick} onNetworkClick={handleNetworkClick} onNetworkRemove={handleNetworkRemove} />
         </ResizablePanel>
-        
-        <ResizablePanel 
-          isCollapsed={isTerminalCollapsed}
-          onCollapseToggle={toggleTerminal}
-          defaultHeight={300}
-          minHeight={150}
-          maxHeight={500}
-          className="terminal-container"
-          title="터미널"
-        >
+        <ResizablePanel isCollapsed={isTerminalCollapsed} onCollapseToggle={toggleTerminal} defaultHeight={300} minHeight={150} maxHeight={500} className="terminal-container" title="터미널">
           <Terminal />
         </ResizablePanel>
       </div>
@@ -242,77 +202,20 @@ export default function HomePage() {
       <div className={`resizer ${bothCollapsed ? 'collapsed' : ''}`} onMouseDown={handleMouseDown} />
       
       <div className={`visualizer`}>
-        <Visualizer 
-          processes={[]} 
-          onContainerClick={handleContainerClick}
-          onVolumeClick={handleVolumeClick}
-          onNetworkClick={handleNetworkClick}
-          onOpenNetworkSelectionModal={handleOpenNetworkSelectionModal}
-          onOpenNetworkCreationModal={handleOpenNetworkCreationModal}
-          activeNetwork={activeNetwork}
-          setActiveNetwork={setActiveNetwork}
-        />
+        <Visualizer processes={[]} onContainerClick={handleContainerClick} onVolumeClick={handleVolumeClick} onNetworkClick={handleNetworkClick} onOpenNetworkSelectionModal={handleOpenNetworkSelectionModal} onOpenNetworkCreationModal={handleOpenNetworkCreationModal} activeNetwork={activeNetwork} setActiveNetwork={setActiveNetwork} />
       </div>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-
-      <ComposeFileModal 
-        open={composeModalOpen} 
-        onClose={() => setComposeModalOpen(false)} 
-        composeFileContent={composeFileContent} 
-      />
-
-      <ImageModal 
-        isOpen={imageModalOpen} 
-        onClose={() => setImageModalOpen(false)} 
-      />
-
-      <DockerfileFeedbackModal 
-        open={dockerfileFeedbackModalOpen} 
-        onClose={() => setDockerfileFeedbackModalOpen(false)} 
-      />
+      <ComposeFileModal open={composeModalOpen} onClose={() => setComposeModalOpen(false)} composeFileContent={composeFileContent} />
+      <ImageModal isOpen={imageModalOpen} onClose={() => setImageModalOpen(false)} />
+      <DockerfileFeedbackModal open={dockerfileFeedbackModalOpen} onClose={() => setDockerfileFeedbackModalOpen(false)} />
 
       {/* Centrally Managed Modals */}
-      <ContainerDetailModal 
-        container={selectedContainer} 
-        open={isContainerDetailModalOpen} 
-        onClose={() => setIsContainerDetailModalOpen(false)} 
-        onAction={handleAction}
-        onOpenNetworkSelectionModal={handleOpenNetworkSelectionModal}
-      />
-      <VolumeDetailModal 
-        // Pass the dynamically found volume object
-        volume={currentSelectedVolume} 
-        open={isVolumeDetailModalOpen} 
-        onClose={() => setVolumeDetailModalOpen(false)} 
-        onRemove={(id) => executeCommand(`docker volume rm ${id}`)} 
-        onDisconnect={handleVolumeDisconnect}
-      />
-      <NetworkDetailModal 
-        network={selectedNetwork} 
-        open={isNetworkDetailModalOpen} 
-        onClose={() => setNetworkDetailModalOpen(false)} 
-      />
-      <ResourceCreationModal 
-        type={resourceCreationType} 
-        networks={networks || []} 
-        open={isResourceCreationModalOpen} 
-        onConfirm={handleResourceCreationConfirm} 
-        onClose={() => setIsResourceCreationModalOpen(false)} 
-      />
-
-      {selectedContainer && (
-        <NetworkSelectionModal
-          isOpen={isNetworkSelectionModalOpen}
-          onClose={() => {
-            setIsNetworkSelectionModalOpen(false);
-            setSelectedContainer(null);
-          }}
-          onSelect={handleNetworkConnect}
-          allNetworks={networks}
-          connectedNetworks={Array.isArray(selectedContainer.network) ? selectedContainer.network : [selectedContainer.network]}
-        />
-      )}
+      <ContainerDetailModal container={selectedContainer} open={isContainerDetailModalOpen} onClose={() => setIsContainerDetailModalOpen(false)} onAction={handleAction} onOpenNetworkSelectionModal={() => selectedContainer && handleOpenNetworkSelectionModal(selectedContainer)} onDisconnectNetwork={handleNetworkDisconnect} />
+      <VolumeDetailModal volume={currentSelectedVolume} open={isVolumeDetailModalOpen} onClose={() => setVolumeDetailModalOpen(false)} onRemove={(id) => executeCommand(`docker volume rm ${id}`)} onDisconnect={handleVolumeDisconnect} />
+      <NetworkDetailModal network={selectedNetwork} open={isNetworkDetailModalOpen} onClose={() => setNetworkDetailModalOpen(false)} />
+      <ResourceCreationModal type={resourceCreationType} networks={networks || []} open={isResourceCreationModalOpen} onConfirm={handleResourceCreationConfirm} onClose={() => setIsResourceCreationModalOpen(false)} />
+      {selectedContainer && <NetworkSelectionModal isOpen={isNetworkSelectionModalOpen} onClose={() => { setIsNetworkSelectionModalOpen(false); setSelectedContainer(null); }} onSelect={handleNetworkConnect} allNetworks={networks} connectedNetworks={Array.isArray(selectedContainer.network) ? selectedContainer.network : [selectedContainer.network]} />}
     </div>
   )
 }

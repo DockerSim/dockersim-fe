@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { Container } from '../../store/dockerStore';
 import './ContainerDetailModal.css';
+import './VolumeDetailModal.css'; // Reusing for connection list styles
 
 interface ContainerDetailModalProps {
   container: Container | null;
@@ -9,6 +10,7 @@ interface ContainerDetailModalProps {
   onClose: () => void;
   onAction: (action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm', id: string) => void;
   onOpenNetworkSelectionModal: () => void;
+  onDisconnectNetwork: (networkName: string, containerName: string) => void;
 }
 
 const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({ 
@@ -16,7 +18,8 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({
   open, 
   onClose, 
   onAction,
-  onOpenNetworkSelectionModal
+  onOpenNetworkSelectionModal,
+  onDisconnectNetwork
 }) => {
 
   if (!open || !container) return null;
@@ -36,6 +39,11 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({
     if (window.confirm('정말로 삭제하시겠습니까?')) {
       handleActionAndClose('rm', id);
     }
+  };
+
+  const handleNetworkDisconnectClick = (networkName: string) => {
+    onDisconnectNetwork(networkName, container.name);
+    onClose(); // Close the modal after disconnecting
   };
 
   return createPortal(
@@ -62,12 +70,28 @@ const ContainerDetailModal: React.FC<ContainerDetailModalProps> = ({
               <span className="detail-label">Status:</span>
               <span className={`status-badge ${container.status}`}>{container.status}</span>
             </div>
-            <div className="detail-item">
-              <span className="detail-label">Network:</span>
-              <span className="detail-value">{Array.isArray(container.network) ? container.network.join(', ') : container.network}</span>
-            </div>
           </div>
-          {/* Removed the volume connections section from here to avoid confusion */}
+
+          <div className="connections-section">
+            <h4>연결된 네트워크</h4>
+            {container.network && container.network.length > 0 ? (
+              <ul className="connections-list">
+                {container.network.map(netName => (
+                  <li key={netName} className="connection-item">
+                    <span>🌐 {netName}</span>
+                    <button 
+                      className="disconnect-btn" 
+                      onClick={() => handleNetworkDisconnectClick(netName)}
+                    >
+                      연결 해제
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="no-connections">연결된 네트워크가 없습니다.</p>
+            )}
+          </div>
         </div>
         <div className="modal-actions">
             {container.status === 'running' && (
