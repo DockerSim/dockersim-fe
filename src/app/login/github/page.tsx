@@ -31,6 +31,7 @@ function GitHubCallback() {
                         });
                         login(data.accessToken, data.refreshToken, data.user);
                         console.log("AuthStore state after login:", useAuthStore.getState()); // 로그인 후 스토어 상태 확인
+                        console.log("Attempting to redirect to /"); // Add this log
                         router.push('/');
                     } else {
                         console.error('Failed to get access token or user data:', data);

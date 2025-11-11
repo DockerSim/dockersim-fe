@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useAuthStore } from '@/store/authStore'; // useAuthStore 임포트
 import './ComposeFileModal.css';
 
 // 백엔드 API 응답 래퍼 타입
@@ -27,7 +26,6 @@ interface ComposeFileModalProps {
 const API_BASE_URL = 'http://localhost:8080'; // TODO: 환경 변수로 분리
 
 const ComposeFileModal: React.FC<ComposeFileModalProps> = ({ open, onClose, simulationPublicId }) => {
-  const { accessToken } = useAuthStore(); // accessToken 가져오기
   const [composeFileContent, setComposeFileContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,25 +39,21 @@ const ComposeFileModal: React.FC<ComposeFileModalProps> = ({ open, onClose, simu
         setComposeFileContent(''); // 내용 초기화
       }
     }
-  }, [open, simulationPublicId, accessToken]); // accessToken을 의존성 배열에 추가
+  }, [open, simulationPublicId]);
 
   const generateComposeFile = async (simId: string) => {
     setIsLoading(true);
     setError(null);
     setComposeFileContent('');
 
-    if (!accessToken) {
-      setError('인증 정보가 없어 docker-compose.yml 파일을 생성할 수 없습니다. 다시 로그인해주세요.');
-      setIsLoading(false);
-      return;
-    }
-
     try {
+      // TODO: 인증 토큰이 필요하다면 헤더에 추가
+      // const { accessToken } = useAuthStore.getState();
+      // headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` }
       const response = await fetch(`${API_BASE_URL}/api/simulations/${simId}/compose`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}` // Authorization 헤더 추가
         },
       });
 

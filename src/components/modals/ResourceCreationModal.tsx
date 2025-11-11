@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Network, useDockerStore } from '../../store/dockerStore';
+import { Network } from '../../store/dockerStore';
 import ImageModal from './ImageModal';
 import './ResourceCreationModal.css';
 
@@ -39,17 +39,12 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
   onConfirm,
   preselectedImage
 }) => {
-  const { createContainerInNetworks, executeCommand } = useDockerStore();
   const [resourceName, setResourceName] = useState('');
   const [imageName, setImageName] = useState('');
   const [selectedNetworkIds, setSelectedNetworkIds] = useState<string[]>(['bridge']);
   const [mountPath, setMountPath] = useState('/data');
   const [ports, setPorts] = useState<Port[]>([{ hostPort: '', containerPort: '', protocol: 'tcp' }]);
   const [imageSelectionModalOpen, setImageSelectionModalOpen] = useState(false);
-
-  // 임시 simulationId와 userId. 실제 값은 사용자 세션 또는 전역 상태에서 가져와야 합니다.
-  const SIMULATION_ID = "test-simulation-id"; // TODO: 실제 simulationId로 교체 필요
-  const USER_ID = 1; // TODO: 실제 userId로 교체 필요
 
   useEffect(() => {
     if (preselectedImage) {
@@ -80,17 +75,6 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
       image: type === 'container' ? imageName : undefined,
       networkIds: type === 'container' ? selectedNetworkIds : undefined,
     };
-    if (type === 'container') {
-      createContainerInNetworks(data, SIMULATION_ID, USER_ID); // SIMULATION_ID, USER_ID 추가
-    } else if (type === 'volume') {
-      let command = `docker volume create`;
-      if (data.name) command += ` ${data.name}`;
-      executeCommand(command, SIMULATION_ID, USER_ID); // SIMULATION_ID, USER_ID 추가
-    } else if (type === 'network') {
-      let command = `docker network create`;
-      if (data.name) command += ` ${data.name}`;
-      executeCommand(command, SIMULATION_ID, USER_ID); // SIMULATION_ID, USER_ID 추가
-    }
     onConfirm(data);
     handleClose();
   };
@@ -134,12 +118,12 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
 
   const getPlaceholder = () => {
     if (type === 'container') return '비워두면 자동으로 생성됩니다';
-    if (type === 'volume') return '볼륨 이름을 입력하세요';
-    if (type === 'network') return '네트워크 이름을 입력하세요';
+    if (type === 'volume') return '비워두면 자동으로 생성됩니다';
+    if (type === 'network') return '비워두면 자동으로 생성됩니다';
     return '';
   };
 
-  const isFormValid = (type === 'container' && imageName !== '') || (type !== 'container' && resourceName.trim() !== '');
+  const isFormValid = (type === 'container' && imageName !== '') || type === 'volume' || type === 'network';
 
   return createPortal(
     <div className="resource-modal-backdrop" onClick={handleBackdropClick}>
@@ -155,7 +139,6 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
           <div className="form-group">
             <label>
               {getLabel()}
-              {type !== 'container' && <span className="required">*</span>}
             </label>
             <input
               type="text"

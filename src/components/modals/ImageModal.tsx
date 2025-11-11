@@ -40,7 +40,7 @@ interface ApiResponse<T> {
 const API_BASE_URL = 'http://localhost:8080'; // TODO: 환경 변수로 분리하는 것이 좋음
 
 const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, onSelect, showSelectionButton }) => {
-  const { executeCommand, localImages, addMessage } = useDockerStore();
+  const { executeCommand, localImages } = useDockerStore();
   
   const [activeTab, setActiveTab] = useState<'official' | 'local'>('official');
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +48,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, onSelect, show
   
   const [officialImages, setOfficialImages] = useState<OfficialDockerImage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const sortOptions = [
@@ -56,62 +57,104 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, onSelect, show
     { value: 'name', label: '이름순' }
   ];
 
-  // 임시 simulationId와 userId. 실제 값은 사용자 세션 또는 전역 상태에서 가져와야 합니다.
-  const SIMULATION_ID = "test-simulation-id"; // TODO: 실제 simulationId로 교체 필요
-  const USER_ID = 1; // TODO: 실제 userId로 교체 필요
+  useEffect(() => {
+    if (!isOpen || activeTab !== 'official') {
+      return;
+    }
+    console.log('[ImageModal] useEffect triggered for fetching images. Deps:', { isOpen, activeTab, searchQuery });
 
-  // 공식 이미지 API 호출 (응답 처리 로직 수정)
-  const fetchOfficialImages = async () => {
-    setIsLoading(true);
-    setError(null);
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const fetchOfficialImages = async () => {
+      setIsLoading(true);
+      setError(null);
+      console.log('[ImageModal] Starting to fetch official images...');
+      try {
+        const endpoint = searchQuery ? `/api/officeimage/search?name=${encodeURIComponent(searchQuery)}` : '/api/officeimage/list';
+        const url = `${API_BASE_URL}${endpoint}`;
+        
+        const response = await fetch(url, { signal });
+        if (!response.ok) {
+          throw new Error(`서버 응답 오류: ${response.status}`);
+        }
+        
+        const responseData: ApiResponse<OfficialDockerImage[]> = await response.json();
+        console.log('[ImageModal] Received data from API:', responseData);
+        
+        if (responseData.success && responseData.data) {
+          const uniqueImagesMap = new Map<string, OfficialDockerImage>();
+          responseData.data.forEach(image => {
+            let normalizedTag = image.tag;
+            if (image.tag.startsWith(image.name)) {
+                normalizedTag = image.tag.substring(image.name.length);
+            }
+            const key = `${image.name}:${normalizedTag}`;
+            
+            if (!uniqueImagesMap.has(key)) {
+                uniqueImagesMap.set(key, image);
+            }
+          });
+          const uniqueImages = Array.from(uniqueImagesMap.values());
+          console.log(`[ImageModal] Deduped images. Before: ${responseData.data.length}, After: ${uniqueImages.length}`);
+          setOfficialImages(uniqueImages);
+        } else {
+          throw new Error(responseData.errorMessage || '알 수 없는 오류가 발생했습니다.');
+        }
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          console.error('[ImageModal] Error fetching images:', e);
+          setError(e.message);
+          setOfficialImages([]);
+        } else {
+          console.log('[ImageModal] Fetch aborted.');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+        fetchOfficialImages();
+    }, 300);
+
+    return () => {
+      console.log('[ImageModal] Cleanup useEffect.');
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [isOpen, activeTab, searchQuery]);
+
+
+  const handleDownloadAndSelect = async (image: OfficialDockerImage) => {
+    const imageNameWithTag = `${image.namespace === 'library' ? image.name : `${image.namespace}/${image.name}`}:${image.tag}`;
+    console.log(`[ImageModal] handleDownloadAndSelect called for: ${imageNameWithTag}`);
+    setIsDownloading(imageNameWithTag);
     try {
-      // 검색어가 있으면 /search, 없으면 /list 호출
-      const endpoint = searchQuery ? `/api/officeimage/search?name=${encodeURIComponent(searchQuery)}` : '/api/officeimage/list';
-      const url = `${API_BASE_URL}${endpoint}`;
-      
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`서버 응답 오류: ${response.status}`);
+      await executeCommand(`docker pull ${imageNameWithTag}`);
+      if (onSelect) {
+          console.log(`[ImageModal] Calling onSelect with: ${imageNameWithTag}`);
+          onSelect(imageNameWithTag);
+          onClose();
       }
-      
-      const responseData: ApiResponse<OfficialDockerImage[]> = await response.json();
-      
-      if (responseData.success) {
-        // data가 null일 경우를 대비하여 빈 배열로 처리
-        setOfficialImages(responseData.data || []);
-      } else {
-        throw new Error(responseData.errorMessage || '알 수 없는 오류가 발생했습니다.');
-      }
-    } catch (e: any) {
-      setError(e.message);
-      setOfficialImages([]); // 에러 발생 시 목록 비우기
     } finally {
-      setIsLoading(false);
+      setIsDownloading(null);
     }
   };
 
-  // 모달이 열리거나 탭이 변경될 때, 또는 검색어가 변경될 때 이미지 로드
-  useEffect(() => {
-    if (isOpen && activeTab === 'official') {
-      const timer = setTimeout(() => {
-        fetchOfficialImages();
-      }, 300); // 디바운싱: 사용자가 타이핑을 멈춘 후 300ms 뒤에 API 호출
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, activeTab, searchQuery]);
-
+  // ... (다른 핸들러 및 UI 코드는 변경 없음) ...
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
 
-  const handleDownloadAndSelect = (image: OfficialDockerImage) => {
-    const imageNameWithTag = `${image.namespace === 'library' ? image.name : `${image.namespace}/${image.name}`}:${image.tag}`;
-    executeCommand(`docker pull ${imageNameWithTag}`, SIMULATION_ID, USER_ID);
-    if (onSelect) {
-        onSelect(imageNameWithTag);
-        onClose();
+  const handleDownload = async (imageNameWithTag: string) => {
+    setIsDownloading(imageNameWithTag);
+    try {
+      await executeCommand(`docker pull ${imageNameWithTag}`);
+    } finally {
+      setIsDownloading(null);
     }
   };
 
@@ -124,7 +167,6 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, onSelect, show
 
   const imagesToDisplay = activeTab === 'official' ? officialImages : (localImages || []);
 
-  // 정렬 로직
   const sortedImages = useMemo(() => {
     if (!imagesToDisplay) return [];
     return [...imagesToDisplay].sort((a, b) => {
@@ -138,7 +180,6 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, onSelect, show
             default: return 0;
           }
         }
-        // 로컬 이미지 정렬이 필요한 경우 여기에 로직 추가
         return 0;
       });
   }, [imagesToDisplay, sortBy, activeTab]);
@@ -170,7 +211,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, onSelect, show
                 </div>
                 <div className="local-image-actions">
                   {showSelectionButton && <button className="select-btn" onClick={() => handleSelectImage(localImg)}>선택</button>}
-                  <button className="delete-btn" onClick={() => executeCommand(`docker rmi ${imageNameWithTag}`, SIMULATION_ID, USER_ID)}>삭제</button>
+                  <button className="delete-btn" onClick={() => executeCommand(`docker rmi ${imageNameWithTag}`)}>삭제</button>
                 </div>
               </div>
             );
@@ -180,6 +221,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, onSelect, show
             const imageName = officialImg.namespace && officialImg.namespace !== 'library' ? `${officialImg.namespace}/${officialImg.name}` : officialImg.name;
             const imageNameWithTag = `${imageName}:${officialImg.tag}`;
             const isDownloaded = (localImages || []).some(localImg => localImg.name === imageName && localImg.tag === officialImg.tag);
+            const isCurrentlyDownloading = isDownloading === imageNameWithTag;
 
             return (
               <div key={key} className="image-card">
@@ -197,10 +239,16 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, onSelect, show
                     isDownloaded ? (
                       <button className="select-btn" onClick={() => handleSelectImage({ id: officialImg.hexId, name: imageName, tag: officialImg.tag, created: officialImg.lastUpdated, size: 'N/A' })}>선택</button>
                     ) : (
-                      <button className="download-btn" onClick={() => handleDownloadAndSelect(officialImg)}>다운로드 후 선택</button>
+                      <button className="download-btn" onClick={() => handleDownloadAndSelect(officialImg)} disabled={isCurrentlyDownloading}>
+                        {isCurrentlyDownloading ? '다운로드 중...' : '다운로드 후 선택'}
+                      </button>
                     )
                   ) : (
-                    !isDownloaded && <button className="download-btn" onClick={() => executeCommand(`docker pull ${imageNameWithTag}`, SIMULATION_ID, USER_ID)}>📥 다운로드</button>
+                    !isDownloaded && (
+                      <button className="download-btn" onClick={() => handleDownload(imageNameWithTag)} disabled={isCurrentlyDownloading}>
+                        {isCurrentlyDownloading ? '다운로드 중...' : '📥 다운로드'}
+                      </button>
+                    )
                   )}
                 </div>
               </div>

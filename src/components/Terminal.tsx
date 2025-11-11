@@ -15,13 +15,9 @@ const Terminal: React.FC<TerminalProps> = ({ isCollapsed, onCollapseToggle }) =>
   const terminalRef = useRef<HTMLDivElement>(null);
   const termInstance = useRef<XtermTerminal | null>(null);
   const currentLine = useRef('');
-  
+
   const { terminalHistory, executeCommand } = useDockerStore();
   const lastRenderedCount = useRef(0);
-
-  // 임시 simulationId와 userId. 실제 값은 사용자 세션 또는 전역 상태에서 가져와야 합니다.
-  const SIMULATION_ID = "test-simulation-id"; // TODO: 실제 simulationId로 교체 필요
-  const USER_ID = 1; // TODO: 실제 userId로 교체 필요
 
   useEffect(() => {
     if (terminalRef.current && !termInstance.current) {
@@ -38,7 +34,7 @@ const Terminal: React.FC<TerminalProps> = ({ isCollapsed, onCollapseToggle }) =>
         fontSize: 14,
         convertEol: true,
       });
-      
+
       termInstance.current = term;
       term.open(terminalRef.current);
       term.write('\x1b[36mdockersim\x1b[0m $ ');
@@ -51,7 +47,7 @@ const Terminal: React.FC<TerminalProps> = ({ isCollapsed, onCollapseToggle }) =>
           case '\r': // Enter
             if (currentLine.current.trim()) {
               term.write('\r\n');
-              executeCommand(currentLine.current, SIMULATION_ID, USER_ID);
+              executeCommand(currentLine.current);
             } else {
               term.write('\r\n\x1b[36mdockersim\x1b[0m $ ');
             }
@@ -78,13 +74,13 @@ const Terminal: React.FC<TerminalProps> = ({ isCollapsed, onCollapseToggle }) =>
     if ((terminalHistory || []).length > lastRenderedCount.current) {
       const newEntries = (terminalHistory || []).slice(lastRenderedCount.current);
       newEntries.forEach(entry => {
-        if (entry.output) { 
-            const formattedOutput = entry.output.replace(/\n/g, '\r\n');
-            if (entry.isError) {
-                term.write(`\r\n\x1b[31m${formattedOutput}\x1b[0m`);
-            } else {
-                term.write(`\r\n${formattedOutput}`);
-            }
+        if (entry.output) {
+          const formattedOutput = entry.output.replace(/\n/g, '\r\n');
+          if (entry.isError) {
+            term.write(`\r\n\x1b[31m${formattedOutput}\x1b[0m`);
+          } else {
+            term.write(`\r\n${formattedOutput}`);
+          }
         }
       });
       term.write('\r\n\x1b[36mdockersim\x1b[0m $ ');
@@ -94,21 +90,21 @@ const Terminal: React.FC<TerminalProps> = ({ isCollapsed, onCollapseToggle }) =>
   }, [terminalHistory]);
 
   return (
-    <div className={`terminal-section ${isCollapsed ? 'collapsed' : ''}`}>
-      <div className="terminal-header" onClick={onCollapseToggle}>
-        <div className="terminal-title">
-          <span className="terminal-icon">💻</span>
-          Terminal
+      <div className={`terminal-section ${isCollapsed ? 'collapsed' : ''}`}>
+        <div className="terminal-header" onClick={onCollapseToggle}>
+          <div className="terminal-title">
+            <span className="terminal-icon">💻</span>
+            Terminal
+          </div>
+        </div>
+        <div
+            className="terminal-content-wrapper"
+            style={{ display: isCollapsed ? 'none' : 'block' }}
+            onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div id="terminal-container" ref={terminalRef} style={{ height: '100%' }} />
         </div>
       </div>
-      <div 
-        className="terminal-content-wrapper" 
-        style={{ display: isCollapsed ? 'none' : 'block' }}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div id="terminal-container" ref={terminalRef} style={{ height: '100%' }} />
-      </div>
-    </div>
   );
 };
 

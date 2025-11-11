@@ -1,38 +1,84 @@
 // Docker API 클라이언트
 import { Container, Volume, Network } from '@/store/dockerStore'
+import { useAuthStore } from '@/store/authStore'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080' // 변경: 백엔드 기본 URL로 설정
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
-// API 응답 타입 (백엔드 API 문서에 맞춰 수정)
+// API 응답 타입
 interface ApiResponse<T> {
-  code: string // 백엔드 API 문서에 따라 'code' 필드 추가
-  message: string // 백엔드 API 문서에 따라 'message' 필드 추가
+  code: string
+  message: string
   data?: T
-  error?: string // 기존 프론트엔드 에러 처리 로직을 위해 유지
+  error?: string
 }
 
-// Docker 명령어 실행 요청 타입 (추가)
-interface DockerCommandRequest {
-  command: string
-  simulationId: string
-  userId: number
-  sessionId?: string // 선택 사항
+// 백엔드 응답 타입 (실제 백엔드 구조에 맞춤)
+interface BackendDockerContainerResponse {
+  console: string[]
+  id: number
+  hexId: string
+  shortHexId: string
+  name: string
+  baseImageName: string
+  status: string  // RUNNING, STOPPED, PAUSED 등
+  layer: string[]
+  volumes?: Array<{
+    volumeName: string
+    containerPath: string
+    isReadOnly: boolean
+  }>
+  networks?: string[]
 }
 
-// Docker 명령어 실행 응답 (백엔드 API 문서의 'data' 필드에 맞춰 수정)
+interface BackendDockerVolumeResponse {
+  console: string[]
+  createAt: string
+  mountPoint: string
+  name: string
+  anonymous: boolean
+}
+
+interface BackendDockerNetworkResponse {
+  console: string[]
+  id: number
+  shortHexId: string
+  name: string
+  createdAt: string
+  connectState: string  // NONE, CONNECTED, DISCONNECTED
+  containerId: number
+}
+
+// 백엔드 CommandResult 타입
+interface BackendCommandResult {
+  console: string[]
+  status: 'CREATE' | 'UPDATE' | 'READ' | 'DELETE'
+  changedImages: any[]
+  changedContainers: BackendDockerContainerResponse[]
+  changedVolumes: BackendDockerVolumeResponse[]
+  changedNetworks: BackendDockerNetworkResponse[]
+}
+
+// 백엔드 이미지 응답 타입
+interface BackendDockerImageResponse {
+  console: string[]
+  hexId: string
+  shortHexId: string
+  namespace: string
+  name: string
+  tag: string
+  location: string
+  layer: string[]
+  createdAt: string
+}
+
+// 변환된 응답 타입 (프론트엔드에서 사용)
 interface DockerCommandResponse {
-  command: string // 실행된 명령어
-  output: string // 명령어 실행 결과
-  success: boolean // 성공 여부 (백엔드 data 필드 내)
-  simulationId: string // 시뮬레이션 ID
-  executedAt: string // "2024-06-12 15:30:45"
-  containers?: Container[] // 현재 컨테이너 목록
-  images?: any[] // 현재 이미지 목록 (타입 정의 필요 시 추가)
-  networks?: Network[] // 현재 네트워크 목록
-  volumes?: Volume[] // 현재 볼륨 목록
-  stateChanges?: any // 상태 변화 정보 (타입 정의 필요 시 추가)
-  hint?: string // 학습 힌트
-  help?: string // 추가 도움말
+  output: string
+  success: boolean
+  containers: Container[]
+  volumes: Volume[]
+  networks: Network[]
+  localImages?: any[]  // 이미지 정보 추가
 }
 
 class DockerApiClient {
@@ -41,17 +87,31 @@ class DockerApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
+      // 인증 토큰 가져오기
+      const { accessToken } = useAuthStore.getState()
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      }
+
+      // 토큰이 있으면 Authorization 헤더 추가
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+      }
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
+        headers,
       })
 
-      // HTTP 상태 코드가 2xx 범위가 아니면 에러로 간주
       if (!response.ok) {
         const errorText = await response.text()
+        console.error('API Error:', {
+          status: response.status,
+          endpoint,
+          errorText,
+        })
         throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
       }
 
@@ -61,35 +121,177 @@ class DockerApiClient {
       return {
         code: 'ERROR',
         message: error instanceof Error ? error.message : 'Unknown error occurred',
-        // 백엔드 응답과 일치시키기 위해 success 필드 추가 (기존 ApiResponse에는 없었음)
-        success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
       }
     }
   }
 
-  // Docker 명령어 실행 (수정)
+  // 백엔드 응답을 프론트엔드 형식으로 변환
+  private transformBackendResponse(backendResult: BackendCommandResult): DockerCommandResponse {
+    // 콘솔 출력을 문자열로 변환
+    const output = backendResult.console?.join('\n') || ''
+    const success = backendResult.status === 'CREATE' || backendResult.status === 'UPDATE' || backendResult.status === 'READ'
+
+    // 컨테이너 변환 (백엔드에서 직접 제공하는 네트워크 및 볼륨 정보 사용)
+    const containers: Container[] = (backendResult.changedContainers || []).map(c => {
+      // 백엔드가 직접 제공하는 네트워크 정보 사용
+      const containerNetworks = c.networks || [];
+
+      // 백엔드가 직접 제공하는 볼륨 정보를 프론트엔드 형식으로 변환
+      const containerVolumes: Volume[] = (c.volumes || []).map(v => ({
+        id: v.volumeName,
+        name: v.volumeName,
+        driver: 'local',
+        scope: 'local' as 'local',
+        createdAt: new Date(),
+        mountPath: v.containerPath,
+        labels: null,
+        options: null,
+        connectedContainers: [c.hexId || c.shortHexId || String(c.id)],
+      }));
+
+      console.log(`[docker.ts] Container ${c.name} networks:`, containerNetworks);
+      console.log(`[docker.ts] Container ${c.name} volumes:`, containerVolumes);
+
+      return {
+        id: c.hexId || c.shortHexId || String(c.id),
+        name: c.name,
+        image: c.baseImageName,
+        status: c.status.toLowerCase() as 'running' | 'stopped' | 'paused',
+        ports: [],  // 백엔드 응답에 포트 정보가 없으므로 빈 배열
+        volumes: containerVolumes,
+        network: containerNetworks,
+        created: new Date(),
+      };
+    });
+
+    // 볼륨 변환
+    const volumes: Volume[] = (backendResult.changedVolumes || []).map(v => ({
+      id: v.name,
+      name: v.name,
+      driver: 'local',
+      scope: 'local' as 'local',
+      createdAt: v.createAt ? new Date(v.createAt) : new Date(),
+      mountPath: v.mountPoint || '',
+      labels: null,
+      options: null,
+      connectedContainers: [],  // TODO: 백엔드에서 볼륨-컨테이너 연결 정보 필요
+    }))
+
+    // 네트워크 변환
+    const networks: Network[] = (backendResult.changedNetworks || []).map(n => ({
+      id: n.shortHexId || String(n.id),
+      name: n.name,
+      driver: 'bridge',  // 백엔드 응답에 driver 정보가 없으므로 기본값
+      scope: 'local' as 'local',
+      createdAt: n.createdAt ? new Date(n.createdAt) : new Date(),
+      containers: [],  // syncNetworksWithContainers에서 채워짐
+    }))
+
+    // 이미지 변환 (docker pull 등의 명령어에서 사용)
+    const localImages = (backendResult.changedImages || []).map((img: any) => ({
+      id: img.hexId || img.shortHexId,
+      name: img.name,
+      tag: img.tag,
+      created: img.createdAt ? new Date(img.createdAt) : new Date(),
+      size: 'N/A',
+    }))
+
+    console.log('Transformed localImages:', localImages);
+
+    return {
+      output,
+      success,
+      containers,
+      volumes,
+      networks,
+      localImages: localImages.length > 0 ? localImages : undefined,
+    }
+  }
+
+  // Docker 명령어 실행
   async executeCommand(
     command: string,
-    simulationId: string,
-    userId: number,
-    sessionId?: string
+    simulationId: string
   ): Promise<ApiResponse<DockerCommandResponse>> {
-    const requestBody: DockerCommandRequest = { command, simulationId, userId, sessionId }
-    return this.request<DockerCommandResponse>('/api/docker/execute', {
-      method: 'POST',
-      body: JSON.stringify(requestBody),
-    })
+    try {
+      // 명령어에서 모든 줄바꿈과 불필요한 공백 제거
+      const cleanCommand = command.trim().replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ');
+
+      // 인증 토큰 가져오기
+      const { accessToken } = useAuthStore.getState()
+
+      const headers: HeadersInit = {
+        'Content-Type': 'text/plain', // Content-Type을 text/plain으로 변경
+      }
+
+      // 토큰이 있으면 Authorization 헤더 추가
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`
+      }
+
+      console.log('=== Sending Command ===');
+      console.log('Original command:', command);
+      console.log('Cleaned command:', cleanCommand);
+      console.log('Has newline:', command.includes('\n') || command.includes('\r'));
+
+      const response = await fetch(`${API_BASE_URL}/api/simulations/${simulationId}/command`, {
+        method: 'POST',
+        headers,
+        body: cleanCommand,  // JSON.stringify 제거
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API Error:', {
+          status: response.status,
+          endpoint: `/api/simulations/${simulationId}/command`,
+          errorText,
+        })
+        return {
+          code: 'ERROR',
+          message: `HTTP error! status: ${response.status}`,
+          error: errorText,
+        }
+      }
+
+      const backendResponse: any = await response.json()
+
+      console.log('=== Backend Response ===');
+      console.log('Full response:', backendResponse);
+      console.log('success:', backendResponse.success);
+      console.log('code:', backendResponse.code);
+
+      // 백엔드 응답이 성공이면 변환하여 반환
+      // 백엔드가 success: true를 반환하거나 code가 'SUCCESS'인 경우 성공으로 처리
+      if ((backendResponse.success || backendResponse.code === 'SUCCESS') && backendResponse.data) {
+        const transformedData = this.transformBackendResponse(backendResponse.data)
+        return {
+          code: 'SUCCESS',
+          message: backendResponse.message || 'Success',
+          data: transformedData,
+        }
+      }
+
+      // 실패한 경우 에러 응답 반환
+      return {
+        code: backendResponse.code || 'ERROR',
+        message: backendResponse.message || backendResponse.errorMessage || 'Unknown error',
+        error: backendResponse.error || backendResponse.errorMessage,
+      }
+    } catch (error) {
+      console.error('executeCommand error:', error)
+      return {
+        code: 'ERROR',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+      }
+    }
   }
 
-  // 헬스체크 (추가)
-  async getHealthCheck(): Promise<ApiResponse<any>> {
-    return this.request<any>('/hc')
-  }
-
-  // 컨테이너 목록 조회 (수정)
-  async getContainers(simulationId: string, userId: number): Promise<ApiResponse<Container[]>> {
-    const response = await this.executeCommand('docker ps -a', simulationId, userId);
+  // 컨테이너 목록 조회
+  async getContainers(simulationId: string): Promise<ApiResponse<Container[]>> {
+    const response = await this.executeCommand('docker ps -a', simulationId);
     if (response.code === 'SUCCESS' && response.data && response.data.containers) {
       return {
         code: 'SUCCESS',
@@ -97,19 +299,16 @@ class DockerApiClient {
         data: response.data.containers,
       };
     } else {
-      // 백엔드에서 컨테이너 목록을 직접 제공하지 않거나 에러 발생 시
-      // 기존 프론트엔드 로직 (더미 데이터 등)을 사용하도록 유도
-      console.warn('Backend did not return containers directly. Consider parsing output or using dummy data.');
       return {
         code: response.code,
         message: response.message || 'Failed to fetch containers from backend.',
         error: response.error,
-        data: [], // 빈 배열 반환 또는 더미 데이터 로직 추가
+        data: [],
       };
     }
   }
 
-  // 컨테이너 생성 (수정)
+  // 컨테이너 생성
   async createContainer(
     data: {
       name: string
@@ -119,8 +318,7 @@ class DockerApiClient {
       network?: string
       environment?: Record<string, string>
     },
-    simulationId: string,
-    userId: number
+    simulationId: string
   ): Promise<ApiResponse<Container>> {
     let command = `docker run -d --name ${data.name} ${data.image}`;
     if (data.ports && data.ports.length > 0) {
@@ -138,20 +336,14 @@ class DockerApiClient {
       }
     }
 
-    const response = await this.executeCommand(command, simulationId, userId);
+    const response = await this.executeCommand(command, simulationId);
 
     if (response.code === 'SUCCESS' && response.data && response.data.success) {
-      // 백엔드에서 생성된 컨테이너 정보를 직접 반환하지 않을 수 있으므로,
-      // 성공 여부만 확인하고, 필요하다면 getContainers를 다시 호출하여 목록을 갱신
-      // 또는 백엔드 응답의 stateChanges 등을 활용
-      console.log('Container creation command executed successfully:', response.data.output);
-      // 백엔드 API 문서에 따르면, `containers` 필드에 현재 컨테이너 목록이 올 수 있으므로,
-      // 이를 활용하여 생성된 컨테이너를 찾을 수도 있습니다.
       const createdContainer = response.data.containers?.find(c => c.name === data.name);
       return {
         code: 'SUCCESS',
         message: response.message || 'Container created successfully',
-        data: createdContainer || { id: 'unknown', name: data.name, image: data.image, status: 'running', ports: [], volumes: [], network: data.network || 'bridge' }, // 임시 데이터
+        data: createdContainer || { id: 'unknown', name: data.name, image: data.image, status: 'running', ports: [], volumes: [], network: [data.network || 'bridge'], created: new Date() },
       };
     } else {
       return {
@@ -162,9 +354,9 @@ class DockerApiClient {
     }
   }
 
-  // 컨테이너 시작 (수정)
-  async startContainer(id: string, simulationId: string, userId: number): Promise<ApiResponse<void>> {
-    const response = await this.executeCommand(`docker start ${id}`, simulationId, userId);
+  // 컨테이너 시작
+  async startContainer(id: string, simulationId: string): Promise<ApiResponse<void>> {
+    const response = await this.executeCommand(`docker start ${id}`, simulationId);
     if (response.code === 'SUCCESS' && response.data && response.data.success) {
       return {
         code: 'SUCCESS',
@@ -179,9 +371,9 @@ class DockerApiClient {
     }
   }
 
-  // 컨테이너 중지 (수정)
-  async stopContainer(id: string, simulationId: string, userId: number): Promise<ApiResponse<void>> {
-    const response = await this.executeCommand(`docker stop ${id}`, simulationId, userId);
+  // 컨테이너 중지
+  async stopContainer(id: string, simulationId: string): Promise<ApiResponse<void>> {
+    const response = await this.executeCommand(`docker stop ${id}`, simulationId);
     if (response.code === 'SUCCESS' && response.data && response.data.success) {
       return {
         code: 'SUCCESS',
@@ -196,9 +388,9 @@ class DockerApiClient {
     }
   }
 
-  // 컨테이너 삭제 (수정)
-  async deleteContainer(id: string, simulationId: string, userId: number): Promise<ApiResponse<void>> {
-    const response = await this.executeCommand(`docker rm -f ${id}`, simulationId, userId); // -f (force) 옵션 추가
+  // 컨테이너 삭제
+  async deleteContainer(id: string, simulationId: string): Promise<ApiResponse<void>> {
+    const response = await this.executeCommand(`docker rm -f ${id}`, simulationId);
     if (response.code === 'SUCCESS' && response.data && response.data.success) {
       return {
         code: 'SUCCESS',
@@ -213,9 +405,9 @@ class DockerApiClient {
     }
   }
 
-  // 볼륨 목록 조회 (수정)
-  async getVolumes(simulationId: string, userId: number): Promise<ApiResponse<Volume[]>> {
-    const response = await this.executeCommand('docker volume ls', simulationId, userId);
+  // 볼륨 목록 조회
+  async getVolumes(simulationId: string): Promise<ApiResponse<Volume[]>> {
+    const response = await this.executeCommand('docker volume ls', simulationId);
     if (response.code === 'SUCCESS' && response.data && response.data.volumes) {
       return {
         code: 'SUCCESS',
@@ -223,39 +415,32 @@ class DockerApiClient {
         data: response.data.volumes,
       };
     } else {
-      console.warn('Backend did not return volumes directly. Consider parsing output or using dummy data.');
       return {
         code: response.code,
         message: response.message || 'Failed to fetch volumes from backend.',
         error: response.error,
-        data: [], // 빈 배열 반환 또는 더미 데이터 로직 추가
+        data: [],
       };
     }
   }
 
-  // 볼륨 생성 (수정)
+  // 볼륨 생성
   async createVolume(
     data: {
       name: string
-      mountPoint?: string // mountPoint는 docker volume create 명령에 직접 사용되지 않음. -o 옵션으로 드라이버 옵션 가능
+      mountPoint?: string
     },
-    simulationId: string,
-    userId: number
+    simulationId: string
   ): Promise<ApiResponse<Volume>> {
     let command = `docker volume create ${data.name}`;
-    // mountPoint는 docker volume create 명령의 직접적인 옵션이 아님.
-    // 만약 특정 드라이버 옵션으로 사용된다면 여기에 추가 로직 필요.
-    // 현재는 이름만으로 생성.
-
-    const response = await this.executeCommand(command, simulationId, userId);
+    const response = await this.executeCommand(command, simulationId);
 
     if (response.code === 'SUCCESS' && response.data && response.data.success) {
-      console.log('Volume creation command executed successfully:', response.data.output);
       const createdVolume = response.data.volumes?.find(v => v.name === data.name);
       return {
         code: 'SUCCESS',
         message: response.message || 'Volume created successfully',
-        data: createdVolume || { name: data.name, driver: 'local', mountpoint: `/var/lib/docker/volumes/${data.name}/_data` }, // 임시 데이터
+        data: createdVolume || { id: data.name, name: data.name, driver: 'local', scope: 'local' as 'local', createdAt: new Date(), mountPath: '', labels: null, options: null, connectedContainers: [] },
       };
     } else {
       return {
@@ -266,9 +451,9 @@ class DockerApiClient {
     }
   }
 
-  // 볼륨 삭제 (수정)
-  async deleteVolume(id: string, simulationId: string, userId: number): Promise<ApiResponse<void>> {
-    const response = await this.executeCommand(`docker volume rm ${id}`, simulationId, userId);
+  // 볼륨 삭제
+  async deleteVolume(id: string, simulationId: string): Promise<ApiResponse<void>> {
+    const response = await this.executeCommand(`docker volume rm ${id}`, simulationId);
     if (response.code === 'SUCCESS' && response.data && response.data.success) {
       return {
         code: 'SUCCESS',
@@ -283,9 +468,9 @@ class DockerApiClient {
     }
   }
 
-  // 네트워크 목록 조회 (수정)
-  async getNetworks(simulationId: string, userId: number): Promise<ApiResponse<Network[]>> {
-    const response = await this.executeCommand('docker network ls', simulationId, userId);
+  // 네트워크 목록 조회
+  async getNetworks(simulationId: string): Promise<ApiResponse<Network[]>> {
+    const response = await this.executeCommand('docker network ls', simulationId);
     if (response.code === 'SUCCESS' && response.data && response.data.networks) {
       return {
         code: 'SUCCESS',
@@ -293,17 +478,16 @@ class DockerApiClient {
         data: response.data.networks,
       };
     } else {
-      console.warn('Backend did not return networks directly. Consider parsing output or using dummy data.');
       return {
         code: response.code,
         message: response.message || 'Failed to fetch networks from backend.',
         error: response.error,
-        data: [], // 빈 배열 반환 또는 더미 데이터 로직 추가
+        data: [],
       };
     }
   }
 
-  // 네트워크 생성 (수정)
+  // 네트워크 생성
   async createNetwork(
     data: {
       name: string
@@ -311,8 +495,7 @@ class DockerApiClient {
       subnet?: string
       gateway?: string
     },
-    simulationId: string,
-    userId: number
+    simulationId: string
   ): Promise<ApiResponse<Network>> {
     let command = `docker network create`;
     if (data.driver) {
@@ -326,15 +509,14 @@ class DockerApiClient {
     }
     command += ` ${data.name}`;
 
-    const response = await this.executeCommand(command, simulationId, userId);
+    const response = await this.executeCommand(command, simulationId);
 
     if (response.code === 'SUCCESS' && response.data && response.data.success) {
-      console.log('Network creation command executed successfully:', response.data.output);
       const createdNetwork = response.data.networks?.find(n => n.name === data.name);
       return {
         code: 'SUCCESS',
         message: response.message || 'Network created successfully',
-        data: createdNetwork || { id: 'unknown', name: data.name, driver: data.driver || 'bridge', subnet: data.subnet || 'unknown', gateway: data.gateway || 'unknown' }, // 임시 데이터
+        data: createdNetwork || { id: 'unknown', name: data.name, driver: data.driver || 'bridge', scope: 'local' as 'local', createdAt: new Date(), containers: [] },
       };
     } else {
       return {
@@ -345,9 +527,9 @@ class DockerApiClient {
     }
   }
 
-  // 네트워크 삭제 (수정)
-  async deleteNetwork(id: string, simulationId: string, userId: number): Promise<ApiResponse<void>> {
-    const response = await this.executeCommand(`docker network rm ${id}`, simulationId, userId);
+  // 네트워크 삭제
+  async deleteNetwork(id: string, simulationId: string): Promise<ApiResponse<void>> {
+    const response = await this.executeCommand(`docker network rm ${id}`, simulationId);
     if (response.code === 'SUCCESS' && response.data && response.data.success) {
       return {
         code: 'SUCCESS',
@@ -362,9 +544,9 @@ class DockerApiClient {
     }
   }
 
-  // 컨테이너를 네트워크에 연결 (수정)
-  async connectToNetwork(containerId: string, networkId: string, simulationId: string, userId: number): Promise<ApiResponse<void>> {
-    const response = await this.executeCommand(`docker network connect ${networkId} ${containerId}`, simulationId, userId);
+  // 컨테이너를 네트워크에 연결
+  async connectToNetwork(containerId: string, networkId: string, simulationId: string): Promise<ApiResponse<void>> {
+    const response = await this.executeCommand(`docker network connect ${networkId} ${containerId}`, simulationId);
     if (response.code === 'SUCCESS' && response.data && response.data.success) {
       return {
         code: 'SUCCESS',
@@ -379,9 +561,9 @@ class DockerApiClient {
     }
   }
 
-  // 컨테이너를 네트워크에서 연결 해제 (수정)
-  async disconnectFromNetwork(containerId: string, networkId: string, simulationId: string, userId: number): Promise<ApiResponse<void>> {
-    const response = await this.executeCommand(`docker network disconnect ${networkId} ${containerId}`, simulationId, userId);
+  // 컨테이너를 네트워크에서 연결 해제
+  async disconnectFromNetwork(containerId: string, networkId: string, simulationId: string): Promise<ApiResponse<void>> {
+    const response = await this.executeCommand(`docker network disconnect ${networkId} ${containerId}`, simulationId);
     if (response.code === 'SUCCESS' && response.data && response.data.success) {
       return {
         code: 'SUCCESS',
@@ -405,7 +587,7 @@ export const dockerUtils = {
   // Docker 명령어 파싱
   parseDockerCommand: (command: string): { action: string; args: string[] } => {
     const parts = command.trim().split(/\s+/)
-    const action = parts.slice(0, 2).join(' ') // 'docker ps', 'docker run' 등
+    const action = parts.slice(0, 2).join(' ')
     const args = parts.slice(2)
     return { action, args }
   },

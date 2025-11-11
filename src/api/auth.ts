@@ -11,7 +11,7 @@ export interface LoginResponse {
 
 export const authApi = {
   githubLogin: async (code: string): Promise<LoginResponse> => {
-    const response = await axiosInstance.get<LoginResponse>(`/auth/github/callback?code=${code}`);
+    const response = await axiosInstance.get<LoginResponse>(`/login/github?code=${code}`); // <-- 이 줄을 변경
     return response.data;
   },
   // TODO: 필요하다면 refreshToken을 사용하여 accessToken을 갱신하는 API 추가

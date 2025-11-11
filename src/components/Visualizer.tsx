@@ -21,25 +21,21 @@ interface VisualizerProps {
   setActiveNetwork: (networkId: string) => void;
 }
 
-const Visualizer: React.FC<VisualizerProps> = ({ 
-  processes, 
-  onContainerClick,
-  onVolumeClick,
-  onNetworkClick,
-  onOpenNetworkSelectionModal,
-  onOpenNetworkCreationModal,
-  activeNetwork,
-  setActiveNetwork
-}) => {
+const Visualizer: React.FC<VisualizerProps> = ({
+                                                 processes,
+                                                 onContainerClick,
+                                                 onVolumeClick,
+                                                 onNetworkClick,
+                                                 onOpenNetworkSelectionModal,
+                                                 onOpenNetworkCreationModal,
+                                                 activeNetwork,
+                                                 setActiveNetwork
+                                               }) => {
   const { containers, volumes, networks, executeCommand } = useDockerStore()
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const prevContainersRef = useRef(containers)
-  
-  const [showOverview, setShowOverview] = useState(false);
 
-  // 임시 simulationId와 userId. 실제 값은 사용자 세션 또는 전역 상태에서 가져와야 합니다.
-  const SIMULATION_ID = "test-simulation-id"; // TODO: 실제 simulationId로 교체 필요
-  const USER_ID = 1; // TODO: 실제 userId로 교체 필요
+  const [showOverview, setShowOverview] = useState(false);
 
   useEffect(() => {
     if ((containers || []).length > (prevContainersRef.current || []).length) {
@@ -60,7 +56,7 @@ const Visualizer: React.FC<VisualizerProps> = ({
     if (tabId === 'bridge') return;
     const containersInNetwork = containers.filter(c => c.network.includes(tabName));
     if (containersInNetwork.length === 0) {
-      executeCommand(`docker network rm ${tabName}`, SIMULATION_ID, USER_ID);
+      executeCommand(`docker network rm ${tabName}`);
       if (activeNetwork === tabId) {
         setActiveNetwork('bridge');
       }
@@ -79,7 +75,7 @@ const Visualizer: React.FC<VisualizerProps> = ({
   const activeNetworkContainers = (containers || []).filter(c => {
     const currentNetwork = (networks || []).find(n => n.id === activeNetwork);
     if (!currentNetwork) return false;
-    
+
     const containerNetworks = Array.isArray(c.network) ? c.network : [];
     return containerNetworks.includes(currentNetwork.id) || containerNetworks.includes(currentNetwork.name);
   });
@@ -94,125 +90,125 @@ const Visualizer: React.FC<VisualizerProps> = ({
   }
 
   return (
-    <div className="visualizer-container">
-      <div className="chrome-toolbar">
-        {!showOverview && (
-          <div className="network-tabs-container">
-            <div className="network-tabs">
-              {(networks || []).map(tab => {
-                const isNetworkInUse = containers.some(c => c.network.includes(tab.name));
-                return (
-                  <div
-                    key={tab.id}
-                    className={`chrome-tab ${activeNetwork === tab.id ? 'active' : ''}`}
-                    onClick={() => handleTabClick(tab.id)}
-                  >
-                    <span className="tab-icon">⚡</span>
-                    <span className="tab-title" onClick={(e) => { e.stopPropagation(); onNetworkClick(tab as Network); }}>
+      <div className="visualizer-container">
+        <div className="chrome-toolbar">
+          {!showOverview && (
+              <div className="network-tabs-container">
+                <div className="network-tabs">
+                  {(networks || []).map(tab => {
+                    const isNetworkInUse = containers.some(c => c.network.includes(tab.name));
+                    return (
+                        <div
+                            key={tab.id}
+                            className={`chrome-tab ${activeNetwork === tab.id ? 'active' : ''}`}
+                            onClick={() => handleTabClick(tab.id)}
+                        >
+                          <span className="tab-icon">⚡</span>
+                          <span className="tab-title" onClick={(e) => { e.stopPropagation(); onNetworkClick(tab as Network); }}>
                       {tab.name}
                     </span>
-                    {tab.id !== 'bridge' && (
-                      <button 
-                        className="tab-close" 
-                        onClick={(e) => { e.stopPropagation(); handleTabClose(tab.id, tab.name); }}
-                        disabled={isNetworkInUse}
-                        style={{ opacity: isNetworkInUse ? 0.5 : 1, cursor: isNetworkInUse ? 'not-allowed' : 'pointer' }}
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-            <button className="add-network-btn" onClick={onOpenNetworkCreationModal}>+</button>
-          </div>
-        )}
-        <div className="view-toggle">
-          <button onClick={() => setShowOverview(false)} className={!showOverview ? 'active' : ''}>📦 시각화</button>
-          <button onClick={() => setShowOverview(true)} className={showOverview ? 'active' : ''}>📊 그래프</button>
-        </div>
-      </div>
-
-      {showOverview ? (
-        <main id="capture-area" className="overview-main-content">
-          <NetworkGraph onNodeClick={(nodeId) => {
-              const resource = [...containers, ...volumes, ...networks].find(r => r.id === nodeId);
-              if (resource) {
-                if ('image' in resource) onContainerClick(resource);
-                else if ('mountPath' in resource) onVolumeClick(resource);
-                else if ('driver' in resource) onNetworkClick(resource);
-              }
-          }} />
-          <GraphLegend />
-        </main>
-      ) : (
-        <div className="network-content">
-          <div className="network-container">
-            <div className={`containers-section ${getContainerLayoutClass(activeNetworkContainers)}`}>
-              {activeNetworkContainers.map((container) => (
-                <div key={container.id} className={`container-wrapper ${highlightedId === container.id ? 'creating' : ''}`} data-container-id={container.id}>
-                  <ContainerCard container={container} onClick={() => onContainerClick(container)} isCreating={highlightedId === container.id} />
-                  {container.volumes && container.volumes.length > 0 && (
-                    <div className="volumes-container">
-                      {container.volumes.map((volume, volumeIdx) => {
-                        const volumeCount = container.volumes?.length || 0;
-                        const offset = volumeCount > 1 ? (volumeIdx - (volumeCount - 1) / 2) * 100 : 0;
-                        return (
-                          <div key={`${container.id}-${volume.id}-${volume.mountPath}`} className="volume-connection-wrapper" style={{ transform: `translateX(${offset}px)`, position: 'absolute', left: '50%', marginLeft: '-35px', top: '0' }}>
-                            <VolumeConnection container={container} volume={volume} isConnecting={false} />
-                            <div className={`volume-circle attached-volume ${highlightedId === volume.id ? 'highlight' : ''}`} onClick={() => onVolumeClick(volume)} title={`Path: ${volume.mountPath}`}>
-                              <div className="volume-connection-dot"></div>
-                              <div className="volume-name">{volume.name}</div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                          {tab.id !== 'bridge' && (
+                              <button
+                                  className="tab-close"
+                                  onClick={(e) => { e.stopPropagation(); handleTabClose(tab.id, tab.name); }}
+                                  disabled={isNetworkInUse}
+                                  style={{ opacity: isNetworkInUse ? 0.5 : 1, cursor: isNetworkInUse ? 'not-allowed' : 'pointer' }}
+                              >
+                                ×
+                              </button>
+                          )}
+                        </div>
+                    )
+                  })}
                 </div>
-              ))}
-            </div>
-          </div>
-          <div className="unconnected-resources-section">
-            <div className="unconnected-containers-area">
-              <h3 className="section-title">연결되지 않은 컨테이너</h3>
-              <div className="unconnected-list">
-                {unconnectedContainers.length > 0 &&
-                    unconnectedContainers.map((container) => (
-                        <div
-                            key={container.id}
-                            className="unconnected-item"
-                            onClick={() => onOpenNetworkSelectionModal(container)}
-                        >
-                          <ContainerCard container={container} onClick={() => onContainerClick(container)} />
-                        </div>
-                    ))
-                }
+                <button className="add-network-btn" onClick={onOpenNetworkCreationModal}>+</button>
               </div>
-
-            </div>
-            <div className="volumes-container-area">
-              <h3 className="section-title">연결되지 않은 볼륨</h3>
-              <div className="unconnected-list" style={{ display: 'flex', flexDirection: 'row' }}>
-                {unconnectedVolumes.length > 0 &&
-                    unconnectedVolumes.map((volume) => (
-                        <div key={`unconnected-${volume.id}`} className="unconnected-item" onClick={() => onVolumeClick(volume)}>
-                          <div className="volume-circle unconnected-volume">
-                            <div className="volume-name">{volume.name}</div>
-                          </div>
-                        </div>
-                    ))
-                }
-              </div>
-
-            </div>
+          )}
+          <div className="view-toggle">
+            <button onClick={() => setShowOverview(false)} className={!showOverview ? 'active' : ''}>📦 시각화</button>
+            <button onClick={() => setShowOverview(true)} className={showOverview ? 'active' : ''}>📊 그래프</button>
           </div>
         </div>
-      )}
 
-      <ProcessVisualization processes={processes} getContainerPosition={getContainerPosition} />
-    </div>
+        {showOverview ? (
+            <main id="capture-area" className="overview-main-content">
+              <NetworkGraph onNodeClick={(nodeId) => {
+                const resource = [...containers, ...volumes, ...networks].find(r => r.id === nodeId);
+                if (resource) {
+                  if ('image' in resource) onContainerClick(resource);
+                  else if ('mountPath' in resource) onVolumeClick(resource);
+                  else if ('driver' in resource) onNetworkClick(resource);
+                }
+              }} />
+              <GraphLegend />
+            </main>
+        ) : (
+            <div className="network-content">
+              <div className="network-container">
+                <div className={`containers-section ${getContainerLayoutClass(activeNetworkContainers)}`}>
+                  {activeNetworkContainers.map((container) => (
+                      <div key={container.id} className={`container-wrapper ${highlightedId === container.id ? 'creating' : ''}`} data-container-id={container.id}>
+                        <ContainerCard container={container} onClick={() => onContainerClick(container)} isCreating={highlightedId === container.id} />
+                        {container.volumes && container.volumes.length > 0 && (
+                            <div className="volumes-container">
+                              {container.volumes.map((volume, volumeIdx) => {
+                                const volumeCount = container.volumes?.length || 0;
+                                const offset = volumeCount > 1 ? (volumeIdx - (volumeCount - 1) / 2) * 100 : 0;
+                                return (
+                                    <div key={`${container.id}-${volume.id}-${volume.mountPath}`} className="volume-connection-wrapper" style={{ transform: `translateX(${offset}px)`, position: 'absolute', left: '50%', marginLeft: '-35px', top: '0' }}>
+                                      <VolumeConnection container={container} volume={volume} isConnecting={false} />
+                                      <div className={`volume-circle attached-volume ${highlightedId === volume.id ? 'highlight' : ''}`} onClick={() => onVolumeClick(volume)} title={`Path: ${volume.mountPath}`}>
+                                        <div className="volume-connection-dot"></div>
+                                        <div className="volume-name">{volume.name}</div>
+                                      </div>
+                                    </div>
+                                )
+                              })}
+                            </div>
+                        )}
+                      </div>
+                  ))}
+                </div>
+              </div>
+              <div className="unconnected-resources-section">
+                <div className="unconnected-containers-area">
+                  <h3 className="section-title">연결되지 않은 컨테이너</h3>
+                  <div className="unconnected-list">
+                    {unconnectedContainers.length > 0 &&
+                        unconnectedContainers.map((container) => (
+                            <div
+                                key={container.id}
+                                className="unconnected-item"
+                                onClick={() => onOpenNetworkSelectionModal(container)}
+                            >
+                              <ContainerCard container={container} onClick={() => onContainerClick(container)} />
+                            </div>
+                        ))
+                    }
+                  </div>
+
+                </div>
+                <div className="volumes-container-area">
+                  <h3 className="section-title">연결되지 않은 볼륨</h3>
+                  <div className="unconnected-list" style={{ display: 'flex', flexDirection: 'row' }}>
+                    {unconnectedVolumes.length > 0 &&
+                        unconnectedVolumes.map((volume) => (
+                            <div key={`unconnected-${volume.id}`} className="unconnected-item" onClick={() => onVolumeClick(volume)}>
+                              <div className="volume-circle unconnected-volume">
+                                <div className="volume-name">{volume.name}</div>
+                              </div>
+                            </div>
+                        ))
+                    }
+                  </div>
+
+                </div>
+              </div>
+            </div>
+        )}
+
+        <ProcessVisualization processes={processes} getContainerPosition={getContainerPosition} />
+      </div>
   )
 }
 
