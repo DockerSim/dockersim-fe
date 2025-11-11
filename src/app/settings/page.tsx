@@ -1,35 +1,29 @@
 'use client'
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter 임포트
-import Sidebar from '../../components/Sidebar';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { simulationApi } from '@/api/simulation';
+import { Simulation } from '@/types/simulation';
 import '../../styles/Settings.css';
 
-// --- 더미 데이터 확장 ---
+// --- 더미 데이터 (커뮤니티용) ---
 const dummyPosts = [
   { id: 1, postId: 101, title: 'Dockerfile 최적화 질문입니다.', date: '2023-10-27' },
   { id: 2, postId: 105, title: 'Multi-stage 빌드 관련 팁 공유', date: '2023-10-25' },
-  { id: 3, postId: 112, title: 'Docker Compose v2 사용법 아시는 분?', date: '2023-10-22' },
 ];
 const dummyComments = [
   { id: 1, postId: 105, content: '좋은 정보 감사합니다!', postTitle: 'Multi-stage 빌드 관련 팁 공유', date: '2023-10-26' },
-  { id: 2, postId: 101, content: '저도 같은 문제가 있었는데, 해결 방법이 궁금하네요.', postTitle: 'Dockerfile 최적화 질문입니다.', date: '2023-10-27' },
 ];
 const dummyLikes = [
   { id: 1, postId: 108, title: 'Docker Compose 사용법', author: 'user123', date: '2023-10-24' },
-  { id: 2, postId: 110, title: '초보자를 위한 Docker 기본 개념 정리', author: 'docker_master', date: '2023-10-23' },
-];
-const dummyWorks = [
-  { id: 1, name: 'My Web App', description: 'Nginx + React + Node.js 스택', lastModified: '2023-10-20' },
-  { id: 2, name: 'Data Processing Pipeline', description: 'Python과 Redis를 이용한 데이터 처리', lastModified: '2023-10-15' },
 ];
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('community');
   const [activeCommunityTab, setActiveCommunityTab] = useState('my-posts');
-  const router = useRouter(); // useRouter 훅 사용
+  const router = useRouter();
 
-  const handleRowClick = (postId: number) => {
+  const handleCommunityRowClick = (postId: number) => {
     if (postId) {
       router.push(`/community/${postId}`);
     }
@@ -42,7 +36,7 @@ export default function SettingsPage() {
           <CommunitySettings 
             activeTab={activeCommunityTab} 
             setActiveTab={setActiveCommunityTab} 
-            onRowClick={handleRowClick}
+            onRowClick={handleCommunityRowClick}
           />
         );
       case 'works':
@@ -52,7 +46,7 @@ export default function SettingsPage() {
             <CommunitySettings 
               activeTab={activeCommunityTab} 
               setActiveTab={setActiveCommunityTab} 
-              onRowClick={handleRowClick}
+              onRowClick={handleCommunityRowClick}
             />
         );
     }
@@ -76,7 +70,7 @@ export default function SettingsPage() {
   );
 }
 
-// 각 섹션 컴포넌트
+// 커뮤니티 활동 섹션
 const CommunitySettings = ({ activeTab, setActiveTab, onRowClick }: { activeTab: string, setActiveTab: (tab: string) => void, onRowClick: (postId: number) => void }) => (
   <div>
     <h2>커뮤니티 활동</h2>
@@ -86,21 +80,78 @@ const CommunitySettings = ({ activeTab, setActiveTab, onRowClick }: { activeTab:
       <button className={activeTab === 'my-likes' ? 'active' : ''} onClick={() => setActiveTab('my-likes')}>공감</button>
     </div>
     <div className="community-content">
-      {activeTab === 'my-posts' && <DataTable data={dummyPosts} headers={['제목', '작성일']} onRowClick={onRowClick} />} 
-      {activeTab === 'my-comments' && <DataTable data={dummyComments} headers={['내용', '원문', '작성일']} onRowClick={onRowClick} />}
-      {activeTab === 'my-likes' && <DataTable data={dummyLikes} headers={['제목', '작성자', '공감한 날짜']} onRowClick={onRowClick} />}
+      {activeTab === 'my-posts' && <DataTable headers={['제목', '작성일']} data={dummyPosts.map(p => ({...p, onRowClick: () => onRowClick(p.postId)}))} />} 
+      {activeTab === 'my-comments' && <DataTable headers={['내용', '원문', '작성일']} data={dummyComments.map(c => ({...c, onRowClick: () => onRowClick(c.postId)}))} />}
+      {activeTab === 'my-likes' && <DataTable headers={['제목', '작성자', '공감한 날짜']} data={dummyLikes.map(l => ({...l, onRowClick: () => onRowClick(l.postId)}))} />}
     </div>
   </div>
 );
 
-const WorkSettings = () => (
-  <div>
-    <h2>저장된 작업</h2>
-    <DataTable data={dummyWorks} headers={['작업 이름', '설명', '최근 수정일']} />
-  </div>
-);
+// 저장된 작업 섹션
+const WorkSettings = () => {
+  const [simulations, setSimulations] = useState<Simulation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
-const DataTable = ({ data, headers, onRowClick }: { data: any[], headers: string[], onRowClick?: (postId: number) => void }) => (
+  useEffect(() => {
+    const fetchSimulations = async () => {
+      try {
+        setIsLoading(true);
+        const mySimulations = await simulationApi.getMySimulations();
+        setSimulations(mySimulations);
+      } catch (err) {
+        setError('작업 목록을 불러오는 데 실패했습니다.');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSimulations();
+  }, []);
+
+  const handleLoadSimulation = (simulationId: string) => {
+    router.push(`/?simulationId=${simulationId}`); // 메인 페이지로 이동하도록 수정
+  };
+
+  const handleDeleteSimulation = async (simulationId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // 행 클릭 이벤트 전파 방지
+    if (confirm('정말로 이 작업을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+        try {
+            await simulationApi.deleteSimulation(simulationId);
+            setSimulations(simulations.filter(s => s.simulationPublicId !== simulationId));
+            alert('작업이 삭제되었습니다.');
+        } catch (err) {
+            alert('작업 삭제에 실패했습니다.');
+            console.error(err);
+        }
+    }
+  };
+
+  const tableData = simulations.map(sim => ({
+    id: sim.simulationPublicId,
+    title: sim.title,
+    shareStatus: sim.shareStatus, // shareStatus 필드 추가
+    updatedAt: new Date(sim.updatedAt).toLocaleString('ko-KR'),
+    actions: (
+        <button className="delete-work-btn" onClick={(e) => handleDeleteSimulation(sim.simulationPublicId, e)}>삭제</button>
+    ),
+    onRowClick: () => handleLoadSimulation(sim.simulationPublicId),
+  }));
+
+  if (isLoading) return <div>로딩 중...</div>;
+  if (error) return <div>{error}</div>;
+
+  return (
+    <div>
+      <h2>저장된 작업</h2>
+      <DataTable headers={['제목', '공유 상태', '최근 수정일', '작업']} data={tableData} /> {}
+    </div>
+  );
+};
+
+// 재사용 가능한 테이블 컴포넌트
+const DataTable = ({ headers, data }: { headers: string[], data: any[] }) => (
   <table className="data-table">
     <thead>
       <tr>
@@ -108,11 +159,17 @@ const DataTable = ({ data, headers, onRowClick }: { data: any[], headers: string
       </tr>
     </thead>
     <tbody>
-      {data.map(item => (
-        <tr key={item.id} onClick={() => onRowClick && item.postId && onRowClick(item.postId)} className={onRowClick && item.postId ? 'clickable' : ''}>
-          {Object.keys(item).filter(key => key !== 'id' && key !== 'postId').map(key => <td key={key}>{item[key]}</td>)}
+      {data.length === 0 ? (
+        <tr>
+          <td colSpan={headers.length} className="no-data">데이터가 없습니다.</td>
         </tr>
-      ))}
+      ) : (
+        data.map(item => (
+          <tr key={item.id} onClick={item.onRowClick} className={item.onRowClick ? 'clickable' : ''}>
+            {Object.keys(item).filter(key => key !== 'id' && key !== 'onRowClick').map(key => <td key={key}>{item[key]}</td>)}
+          </tr>
+        ))
+      )}
     </tbody>
   </table>
 );

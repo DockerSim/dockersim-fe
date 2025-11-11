@@ -1,18 +1,16 @@
 // dockersim-fe/src/api/auth.ts
 import axiosInstance from './axiosInstance';
+import { User } from '@/store/authStore'; // authStore에서 User 타입 임포트
 
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   isAdditionalInfoRequired: boolean;
+  user: User; // 사용자 정보 필드 추가
 }
-
-// 이전에 제가 생성한 ApiResponse 인터페이스는 axios 응답 구조와 맞지 않아 제거합니다.
-// axios는 응답 본문을 바로 data 속성에 담아줍니다.
 
 export const authApi = {
   githubLogin: async (code: string): Promise<LoginResponse> => {
-    // baseURL('/api') 뒤에 붙는 올바른 경로로 수정합니다.
     const response = await axiosInstance.get<LoginResponse>(`/auth/github/callback?code=${code}`);
     return response.data;
   },
