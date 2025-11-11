@@ -77,7 +77,8 @@ const Visualizer: React.FC<VisualizerProps> = ({
     if (!currentNetwork) return false;
 
     const containerNetworks = Array.isArray(c.network) ? c.network : [];
-    return containerNetworks.includes(currentNetwork.id) || containerNetworks.includes(currentNetwork.name);
+    // 수정: 컨테이너의 네트워크 이름 배열에 현재 활성화된 네트워크의 이름이 포함되어 있는지 확인
+    return containerNetworks.includes(currentNetwork.name);
   });
 
   const unconnectedContainers = (containers || []).filter(c => !c.network || c.network.length === 0);

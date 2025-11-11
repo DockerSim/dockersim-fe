@@ -17,5 +17,9 @@ export const getNetworkColor = (networkId: string, networkIndex: number) => {
     if (networkId === 'bridge') {
         return { fill: 'rgba(149, 165, 166, 0.4)', border: '#95A5A6' }; // Grey for bridge
     }
+    // networkIndex가 유효하지 않은 경우 (예: -1) 기본 색상을 반환
+    if (networkIndex < 0) {
+        return baseColors[0]; // 또는 다른 기본 색상
+    }
     return baseColors[networkIndex % baseColors.length];
 };
