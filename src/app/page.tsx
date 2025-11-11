@@ -279,7 +279,30 @@ export default function HomePage() {
         <VolumeDetailModal volume={currentSelectedVolume} open={isVolumeDetailModalOpen} onClose={() => setVolumeDetailModalOpen(false)} onRemove={(id) => handleAction('rm', id)} onDisconnect={disconnectVolumeFromContainer} />
         <NetworkDetailModal network={selectedNetwork} open={isNetworkDetailModalOpen} onClose={() => setNetworkDetailModalOpen(false)} />
         <ResourceCreationModal type={resourceCreationType} networks={networks || []} open={isResourceCreationModalOpen} onConfirm={handleResourceCreationConfirm} onClose={() => setIsResourceCreationModalOpen(false)} />
-        {selectedContainer && <NetworkSelectionModal isOpen={isNetworkSelectionModalOpen} onClose={() => { setIsNetworkSelectionModalOpen(false); setSelectedContainer(null); }} onSelect={(_nets) => { /* connect logic */ }} allNetworks={networks} connectedNetworks={Array.isArray(selectedContainer.network) ? selectedContainer.network : [selectedContainer.network]} />}
+        {selectedContainer && <NetworkSelectionModal
+          isOpen={isNetworkSelectionModalOpen}
+          onClose={() => {
+            setIsNetworkSelectionModalOpen(false);
+            setSelectedContainer(null);
+          }}
+          onSelect={async (networkIds) => {
+            if (!selectedContainer) return;
+
+            // 선택한 각 네트워크에 컨테이너 연결
+            for (const networkId of networkIds) {
+              const network = networks.find(n => n.id === networkId);
+              if (network) {
+                const command = `docker network connect ${network.name} ${selectedContainer.name}`;
+                await executeCommand(command);
+              }
+            }
+
+            setIsNetworkSelectionModalOpen(false);
+            setSelectedContainer(null);
+          }}
+          allNetworks={networks}
+          connectedNetworks={Array.isArray(selectedContainer.network) ? selectedContainer.network : [selectedContainer.network]}
+        />}
       </div>
   )
 }

@@ -32,6 +32,8 @@ interface DockerStore extends DockerState {
   createContainerInNetworks: (data: ResourceCreationData) => Promise<void>;
   disconnectVolumeFromContainer: (volumeName: string, containerName: string) => void;
   disconnectNetworkFromContainer: (networkName: string, containerName: string) => void;
+  updateContainer: (containerId: string, updates: Partial<Container>) => void;
+  updateVolume: (volumeId: string, updates: Partial<Volume>) => void;
   addMessage: (message: string, isError?: boolean) => void;
   generateComposeFile: () => string;
 
@@ -384,21 +386,44 @@ export const useDockerStore = create<DockerStore>((set, get) => {
         });
     },
 
-    disconnectNetworkFromContainer: (networkName, containerName) => {
-        const { containers, addMessage } = get();
+    disconnectNetworkFromContainer: async (networkName, containerName) => {
+        const { containers, executeCommand, addMessage } = get();
         const container = containers.find(c => c.name === containerName);
-        if (!container) return;
-    
-        if (container.network.length === 1 && container.network[0] === networkName) {
-          addMessage(`Error: Cannot disconnect container from its only network "${networkName}".`, true);
+        if (!container) {
+          addMessage(`Error: 컨테이너 '${containerName}'을 찾을 수 없습니다.`, true);
           return;
         }
-    
-        const newNetworks = container.network.filter(n => n !== networkName);
-        set(state => ({
-            containers: state.containers.map(c => c.id === container.id ? { ...c, network: newNetworks } : c)
-        }));
-        addMessage(`Disconnected container ${containerName} from network ${containerName}`);
+
+        if (container.network.length === 1 && container.network[0] === networkName) {
+          addMessage(`Error: 컨테이너는 최소 하나의 네트워크에 연결되어 있어야 합니다.`, true);
+          return;
+        }
+
+        // docker network disconnect 명령어 실행
+        const command = `docker network disconnect ${networkName} ${containerName}`;
+        const result = await executeCommand(command, true);
+
+        if (result && result.success) {
+          addMessage(`컨테이너 '${containerName}'이(가) 네트워크 '${networkName}'에서 연결 해제되었습니다.`);
+        } else {
+          addMessage(`Error: 네트워크 연결 해제에 실패했습니다.`, true);
+        }
+    },
+
+    updateContainer: (containerId: string, updates: Partial<Container>) => {
+      set(state => ({
+        containers: state.containers.map(c =>
+          c.id === containerId ? { ...c, ...updates } : c
+        )
+      }));
+    },
+
+    updateVolume: (volumeId: string, updates: Partial<Volume>) => {
+      set(state => ({
+        volumes: state.volumes.map(v =>
+          v.id === volumeId ? { ...v, ...updates } : v
+        )
+      }));
     },
 
     executeCommand: async (command, isInternal = false) => {
