@@ -4,7 +4,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation';
 import '../../styles/Community.css'
-import { communityApi, PostResponse, PostType } from '@/api/community'; // PostType도 함께 임포트
+import { communityApi, PostResponse, PostType } from '@/api/community';
 import { useAuthStore } from '@/store/authStore';
 
 const POST_TYPE_LABELS: Record<PostType, string> = {
@@ -12,6 +12,8 @@ const POST_TYPE_LABELS: Record<PostType, string> = {
   SIMULATION: '시뮬레이션',
   TECHNICAL: '기술'
 } as const
+
+export type { PostType };
 
 export default function CommunityPage() {
   const router = useRouter();
@@ -28,13 +30,13 @@ export default function CommunityPage() {
       setIsLoading(true);
       try {
         const result = await communityApi.getAllPosts(
-          searchTerm, 
+          searchTerm,
           selectedType === 'all' ? undefined : selectedType
         );
-        if (result.code === 'SUCCESS') {
+        if (result.success) {
           setPosts(result.data || []);
         } else {
-          throw new Error(result.message || 'Failed to fetch posts');
+          throw new Error(result.errorMessage || 'Failed to fetch posts');
         }
       } catch (error) {
         console.error("게시글 로딩 실패:", error);

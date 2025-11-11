@@ -76,49 +76,96 @@ export const useDockerStore = create<DockerStore>((set, get) => {
 
   const updateStateWithApiResponse = (data: any) => {
     set(state => {
-      // 컨테이너 병합: 새로운 컨테이너 추가, 기존 컨테이너 업데이트
+      const isDelete = data.status === 'DELETE';
+
+      // 컨테이너 처리: DELETE면 제거, 아니면 병합/추가
       let newContainers = [...state.containers];
       if (data.containers && data.containers.length > 0) {
-        data.containers.forEach((newContainer: Container) => {
-          const existingIndex = newContainers.findIndex(c => c.id === newContainer.id);
-          if (existingIndex >= 0) {
-            // 기존 컨테이너 업데이트
-            newContainers[existingIndex] = newContainer;
-          } else {
-            // 새 컨테이너 추가
-            newContainers.push(newContainer);
-          }
-        });
+        if (isDelete) {
+          // DELETE 상태: 해당 컨테이너들을 배열에서 제거
+          data.containers.forEach((deletedContainer: Container) => {
+            newContainers = newContainers.filter(c => c.id !== deletedContainer.id && c.name !== deletedContainer.name);
+            console.log(`[updateStateWithApiResponse] Deleted container: ${deletedContainer.id || deletedContainer.name}`);
+          });
+        } else {
+          // CREATE/UPDATE 상태: 병합 또는 추가
+          data.containers.forEach((newContainer: Container) => {
+            const existingIndex = newContainers.findIndex(c => c.id === newContainer.id);
+            if (existingIndex >= 0) {
+              // 기존 컨테이너 업데이트: 네트워크 배열은 병합, 나머지는 업데이트
+              const existingContainer = newContainers[existingIndex];
+              const existingNetworks = Array.isArray(existingContainer.network) ? existingContainer.network : [];
+              const newNetworks = Array.isArray(newContainer.network) ? newContainer.network : [];
+
+              // 기존 네트워크와 새 네트워크를 합치고 중복 제거
+              const mergedNetworks = Array.from(new Set([...existingNetworks, ...newNetworks]));
+
+              console.log(`[updateStateWithApiResponse] Merging networks for container ${newContainer.id}:`, {
+                existing: existingNetworks,
+                new: newNetworks,
+                merged: mergedNetworks
+              });
+
+              newContainers[existingIndex] = {
+                ...newContainer,
+                network: mergedNetworks
+              };
+            } else {
+              // 새 컨테이너 추가
+              newContainers.push(newContainer);
+            }
+          });
+        }
       }
 
-      // 볼륨 병합: 새로운 볼륨 추가, 기존 볼륨 업데이트
+      // 볼륨 처리: DELETE면 제거, 아니면 병합/추가
       let newVolumes = [...state.volumes];
       if (data.volumes && data.volumes.length > 0) {
-        data.volumes.forEach((newVolume: Volume) => {
-          const existingIndex = newVolumes.findIndex(v => v.id === newVolume.id);
-          if (existingIndex >= 0) {
-            // 기존 볼륨 업데이트
-            newVolumes[existingIndex] = newVolume;
-          } else {
-            // 새 볼륨 추가
-            newVolumes.push(newVolume);
-          }
-        });
+        if (isDelete) {
+          // DELETE 상태: 해당 볼륨들을 배열에서 제거
+          data.volumes.forEach((deletedVolume: Volume) => {
+            newVolumes = newVolumes.filter(v => v.id !== deletedVolume.id && v.name !== deletedVolume.name);
+            console.log(`[updateStateWithApiResponse] Deleted volume: ${deletedVolume.id || deletedVolume.name}`);
+          });
+        } else {
+          // CREATE/UPDATE 상태: 병합 또는 추가
+          data.volumes.forEach((newVolume: Volume) => {
+            const existingIndex = newVolumes.findIndex(v => v.id === newVolume.id);
+            if (existingIndex >= 0) {
+              // 기존 볼륨 업데이트
+              newVolumes[existingIndex] = newVolume;
+            } else {
+              // 새 볼륨 추가
+              newVolumes.push(newVolume);
+            }
+          });
+        }
       }
 
-      // 네트워크 병합: 새로운 네트워크 추가, 기존 네트워크 업데이트
+      // 네트워크 처리: DELETE면 제거, 아니면 병합/추가
       let newNetworks = [...state.networks];
       if (data.networks && data.networks.length > 0) {
-        data.networks.forEach((newNetwork: Network) => {
-          const existingIndex = newNetworks.findIndex(n => n.id === newNetwork.id);
-          if (existingIndex >= 0) {
-            // 기존 네트워크 업데이트
-            newNetworks[existingIndex] = newNetwork;
-          } else {
-            // 새 네트워크 추가
-            newNetworks.push(newNetwork);
-          }
-        });
+        if (isDelete) {
+          // DELETE 상태: 해당 네트워크들을 배열에서 제거 (단, bridge는 제외)
+          data.networks.forEach((deletedNetwork: Network) => {
+            if (deletedNetwork.name !== 'bridge') {
+              newNetworks = newNetworks.filter(n => n.id !== deletedNetwork.id && n.name !== deletedNetwork.name);
+              console.log(`[updateStateWithApiResponse] Deleted network: ${deletedNetwork.id || deletedNetwork.name}`);
+            }
+          });
+        } else {
+          // CREATE/UPDATE 상태: 병합 또는 추가
+          data.networks.forEach((newNetwork: Network) => {
+            const existingIndex = newNetworks.findIndex(n => n.id === newNetwork.id);
+            if (existingIndex >= 0) {
+              // 기존 네트워크 업데이트
+              newNetworks[existingIndex] = newNetwork;
+            } else {
+              // 새 네트워크 추가
+              newNetworks.push(newNetwork);
+            }
+          });
+        }
       }
 
       // bridge 네트워크가 없으면 추가
@@ -360,13 +407,23 @@ export const useDockerStore = create<DockerStore>((set, get) => {
 
         // 추가 네트워크 연결 (docker create는 하나의 네트워크만 지정 가능하므로, 나머지는 connect로 연결)
         if (safeNetworkIds.length > 1) {
-            for (const networkId of safeNetworkIds.slice(1)) {
+            console.log(`[createContainerInNetworks] Connecting to ${safeNetworkIds.length - 1} additional networks`);
+            for (let i = 1; i < safeNetworkIds.length; i++) {
+                const networkId = safeNetworkIds[i];
                 const network = networks.find(n => n.id === networkId);
                 if (network) {
-                    await executeCommand(`docker network connect ${network.name} ${createdContainerId}`, true);
+                    console.log(`[createContainerInNetworks] Connecting to network: ${network.name}`);
+                    const connectResult = await executeCommand(`docker network connect ${network.name} ${createdContainerId}`, true);
+                    if (connectResult && connectResult.success) {
+                        console.log(`[createContainerInNetworks] Successfully connected to ${network.name}`);
+                    } else {
+                        console.error(`[createContainerInNetworks] Failed to connect to ${network.name}`);
+                    }
+                } else {
+                    console.error(`[createContainerInNetworks] Network ${networkId} not found`);
                 }
             }
-            get().addMessage(`컨테이너 '${createdContainerId}'이(가) 추가 네트워크에 연결되었습니다.`);
+            get().addMessage(`컨테이너 '${createdContainerId}'이(가) ${safeNetworkIds.length}개의 네트워크에 연결되었습니다.`);
         }
       } else {
         get().addMessage(`Error: 컨테이너 생성에 실패했습니다.`, true);
@@ -387,7 +444,7 @@ export const useDockerStore = create<DockerStore>((set, get) => {
     },
 
     disconnectNetworkFromContainer: async (networkName, containerName) => {
-        const { containers, executeCommand, addMessage } = get();
+        const { containers, executeCommand, addMessage, updateContainer } = get();
         const container = containers.find(c => c.name === containerName);
         if (!container) {
           addMessage(`Error: 컨테이너 '${containerName}'을 찾을 수 없습니다.`, true);
@@ -404,6 +461,10 @@ export const useDockerStore = create<DockerStore>((set, get) => {
         const result = await executeCommand(command, true);
 
         if (result && result.success) {
+          // 프론트엔드 상태에서 네트워크 제거
+          const updatedNetworks = container.network.filter(n => n !== networkName);
+          updateContainer(container.id, { network: updatedNetworks });
+
           addMessage(`컨테이너 '${containerName}'이(가) 네트워크 '${networkName}'에서 연결 해제되었습니다.`);
         } else {
           addMessage(`Error: 네트워크 연결 해제에 실패했습니다.`, true);

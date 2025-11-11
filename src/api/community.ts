@@ -39,9 +39,10 @@ export interface PostCommentRequest {
 }
 
 interface ApiResponse<T> {
-  code: string;
-  message: string;
+  success: boolean;
   data: T;
+  code: string | null;
+  errorMessage: string | null;
 }
 
 // Post API
@@ -112,6 +113,18 @@ export const communityApi = {
   // 댓글 삭제
   deleteComment: async (postId: number, commentId: number): Promise<ApiResponse<void>> => {
     const response = await axiosInstance.delete<ApiResponse<void>>(`/posts/${postId}/comments/${commentId}`);
+    return response.data;
+  },
+
+  // 내가 작성한 게시글 조회
+  getMyPosts: async (): Promise<ApiResponse<PostResponse[]>> => {
+    const response = await axiosInstance.get<ApiResponse<PostResponse[]>>('/posts/my-posts');
+    return response.data;
+  },
+
+  // 내가 좋아요한 게시글 조회
+  getMyLikedPosts: async (): Promise<ApiResponse<PostResponse[]>> => {
+    const response = await axiosInstance.get<ApiResponse<PostResponse[]>>('/posts/my-likes');
     return response.data;
   },
 };

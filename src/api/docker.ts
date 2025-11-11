@@ -75,6 +75,7 @@ interface BackendDockerImageResponse {
 interface DockerCommandResponse {
   output: string
   success: boolean
+  status?: 'CREATE' | 'UPDATE' | 'READ' | 'DELETE'  // 백엔드 상태 추가
   containers: Container[]
   volumes: Volume[]
   networks: Network[]
@@ -103,6 +104,7 @@ class DockerApiClient {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers,
+        credentials: 'include',
       })
 
       if (!response.ok) {
@@ -130,7 +132,7 @@ class DockerApiClient {
   private transformBackendResponse(backendResult: BackendCommandResult): DockerCommandResponse {
     // 콘솔 출력을 문자열로 변환
     const output = backendResult.console?.join('\n') || ''
-    const success = backendResult.status === 'CREATE' || backendResult.status === 'UPDATE' || backendResult.status === 'READ'
+    const success = backendResult.status === 'CREATE' || backendResult.status === 'UPDATE' || backendResult.status === 'READ' || backendResult.status === 'DELETE'
 
     // 컨테이너 변환 (백엔드에서 직접 제공하는 네트워크 및 볼륨 정보 사용)
     const containers: Container[] = (backendResult.changedContainers || []).map(c => {
@@ -202,6 +204,7 @@ class DockerApiClient {
     return {
       output,
       success,
+      status: backendResult.status,  // status 포함
       containers,
       volumes,
       networks,
@@ -238,7 +241,8 @@ class DockerApiClient {
       const response = await fetch(`${API_BASE_URL}/api/simulations/${simulationId}/command`, {
         method: 'POST',
         headers,
-        body: cleanCommand,  // JSON.stringify 제거
+        body: cleanCommand,
+        credentials: 'include',
       })
 
       if (!response.ok) {

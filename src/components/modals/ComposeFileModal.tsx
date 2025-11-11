@@ -1,80 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import './ComposeFileModal.css';
-
-// 백엔드 API 응답 래퍼 타입
-interface ApiResponse<T> {
-  success: boolean;
-  code: string;
-  errorMessage: string;
-  data: T;
-}
-
-// docker-compose.yml 생성 응답 타입
-interface ComposeGenerationResponse {
-  simulationPublicId: string;
-  yamlContent: string;
-  errorMessage?: string;
-}
+import { useDockerStore } from '../../store/dockerStore'; // dockerStore 임포트
 
 interface ComposeFileModalProps {
   open: boolean;
   onClose: () => void;
-  simulationPublicId: string | null; // 시뮬레이션 ID를 prop으로 받음
+  simulationPublicId: string | null; // 시뮬레이션 ID를 prop으로 받음 (사용하지 않지만 호환성 유지)
 }
 
-const API_BASE_URL = 'http://localhost:8080'; // TODO: 환경 변수로 분리
-
-const ComposeFileModal: React.FC<ComposeFileModalProps> = ({ open, onClose, simulationPublicId }) => {
+const ComposeFileModal: React.FC<ComposeFileModalProps> = ({ open, onClose }) => {
+  const { generateComposeFile } = useDockerStore(); // generateComposeFile 가져오기
   const [composeFileContent, setComposeFileContent] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
-      if (simulationPublicId) {
-        generateComposeFile(simulationPublicId);
-      } else {
-        setError('시뮬레이션을 먼저 저장해야 docker-compose.yml 파일을 생성할 수 있습니다.');
-        setComposeFileContent(''); // 내용 초기화
-      }
+      const content = generateComposeFile(); // Docker Compose 파일 생성
+      setComposeFileContent(content); // 생성된 내용으로 설정
     }
-  }, [open, simulationPublicId]);
-
-  const generateComposeFile = async (simId: string) => {
-    setIsLoading(true);
-    setError(null);
-    setComposeFileContent('');
-
-    try {
-      // TODO: 인증 토큰이 필요하다면 헤더에 추가
-      // const { accessToken } = useAuthStore.getState();
-      // headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` }
-      const response = await fetch(`${API_BASE_URL}/api/simulations/${simId}/compose`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.errorMessage || `서버 응답 오류: ${response.status}`);
-      }
-
-      const result: ApiResponse<ComposeGenerationResponse> = await response.json();
-
-      if (result.success && result.data) {
-        setComposeFileContent(result.data.yamlContent);
-      } else {
-        throw new Error(result.errorMessage || 'docker-compose.yml 파일을 생성하지 못했습니다.');
-      }
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [open, generateComposeFile]);
 
   if (!open) return null;
 
@@ -128,29 +72,6 @@ const ComposeFileModal: React.FC<ComposeFileModalProps> = ({ open, onClose, simu
   };
 
   const renderContent = () => {
-    if (!simulationPublicId) {
-      return (
-        <div className="empty-state">
-          <p>{error}</p>
-        </div>
-      );
-    }
-    if (isLoading) {
-      return (
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>docker-compose.yml 파일을 생성 중입니다...</p>
-        </div>
-      );
-    }
-    if (error) {
-      return (
-        <div className="error-container">
-          <p>오류가 발생했습니다: {error}</p>
-          <button onClick={() => simulationPublicId && generateComposeFile(simulationPublicId)}>재시도</button>
-        </div>
-      );
-    }
     if (composeFileContent) {
       return (
         <pre className="compose-file-content">
@@ -158,10 +79,14 @@ const ComposeFileModal: React.FC<ComposeFileModalProps> = ({ open, onClose, simu
         </pre>
       );
     }
-    return null;
+    return (
+      <div className="empty-state">
+        <p>Docker Compose 파일 내용이 없습니다.</p>
+      </div>
+    );
   };
 
-  const isActionDisabled = !composeFileContent || isLoading || !simulationPublicId;
+  const isActionDisabled = !composeFileContent;
 
   return createPortal(
     <div className="modal-backdrop" onClick={handleBackdropClick}>

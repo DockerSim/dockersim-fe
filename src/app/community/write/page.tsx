@@ -3,8 +3,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import '../../../styles/CommunityWrite.css'
-import { communityApi } from '@/api/community'; // communityApi 임포트
-import { PostType } from '@/app/community/page'; // PostType 임포트
+import { communityApi, PostType } from '@/api/community'; // communityApi와 PostType 임포트
 
 export default function CommunityWritePage() {
   const router = useRouter()
@@ -37,11 +36,11 @@ export default function CommunityWritePage() {
     try {
       const result = await communityApi.createPost(postData); // communityApi.createPost 호출
 
-      if (result.code === 'SUCCESS') {
+      if (result.success) {
         alert('게시글이 성공적으로 작성되었습니다!')
         router.push('/community')
       } else {
-        throw new Error(result.message || '게시글 작성에 실패했습니다.');
+        throw new Error(result.errorMessage || '게시글 작성에 실패했습니다.');
       }
 
     } catch (error) {

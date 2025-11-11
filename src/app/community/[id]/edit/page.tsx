@@ -28,7 +28,7 @@ export default function CommunityEditPage() {
     const fetchPostData = async () => {
       try {
         const result = await communityApi.getPost(postId); // communityApi.getPost 호출
-        if (result.code === 'SUCCESS') {
+        if (result.success) {
           const post = result.data;
           setFormData({
             title: post.title,
@@ -37,7 +37,7 @@ export default function CommunityEditPage() {
             tags: post.tags ? post.tags.replace(/,/g, '#') : '', // API는 쉼표 구분, UI는 # 구분
           });
         } else {
-          throw new Error(result.message || '게시글 정보를 불러오는데 실패했습니다.');
+          throw new Error(result.errorMessage || '게시글 정보를 불러오는데 실패했습니다.');
         }
       } catch (error) {
         console.error('Failed to fetch post:', error);
@@ -68,11 +68,11 @@ export default function CommunityEditPage() {
     try {
       const result = await communityApi.updatePost(postId, postData); // communityApi.updatePost 호출
 
-      if (result.code === 'SUCCESS') {
+      if (result.success) {
         alert('게시글이 성공적으로 수정되었습니다!');
         router.push(`/community/${postId}`);
       } else {
-        throw new Error(result.message || '게시글 수정에 실패했습니다.');
+        throw new Error(result.errorMessage || '게시글 수정에 실패했습니다.');
       }
 
     } catch (error) {

@@ -3,20 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { simulationApi } from '@/api/simulation';
+import { communityApi, PostResponse } from '@/api/community';
 import { Simulation } from '@/types/simulation';
 import '../../styles/Settings.css';
-
-// --- 더미 데이터 (커뮤니티용) ---
-const dummyPosts = [
-  { id: 1, postId: 101, title: 'Dockerfile 최적화 질문입니다.', date: '2023-10-27' },
-  { id: 2, postId: 105, title: 'Multi-stage 빌드 관련 팁 공유', date: '2023-10-25' },
-];
-const dummyComments = [
-  { id: 1, postId: 105, content: '좋은 정보 감사합니다!', postTitle: 'Multi-stage 빌드 관련 팁 공유', date: '2023-10-26' },
-];
-const dummyLikes = [
-  { id: 1, postId: 108, title: 'Docker Compose 사용법', author: 'user123', date: '2023-10-24' },
-];
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('community');
@@ -33,9 +22,9 @@ export default function SettingsPage() {
     switch (activeTab) {
       case 'community':
         return (
-          <CommunitySettings 
-            activeTab={activeCommunityTab} 
-            setActiveTab={setActiveCommunityTab} 
+          <CommunitySettings
+            activeTab={activeCommunityTab}
+            setActiveTab={setActiveCommunityTab}
             onRowClick={handleCommunityRowClick}
           />
         );
@@ -43,9 +32,9 @@ export default function SettingsPage() {
         return <WorkSettings />;
       default:
         return (
-            <CommunitySettings 
-              activeTab={activeCommunityTab} 
-              setActiveTab={setActiveCommunityTab} 
+            <CommunitySettings
+              activeTab={activeCommunityTab}
+              setActiveTab={setActiveCommunityTab}
               onRowClick={handleCommunityRowClick}
             />
         );
@@ -71,21 +60,87 @@ export default function SettingsPage() {
 }
 
 // 커뮤니티 활동 섹션
-const CommunitySettings = ({ activeTab, setActiveTab, onRowClick }: { activeTab: string, setActiveTab: (tab: string) => void, onRowClick: (postId: number) => void }) => (
-  <div>
-    <h2>커뮤니티 활동</h2>
-    <div className="community-tabs">
-      <button className={activeTab === 'my-posts' ? 'active' : ''} onClick={() => setActiveTab('my-posts')}>내가 작성한 글</button>
-      <button className={activeTab === 'my-comments' ? 'active' : ''} onClick={() => setActiveTab('my-comments')}>댓글</button>
-      <button className={activeTab === 'my-likes' ? 'active' : ''} onClick={() => setActiveTab('my-likes')}>공감</button>
+const CommunitySettings = ({ activeTab, setActiveTab, onRowClick }: { activeTab: string, setActiveTab: (tab: string) => void, onRowClick: (postId: number) => void }) => {
+  const [myPosts, setMyPosts] = useState<PostResponse[]>([]);
+  const [likedPosts, setLikedPosts] = useState<PostResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        if (activeTab === 'my-posts') {
+          const result = await communityApi.getMyPosts();
+          if (result.success) {
+            setMyPosts(result.data);
+          } else {
+            throw new Error(result.errorMessage || '내 게시글을 불러오는데 실패했습니다.');
+          }
+        } else if (activeTab === 'my-likes') {
+          const result = await communityApi.getMyLikedPosts();
+          if (result.success) {
+            setLikedPosts(result.data);
+          } else {
+            throw new Error(result.errorMessage || '좋아요한 게시글을 불러오는데 실패했습니다.');
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.');
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (activeTab === 'my-posts' || activeTab === 'my-likes') {
+      fetchData();
+    }
+  }, [activeTab]);
+
+  if (isLoading) return <div>로딩 중...</div>;
+  if (error) return <div>{error}</div>;
+
+  return (
+    <div>
+      <h2>커뮤니티 활동</h2>
+      <div className="community-tabs">
+        <button className={activeTab === 'my-posts' ? 'active' : ''} onClick={() => setActiveTab('my-posts')}>내가 작성한 글</button>
+        <button className={activeTab === 'my-likes' ? 'active' : ''} onClick={() => setActiveTab('my-likes')}>공감</button>
+      </div>
+      <div className="community-content">
+        {activeTab === 'my-posts' && (
+          <DataTable
+            headers={['제목', '유형', '작성일', '조회수', '좋아요']}
+            data={myPosts.map(p => ({
+              id: p.id,
+              title: p.title,
+              type: p.type,
+              createdAt: new Date(p.createdAt).toLocaleDateString('ko-KR'),
+              views: p.views,
+              likesCount: p.likesCount,
+              onRowClick: () => onRowClick(p.id)
+            }))}
+          />
+        )}
+        {activeTab === 'my-likes' && (
+          <DataTable
+            headers={['제목', '작성자', '유형', '작성일']}
+            data={likedPosts.map(l => ({
+              id: l.id,
+              title: l.title,
+              author: l.author,
+              type: l.type,
+              createdAt: new Date(l.createdAt).toLocaleDateString('ko-KR'),
+              onRowClick: () => onRowClick(l.id)
+            }))}
+          />
+        )}
+      </div>
     </div>
-    <div className="community-content">
-      {activeTab === 'my-posts' && <DataTable headers={['제목', '작성일']} data={dummyPosts.map(p => ({...p, onRowClick: () => onRowClick(p.postId)}))} />} 
-      {activeTab === 'my-comments' && <DataTable headers={['내용', '원문', '작성일']} data={dummyComments.map(c => ({...c, onRowClick: () => onRowClick(c.postId)}))} />}
-      {activeTab === 'my-likes' && <DataTable headers={['제목', '작성자', '공감한 날짜']} data={dummyLikes.map(l => ({...l, onRowClick: () => onRowClick(l.postId)}))} />}
-    </div>
-  </div>
-);
+  );
+};
 
 // 저장된 작업 섹션
 const WorkSettings = () => {

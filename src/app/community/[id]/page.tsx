@@ -46,16 +46,16 @@ export default function PostDetailPage() {
         communityApi.getCommentsByPostId(postId)
       ]);
 
-      if (postResult.code === 'SUCCESS') {
+      if (postResult.success) {
         setPost(postResult.data);
       } else {
-        throw new Error(postResult.message || '게시글을 불러오는데 실패했습니다.');
+        throw new Error(postResult.errorMessage || '게시글을 불러오는데 실패했습니다.');
       }
 
-      if (commentsResult.code === 'SUCCESS') {
+      if (commentsResult.success) {
         setComments(commentsResult.data || []);
       } else {
-        throw new Error(commentsResult.message || '댓글을 불러오는데 실패했습니다.');
+        throw new Error(commentsResult.errorMessage || '댓글을 불러오는데 실패했습니다.');
       }
 
       // TODO: 사용자의 좋아요 여부도 백엔드에서 가져와 설정해야 함
@@ -85,11 +85,11 @@ export default function PostDetailPage() {
     if (!newComment.trim() || isNaN(postId)) return;
     try {
       const result = await communityApi.createComment(postId, { content: newComment });
-      if (result.code === 'SUCCESS') {
+      if (result.success) {
         setNewComment('');
         fetchPostAndComments();
       } else {
-        throw new Error(result.message || '댓글 작성에 실패했습니다.');
+        throw new Error(result.errorMessage || '댓글 작성에 실패했습니다.');
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
@@ -100,12 +100,12 @@ export default function PostDetailPage() {
     if (isNaN(postId)) return;
     try {
       const result = await communityApi.toggleLike(postId);
-      if (result.code === 'SUCCESS') {
+      if (result.success) {
         // 좋아요 상태 토글 및 게시글 데이터 새로고침
         setIsLiked(prev => !prev);
         fetchPostAndComments(); // 좋아요 수 업데이트를 위해 다시 불러옴
       } else {
-        throw new Error(result.message || '좋아요 처리에 실패했습니다.');
+        throw new Error(result.errorMessage || '좋아요 처리에 실패했습니다.');
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
@@ -116,11 +116,11 @@ export default function PostDetailPage() {
     if (isNaN(postId) || !confirm('정말로 이 게시글을 삭제하시겠습니까?')) return;
     try {
       const result = await communityApi.deletePost(postId);
-      if (result.code === 'SUCCESS') {
+      if (result.success) {
         alert('게시글이 삭제되었습니다.');
         router.push('/community');
       } else {
-        throw new Error(result.message || '게시글 삭제에 실패했습니다.');
+        throw new Error(result.errorMessage || '게시글 삭제에 실패했습니다.');
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
@@ -131,11 +131,11 @@ export default function PostDetailPage() {
     if (isNaN(postId) || !confirm('정말로 이 댓글을 삭제하시겠습니까?')) return;
     try {
       const result = await communityApi.deleteComment(postId, commentId);
-      if (result.code === 'SUCCESS') {
+      if (result.success) {
         alert('댓글이 삭제되었습니다.');
         fetchPostAndComments();
       } else {
-        throw new Error(result.message || '댓글 삭제에 실패했습니다.');
+        throw new Error(result.errorMessage || '댓글 삭제에 실패했습니다.');
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
@@ -146,11 +146,11 @@ export default function PostDetailPage() {
     if (isNaN(postId) || !editingComment || editingComment.id !== commentId) return;
     try {
       const result = await communityApi.updateComment(postId, commentId, { content: editingComment.content });
-      if (result.code === 'SUCCESS') {
+      if (result.success) {
         setEditingComment(null);
         fetchPostAndComments();
       } else {
-        throw new Error(result.message || '댓글 수정에 실패했습니다.');
+        throw new Error(result.errorMessage || '댓글 수정에 실패했습니다.');
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
