@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { ResourceCreationData } from '../components/modals/ResourceCreationModal';
+import { dockerApi } from '@/api/docker'; // dockerApi 임포트
 
 // --- 타입 정의 ---
 export interface Port { hostPort: number; containerPort: number; protocol: 'tcp' | 'udp'; }
@@ -15,8 +16,10 @@ interface DockerStore {
   networks: Network[];
   localImages: DockerImage[];
   terminalHistory: TerminalHistory[];
-  executeCommand: (command: string, isInternal?: boolean) => void;
-  createContainerInNetworks: (data: ResourceCreationData) => void;
+  // executeCommand 시그니처 업데이트
+  executeCommand: (command: string, simulationId: string, userId: number, isInternal?: boolean) => Promise<void>;
+  // createContainerInNetworks 시그니처 업데이트
+  createContainerInNetworks: (data: ResourceCreationData, simulationId: string, userId: number) => Promise<void>;
   disconnectVolumeFromContainer: (volumeName: string, containerName: string) => void;
   disconnectNetworkFromContainer: (networkName: string, containerName: string) => void;
   addMessage: (message: string) => void;
@@ -92,7 +95,7 @@ ${c.volumes.map(v => `      - ${v.name}:${v.mountPath}`).join('\n')}`).join('');
 services:${services}${networkDefs}${volumeDefs}`;
     },
 
-    createContainerInNetworks: (data) => {
+    createContainerInNetworks: async (data, simulationId, userId) => { // simulationId, userId 추가
       const { executeCommand, networks } = get();
       const { image, name, networkIds } = data;
       if (!image) return;
@@ -100,14 +103,14 @@ services:${services}${networkDefs}${volumeDefs}`;
       const safeNetworkIds = Array.isArray(networkIds) && networkIds.length > 0 ? networkIds : ['bridge'];
       const primaryNetworkName = networks.find(n => n.id === safeNetworkIds[0])?.name || 'bridge';
       let runCommand = `docker run -d --name ${containerName} --network ${primaryNetworkName} ${image}`;
-      executeCommand(runCommand, true);
+      await executeCommand(runCommand, simulationId, userId, true); // simulationId, userId 전달
       if (safeNetworkIds.length > 1) {
-        safeNetworkIds.slice(1).forEach(networkId => {
+        for (const networkId of safeNetworkIds.slice(1)) {
           const network = networks.find(n => n.id === networkId);
           if (network) {
-            executeCommand(`docker network connect ${network.name} ${containerName}`, true);
+            await executeCommand(`docker network connect ${network.name} ${containerName}`, simulationId, userId, true); // simulationId, userId 전달
           }
-        });
+        }
       }
       get().addMessage(`Container ${containerName} created and connected to specified networks.`);
     },
@@ -139,101 +142,57 @@ services:${services}${networkDefs}${volumeDefs}`;
       get().addMessage(`Disconnected container ${containerName} from network ${networkName}`);
     },
 
-    executeCommand: (command, isInternal = false) => {
+    executeCommand: async (command, simulationId, userId, isInternal = false) => { // async, simulationId, userId 추가
       const state = get();
       let output = '';
       let isError = false;
+
       try {
         if (!command.trim()) return;
-        const parts = command.trim().split(/\s+/);
-        const [docker, sub, ...args] = parts;
-        if (docker !== 'docker') throw new Error(`command not found: ${docker}`);
-        switch (sub) {
-          case 'run': {
-            const nameMatch = command.match(/--name\s+(\S+)/);
-            const networkMatch = command.match(/--network\s+(\S+)/);
-            const imageName = args.filter(arg => !arg.startsWith('-')).pop() || '';
-            if (!imageName) throw new Error('"docker run" requires an image name.');
-            const [imgName, imgTag = 'latest'] = imageName.split(':');
-            if (!state.localImages.some(img => img.name === imgName && img.tag === imgTag)) throw new Error(`Unable to find image '${imageName}' locally`);
-            const containerName = nameMatch ? nameMatch[1] : `container_${Date.now()}`;
-            const targetNetworkName = networkMatch ? networkMatch[1] : 'bridge';
-            const newContainer: Container = { id: containerName, name: containerName, image: imageName, status: 'running', ports: [], volumes: [], network: [targetNetworkName], created: new Date() };
-            get().addContainer(newContainer);
-            output = containerName;
-            break;
-          }
-          case 'start': case 'stop': case 'pause': case 'unpause': case 'rm': {
-            const containerName = args[0];
-            const target = state.containers.find(c => c.name === containerName || c.id === containerName);
-            if (!target) throw new Error(`No such container: ${containerName}`);
-            if (sub === 'rm') get().removeContainer(target.id);
-            else {
-              const newStatus = sub === 'start' || sub === 'unpause' ? 'running' : (sub === 'stop' ? 'stopped' : 'paused');
-              get().updateContainer(target.id, { status: newStatus });
+
+        // 백엔드 API 호출
+        const response = await dockerApi.executeCommand(command, simulationId, userId);
+
+        if (response.code === 'SUCCESS' && response.data) {
+          output = response.data.output;
+          isError = !response.data.success;
+
+          // 백엔드 응답에 따라 스토어 상태 업데이트
+          set(state => {
+            let newContainers = state.containers;
+            let newVolumes = state.volumes;
+            let newNetworks = state.networks;
+
+            if (response.data?.containers) {
+              newContainers = response.data.containers;
             }
-            output = containerName;
-            break;
-          }
-          case 'network': {
-            const [netCmd, ...netArgs] = args;
-            if (netCmd === 'create') {
-              const networkName = netArgs[0];
-              if (!networkName) throw new Error('docker network create requires a name');
-              if (state.networks.some(n => n.name === networkName)) throw new Error(`network with name ${networkName} already exists`);
-              const newNetwork: Network = { id: `net_${networkName}_${Date.now()}`, name: networkName, driver: 'bridge', scope: 'local', createdAt: new Date(), containers: [] };
-              get().addNetwork(newNetwork);
-              output = networkName;
-            } else if (netCmd === 'rm' || netCmd === 'remove') {
-              const networkName = netArgs[0];
-              if (!state.networks.some(n => n.name === networkName)) throw new Error(`network "${networkName}" not found`);
-              get().removeNetwork(networkName);
-              output = networkName;
-            } else if (netCmd === 'connect') {
-              const [networkName, containerName] = netArgs;
-              const container = state.containers.find(c => c.name === containerName);
-              if (!container) throw new Error('Container not found');
-              const newNetworks = Array.from(new Set([...container.network, networkName]));
-              get().updateContainer(container.id, { network: newNetworks });
-            } else if (netCmd === 'disconnect') {
-              const [networkName, containerName] = netArgs;
-              if (!networkName || !containerName) throw new Error('docker network disconnect requires network and container names');
-              get().disconnectNetworkFromContainer(networkName, containerName);
-            } else {
-              throw new Error(`Unknown network command: ${netCmd}`);
+            if (response.data?.volumes) {
+              newVolumes = response.data.volumes;
             }
-            break;
-          }
-          case 'volume': {
-            const [volCmd, ...volArgs] = args;
-            if (volCmd === 'create') {
-              const volumeName = volArgs[0] || `vol_${Date.now()}`;
-              if (state.volumes.some(v => v.name === volumeName)) throw new Error(`volume with name ${volumeName} already exists`);
-              const newVolume: Volume = { id: volumeName, name: volumeName, driver: 'local', scope: 'local', createdAt: new Date(), mountPath: `/var/lib/docker/volumes/${volumeName}/_data`, labels: null, options: null, connectedContainers: [] };
-              get().addVolume(newVolume);
-              output = volumeName;
-            } else if (volCmd === 'rm' || volCmd === 'remove') {
-              const volumeName = volArgs[0];
-              const volume = state.volumes.find(v => v.name === volumeName);
-              if (!volume) throw new Error(`No such volume: ${volumeName}`);
-              if (volume.connectedContainers.length > 0) throw new Error(`remove ${volumeName}: volume is in use`);
-              get().removeVolume(volume.id);
-              output = volumeName;
-            } else if (volCmd === 'disconnect') {
-              const [volumeName, containerName] = volArgs;
-              if (!volumeName || !containerName) throw new Error('docker volume disconnect requires volume and container names');
-              get().disconnectVolumeFromContainer(volumeName, containerName);
-            } else {
-              throw new Error(`Unknown volume command: ${volCmd}`);
+            if (response.data?.networks) {
+              newNetworks = response.data.networks;
             }
-            break;
-          }
-          default: throw new Error(`Unknown command: ${sub}`);
+
+            // 컨테이너 또는 네트워크가 변경된 경우 네트워크와 컨테이너 동기화
+            const updatedNetworks = syncNetworksWithContainers(newContainers, newNetworks);
+
+            return {
+              containers: newContainers,
+              volumes: newVolumes,
+              networks: updatedNetworks,
+            };
+          });
+
+        } else {
+          output = response.message || response.error || 'Unknown error from backend.';
+          isError = true;
         }
+
       } catch (e: any) {
         output = e.message;
         isError = true;
       }
+
       if (!isInternal && output) {
         set(state => ({ terminalHistory: [...state.terminalHistory, { id: `cmd_${Date.now()}`, command, output, timestamp: new Date().toISOString(), isError }] }));
       }

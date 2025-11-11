@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useMemo } from 'react'; // useMemo 임포트
 import { usePathname, useRouter } from 'next/navigation';
 import { handleGithubLogin } from '../client/Login';
 import { useAuthStore } from '@/store/authStore';
@@ -13,12 +13,18 @@ export default function Header() {
     const router = useRouter();
     const { isLoggedIn, logout } = useAuthStore();
 
-    const navItems = [
+    // 기본 navItems 배열
+    const baseNavItems = [
         { href: '/', label: '학습하기', icon: '🎓' },
         { href: '/community', label: '커뮤니티', icon: '💬' },
         { href: '/faq', label: 'FAQ', icon: '❓' },
-        { href: '/settings', label: '내 정보', icon: '👤' },
+        { href: '/settings', label: '내 정보', icon: '👤', requiresAuth: true }, // '내 정보'에 인증 필요 플래그 추가
     ];
+
+    // 로그인 상태에 따라 동적으로 navItems 필터링
+    const navItems = useMemo(() => {
+        return baseNavItems.filter(item => !item.requiresAuth || isLoggedIn);
+    }, [isLoggedIn]);
 
     const isActive = (path: string) => pathname === path;
 

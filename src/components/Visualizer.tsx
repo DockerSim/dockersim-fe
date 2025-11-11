@@ -37,6 +37,10 @@ const Visualizer: React.FC<VisualizerProps> = ({
   
   const [showOverview, setShowOverview] = useState(false);
 
+  // 임시 simulationId와 userId. 실제 값은 사용자 세션 또는 전역 상태에서 가져와야 합니다.
+  const SIMULATION_ID = "test-simulation-id"; // TODO: 실제 simulationId로 교체 필요
+  const USER_ID = 1; // TODO: 실제 userId로 교체 필요
+
   useEffect(() => {
     if ((containers || []).length > (prevContainersRef.current || []).length) {
       const newContainer = (containers || []).find(c => !(prevContainersRef.current || []).some(prev => prev.id === c.id));
@@ -56,7 +60,7 @@ const Visualizer: React.FC<VisualizerProps> = ({
     if (tabId === 'bridge') return;
     const containersInNetwork = containers.filter(c => c.network.includes(tabName));
     if (containersInNetwork.length === 0) {
-      executeCommand(`docker network rm ${tabName}`);
+      executeCommand(`docker network rm ${tabName}`, SIMULATION_ID, USER_ID);
       if (activeNetwork === tabId) {
         setActiveNetwork('bridge');
       }

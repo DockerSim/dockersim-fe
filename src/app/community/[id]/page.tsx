@@ -4,28 +4,12 @@ import React, { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import '../../../styles/PostDetail.css'
+import { communityApi, PostResponse, PostCommentResponse } from '@/api/community'; // communityApi 임포트
 
-// 백엔드 DTO에 맞춘 타입 정의
-interface Comment {
-  id: number;
-  content: string;
-  author: string;
-  createdAt: string;
-}
+// PostType은 community/page.tsx에서 export 했으므로 재사용
+import { PostType } from '@/app/community/page';
 
-interface Post {
-  id: number;
-  title: string;
-  content: string;
-  author: string;
-  type: 'QUESTION' | 'SIMULATION' | 'TECHNICAL';
-  createdAt: string;
-  likesCount: number;
-  views: number;
-  tags: string;
-}
-
-const POST_TYPE_LABELS: Record<Post['type'], string> = {
+const POST_TYPE_LABELS: Record<PostType, string> = {
   QUESTION: '질문',
   SIMULATION: '시뮬레이션',
   TECHNICAL: '기술'
@@ -34,39 +18,48 @@ const POST_TYPE_LABELS: Record<Post['type'], string> = {
 export default function PostDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const postId = params.id as string;
+  const postId = parseInt(params.id as string); // postId를 숫자로 파싱
   
-  const [post, setPost] = useState<Post | null>(null);
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [post, setPost] = useState<PostResponse | null>(null);
+  const [comments, setComments] = useState<PostCommentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [newComment, setNewComment] = useState('');
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(false); // TODO: 실제 좋아요 상태를 백엔드에서 가져와야 함
 
-  // 댓글 수정을 위한 상태 추가
   const [editingComment, setEditingComment] = useState<{ id: number; content: string } | null>(null);
 
   const fetchPostAndComments = useCallback(async () => {
-    if (!postId) return;
+    if (isNaN(postId)) { // postId가 유효한 숫자인지 확인
+      setError('유효하지 않은 게시글 ID입니다.');
+      setIsLoading(false);
+      return;
+    }
     if (!editingComment) {
         setIsLoading(true);
     }
     setError(null);
     try {
-      const [postRes, commentsRes] = await Promise.all([
-        fetch(`/api/posts/${postId}`),
-        fetch(`/api/posts/${postId}/comments`)
+      const [postResult, commentsResult] = await Promise.all([
+        communityApi.getPost(postId),
+        communityApi.getCommentsByPostId(postId)
       ]);
 
-      if (!postRes.ok) throw new Error('게시글을 불러오는데 실패했습니다.');
-      if (!commentsRes.ok) throw new Error('댓글을 불러오는데 실패했습니다.');
+      if (postResult.code === 'SUCCESS') {
+        setPost(postResult.data);
+      } else {
+        throw new Error(postResult.message || '게시글을 불러오는데 실패했습니다.');
+      }
 
-      const postResult = await postRes.json();
-      const commentsResult = await commentsRes.json();
+      if (commentsResult.code === 'SUCCESS') {
+        setComments(commentsResult.data || []);
+      } else {
+        throw new Error(commentsResult.message || '댓글을 불러오는데 실패했습니다.');
+      }
 
-      setPost(postResult.data);
-      setComments(commentsResult.data || []);
+      // TODO: 사용자의 좋아요 여부도 백엔드에서 가져와 설정해야 함
+      // setIsLiked(postResult.data.isLikedByUser);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : '데이터를 불러오는데 실패했습니다.');
@@ -89,73 +82,76 @@ export default function PostDetailPage() {
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !postId) return;
+    if (!newComment.trim() || isNaN(postId)) return;
     try {
-      const response = await fetch(`/api/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: newComment }),
-      });
-      if (!response.ok) throw new Error('댓글 작성에 실패했습니다.');
-      setNewComment('');
-      fetchPostAndComments();
+      const result = await communityApi.createComment(postId, { content: newComment });
+      if (result.code === 'SUCCESS') {
+        setNewComment('');
+        fetchPostAndComments();
+      } else {
+        throw new Error(result.message || '댓글 작성에 실패했습니다.');
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
     }
   };
 
   const handleLike = async () => {
-    if (!postId) return;
+    if (isNaN(postId)) return;
     try {
-      const response = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
-      if (!response.ok) throw new Error('좋아요 처리에 실패했습니다.');
-      const postRes = await fetch(`/api/posts/${postId}`);
-      const postResult = await postRes.json();
-      setPost(postResult.data);
-      setIsLiked(!isLiked);
+      const result = await communityApi.toggleLike(postId);
+      if (result.code === 'SUCCESS') {
+        // 좋아요 상태 토글 및 게시글 데이터 새로고침
+        setIsLiked(prev => !prev);
+        fetchPostAndComments(); // 좋아요 수 업데이트를 위해 다시 불러옴
+      } else {
+        throw new Error(result.message || '좋아요 처리에 실패했습니다.');
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
     }
   };
 
-  // 게시글 삭제 핸들러
   const handlePostDelete = async () => {
-    if (!postId || !confirm('정말로 이 게시글을 삭제하시겠습니까?')) return;
+    if (isNaN(postId) || !confirm('정말로 이 게시글을 삭제하시겠습니까?')) return;
     try {
-      const response = await fetch(`/api/posts/${postId}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('게시글 삭제에 실패했습니다.');
-      alert('게시글이 삭제되었습니다.');
-      router.push('/community');
+      const result = await communityApi.deletePost(postId);
+      if (result.code === 'SUCCESS') {
+        alert('게시글이 삭제되었습니다.');
+        router.push('/community');
+      } else {
+        throw new Error(result.message || '게시글 삭제에 실패했습니다.');
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
     }
   };
 
-  // 댓글 삭제 핸들러
   const handleCommentDelete = async (commentId: number) => {
-    if (!postId || !confirm('정말로 이 댓글을 삭제하시겠습니까?')) return;
+    if (isNaN(postId) || !confirm('정말로 이 댓글을 삭제하시겠습니까?')) return;
     try {
-      const response = await fetch(`/api/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('댓글 삭제에 실패했습니다.');
-      alert('댓글이 삭제되었습니다.');
-      fetchPostAndComments(); // 댓글 목록 새로고침
+      const result = await communityApi.deleteComment(postId, commentId);
+      if (result.code === 'SUCCESS') {
+        alert('댓글이 삭제되었습니다.');
+        fetchPostAndComments();
+      } else {
+        throw new Error(result.message || '댓글 삭제에 실패했습니다.');
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
     }
   };
 
-  // 댓글 수정 핸들러 추가
   const handleCommentUpdate = async (commentId: number) => {
-    if (!postId || !editingComment || editingComment.id !== commentId) return;
+    if (isNaN(postId) || !editingComment || editingComment.id !== commentId) return;
     try {
-      const response = await fetch(`/api/posts/${postId}/comments/${commentId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: editingComment.content }),
-      });
-      if (!response.ok) throw new Error('댓글 수정에 실패했습니다.');
-      setEditingComment(null);
-      fetchPostAndComments();
+      const result = await communityApi.updateComment(postId, commentId, { content: editingComment.content });
+      if (result.code === 'SUCCESS') {
+        setEditingComment(null);
+        fetchPostAndComments();
+      } else {
+        throw new Error(result.message || '댓글 수정에 실패했습니다.');
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
     }
@@ -180,7 +176,6 @@ export default function PostDetailPage() {
             </div>
             <div className="post-title-wrapper">
               <h1 className="post-detail-title">{post.title}</h1>
-              {/* 게시글 수정/삭제 버튼 */}
               <div className="post-actions">
                 <Link href={`/community/${postId}/edit`} className="action-btn edit-btn">✏️ 수정</Link>
                 <button onClick={handlePostDelete} className="action-btn delete-btn">🗑️ 삭제</button>
@@ -232,7 +227,6 @@ export default function PostDetailPage() {
             {comments.map(comment => (
               <div key={comment.id} className="comment-card">
                 {editingComment?.id === comment.id ? (
-                  // 수정 모드
                   <div className="comment-edit-form">
                     <textarea
                       value={editingComment.content}
@@ -246,12 +240,10 @@ export default function PostDetailPage() {
                     </div>
                   </div>
                 ) : (
-                  // 일반 모드
                   <>
                     <div className="comment-header">
                       <div className="comment-author">{comment.author}</div>
                       <div className="comment-date">{formatDate(comment.createdAt)}</div>
-                      {/* 댓글 수정/삭제 버튼 */}
                       <div className="comment-actions">
                         <button onClick={() => setEditingComment({ id: comment.id, content: comment.content })} className="action-btn-comment edit-btn-comment">✏️</button>
                         <button onClick={() => handleCommentDelete(comment.id)} className="action-btn-comment delete-btn-comment">🗑️</button>

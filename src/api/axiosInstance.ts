@@ -3,7 +3,8 @@ import { useAuthStore } from '@/store/authStore';
 
 // API 서버의 기본 URL을 설정합니다.
 // 환경 변수를 사용하여 유연하게 관리하는 것이 좋습니다.
-const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+// const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'; // 이 줄을 주석 처리하거나 삭제
+const baseURL = '/api'; // Next.js 개발 서버의 프록시를 사용하도록 변경
 
 const axiosInstance = axios.create({
     baseURL: baseURL,

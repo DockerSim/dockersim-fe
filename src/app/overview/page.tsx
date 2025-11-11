@@ -19,6 +19,10 @@ export default function OverviewPage() {
 
     const { containers, volumes, networks, executeCommand } = useDockerStore();
 
+    // 임시 simulationId와 userId. 실제 값은 사용자 세션 또는 전역 상태에서 가져와야 합니다.
+    const SIMULATION_ID = "test-simulation-id"; // TODO: 실제 simulationId로 교체 필요
+    const USER_ID = 1; // TODO: 실제 userId로 교체 필요
+
     const handleDownload = () => {
         const captureElement = document.getElementById('capture-area');
         if (captureElement) {
@@ -52,7 +56,7 @@ export default function OverviewPage() {
         } else {
             command = `docker ${action} ${resource.name}`;
         }
-        executeCommand(command);
+        executeCommand(command, SIMULATION_ID, USER_ID); // SIMULATION_ID, USER_ID 추가
         setIsModalOpen(false);
     };
 

@@ -47,6 +47,10 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
   const [ports, setPorts] = useState<Port[]>([{ hostPort: '', containerPort: '', protocol: 'tcp' }]);
   const [imageSelectionModalOpen, setImageSelectionModalOpen] = useState(false);
 
+  // 임시 simulationId와 userId. 실제 값은 사용자 세션 또는 전역 상태에서 가져와야 합니다.
+  const SIMULATION_ID = "test-simulation-id"; // TODO: 실제 simulationId로 교체 필요
+  const USER_ID = 1; // TODO: 실제 userId로 교체 필요
+
   useEffect(() => {
     if (preselectedImage) {
       setImageName(preselectedImage);
@@ -76,6 +80,17 @@ const ResourceCreationModal: React.FC<ResourceCreationModalProps> = ({
       image: type === 'container' ? imageName : undefined,
       networkIds: type === 'container' ? selectedNetworkIds : undefined,
     };
+    if (type === 'container') {
+      createContainerInNetworks(data, SIMULATION_ID, USER_ID); // SIMULATION_ID, USER_ID 추가
+    } else if (type === 'volume') {
+      let command = `docker volume create`;
+      if (data.name) command += ` ${data.name}`;
+      executeCommand(command, SIMULATION_ID, USER_ID); // SIMULATION_ID, USER_ID 추가
+    } else if (type === 'network') {
+      let command = `docker network create`;
+      if (data.name) command += ` ${data.name}`;
+      executeCommand(command, SIMULATION_ID, USER_ID); // SIMULATION_ID, USER_ID 추가
+    }
     onConfirm(data);
     handleClose();
   };

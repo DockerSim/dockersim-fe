@@ -44,14 +44,18 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
   const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null);
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
 
+  // 임시 simulationId와 userId. 실제 값은 사용자 세션 또는 전역 상태에서 가져와야 합니다.
+  const SIMULATION_ID = "test-simulation-id"; // TODO: 실제 simulationId로 교체 필요
+  const USER_ID = 1; // TODO: 실제 userId로 교체 필요
+
   const handleContainerAction = (containerName: string, action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm') => {
-    executeCommand(`docker ${action} ${containerName}`);
+    executeCommand(`docker ${action} ${containerName}`, SIMULATION_ID, USER_ID);
   };
 
   const handleRemoveConfirm = (resourceType: 'container' | 'volume', name: string) => {
     if (window.confirm(`정말로 '${name}'을(를) 삭제하시겠습니까?`)) {
       if (resourceType === 'container') handleContainerAction(name, 'rm');
-      else if (resourceType === 'volume') executeCommand(`docker volume rm ${name}`);
+      else if (resourceType === 'volume') executeCommand(`docker volume rm ${name}`, SIMULATION_ID, USER_ID);
     }
   };
 
@@ -62,15 +66,15 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
 
   const handleResourceCreationConfirm = (data: ResourceCreationData) => {
     if (resourceCreationType === 'container') {
-      createContainerInNetworks(data);
+      createContainerInNetworks(data, SIMULATION_ID, USER_ID);
     } else if (resourceCreationType === 'volume') {
       let command = `docker volume create`;
       if (data.name) command += ` ${data.name}`;
-      executeCommand(command);
+      executeCommand(command, SIMULATION_ID, USER_ID);
     } else if (resourceCreationType === 'network') {
       let command = `docker network create`;
       if (data.name) command += ` ${data.name}`;
-      executeCommand(command);
+      executeCommand(command, SIMULATION_ID, USER_ID);
     }
     setResourceCreationModalOpen(false);
   };
@@ -104,7 +108,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
       const network = networks.find(n => n.id === selectedNetworkId);
       const container = containers.find(c => c.id === selectedContainerId);
       if (network && container) {
-        executeCommand(`docker network connect ${network.name} ${container.name}`);
+        executeCommand(`docker network connect ${network.name} ${container.name}`, SIMULATION_ID, USER_ID);
         setSelectedNetworkId(null);
         setSelectedContainerId(null);
       }
@@ -173,7 +177,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
                               </div>
                               <div className="resource-actions">
                                 {(!volume.connectedContainers || volume.connectedContainers.length === 0) && (
-                                  <button className="action-btn" onClick={(e) => { e.stopPropagation(); executeCommand(`docker volume rm ${volume.name}`); }}>🗑️</button>
+                                  <button className="action-btn" onClick={(e) => { e.stopPropagation(); executeCommand(`docker volume rm ${volume.name}`, SIMULATION_ID, USER_ID); }}>🗑️</button>
                                 )}
                               </div>
                             </div>

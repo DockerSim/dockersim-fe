@@ -19,6 +19,10 @@ const Terminal: React.FC<TerminalProps> = ({ isCollapsed, onCollapseToggle }) =>
   const { terminalHistory, executeCommand } = useDockerStore();
   const lastRenderedCount = useRef(0);
 
+  // 임시 simulationId와 userId. 실제 값은 사용자 세션 또는 전역 상태에서 가져와야 합니다.
+  const SIMULATION_ID = "test-simulation-id"; // TODO: 실제 simulationId로 교체 필요
+  const USER_ID = 1; // TODO: 실제 userId로 교체 필요
+
   useEffect(() => {
     if (terminalRef.current && !termInstance.current) {
       const term = new XtermTerminal({
@@ -47,7 +51,7 @@ const Terminal: React.FC<TerminalProps> = ({ isCollapsed, onCollapseToggle }) =>
           case '\r': // Enter
             if (currentLine.current.trim()) {
               term.write('\r\n');
-              executeCommand(currentLine.current);
+              executeCommand(currentLine.current, SIMULATION_ID, USER_ID);
             } else {
               term.write('\r\n\x1b[36mdockersim\x1b[0m $ ');
             }

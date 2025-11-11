@@ -3,14 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import '../../../../styles/CommunityWrite.css'; // 동일한 스타일 사용
-
-// 백엔드 Enum에 맞춘 타입
-type PostType = 'QUESTION' | 'SIMULATION' | 'TECHNICAL';
+import { communityApi } from '@/api/community'; // communityApi 임포트
+import { PostType } from '@/app/community/page'; // PostType 임포트
 
 export default function CommunityEditPage() {
   const router = useRouter();
   const params = useParams();
-  const postId = params.id as string;
+  const postId = parseInt(params.id as string); // postId를 숫자로 파싱
 
   const [formData, setFormData] = useState({
     title: '',
@@ -20,27 +19,30 @@ export default function CommunityEditPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // 처음 페이지 로드 시, 기존 게시글 데이터를 불러와 폼에 채웁니다.
   useEffect(() => {
-    if (!postId) return;
+    if (isNaN(postId)) { // postId가 유효한 숫자인지 확인
+      alert('유효하지 않은 게시글 ID입니다.');
+      router.push('/community'); // 유효하지 않으면 목록으로 이동
+      return;
+    }
     const fetchPostData = async () => {
       try {
-        const response = await fetch(`/api/posts/${postId}`);
-        if (!response.ok) {
-          throw new Error('게시글 정보를 불러오는데 실패했습니다.');
+        const result = await communityApi.getPost(postId); // communityApi.getPost 호출
+        if (result.code === 'SUCCESS') {
+          const post = result.data;
+          setFormData({
+            title: post.title,
+            content: post.content,
+            type: post.type,
+            tags: post.tags ? post.tags.replace(/,/g, '#') : '', // API는 쉼표 구분, UI는 # 구분
+          });
+        } else {
+          throw new Error(result.message || '게시글 정보를 불러오는데 실패했습니다.');
         }
-        const result = await response.json();
-        const post = result.data;
-        setFormData({
-          title: post.title,
-          content: post.content,
-          type: post.type,
-          tags: post.tags.replace(/,/g, '#'), // API는 쉼표 구분, UI는 # 구분
-        });
       } catch (error) {
         console.error('Failed to fetch post:', error);
         alert(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
-        router.push(`/community/${postId}`); // 오류 발생 시 상세 페이지로 복귀
+        router.push(`/community/${postId}`);
       } finally {
         setIsLoading(false);
       }
@@ -54,6 +56,7 @@ export default function CommunityEditPage() {
       alert('제목과 내용은 필수 항목입니다.');
       return;
     }
+    if (isNaN(postId)) return;
 
     const postData = {
       title: formData.title,
@@ -63,20 +66,14 @@ export default function CommunityEditPage() {
     };
 
     try {
-      // PUT 메소드로 수정 요청 전송
-      const response = await fetch(`/api/posts/${postId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(postData),
-      });
+      const result = await communityApi.updatePost(postId, postData); // communityApi.updatePost 호출
 
-      if (!response.ok) {
-        const errorResult = await response.json();
-        throw new Error(errorResult.message || '게시글 수정에 실패했습니다.');
+      if (result.code === 'SUCCESS') {
+        alert('게시글이 성공적으로 수정되었습니다!');
+        router.push(`/community/${postId}`);
+      } else {
+        throw new Error(result.message || '게시글 수정에 실패했습니다.');
       }
-
-      alert('게시글이 성공적으로 수정되었습니다!');
-      router.push(`/community/${postId}`); // 수정 후 상세 페이지로 이동
 
     } catch (error) {
       console.error('Post update failed:', error);
@@ -90,7 +87,7 @@ export default function CommunityEditPage() {
   };
 
   const handleCancel = () => {
-    router.back(); // 이전 페이지(상세 페이지)로 이동
+    router.back();
   };
 
   if (isLoading) {

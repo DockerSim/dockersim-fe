@@ -61,6 +61,10 @@ export default function HomePage() {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }, [])
 
+  // 임시 simulationId와 userId. 실제 값은 사용자 세션 또는 전역 상태에서 가져와야 합니다.
+  const SIMULATION_ID = "test-simulation-id"; // TODO: 실제 simulationId로 교체 필요
+  const USER_ID = 1; // TODO: 실제 userId로 교체 필요
+
   // --- Modal Handler Functions ---
   const handleContainerClick = (container: Container) => {
     setSelectedContainer(container);
@@ -97,7 +101,7 @@ export default function HomePage() {
       alert(`'${networkName}' 네트워크는 현재 사용 중인 컨테이너가 있어 삭제할 수 없습니다.`);
       return;
     }
-    executeCommand(`docker network rm ${networkName}`);
+    executeCommand(`docker network rm ${networkName}`, SIMULATION_ID, USER_ID);
   };
 
   const handleOpenNetworkSelectionModal = (containerToConnect: Container) => {
@@ -115,7 +119,7 @@ export default function HomePage() {
     if (resourceCreationType === 'network') {
       let command = `docker network create`;
       if (data.name) command += ` ${data.name}`;
-      executeCommand(command);
+      executeCommand(command, SIMULATION_ID, USER_ID);
     }
     setIsResourceCreationModalOpen(false);
   };
@@ -125,7 +129,7 @@ export default function HomePage() {
       networkIds.forEach(networkId => {
         const network = networks.find(n => n.id === networkId);
         if (network) {
-          executeCommand(`docker network connect ${network.name} ${selectedContainer.name}`);
+          executeCommand(`docker network connect ${network.name} ${selectedContainer.name}`, SIMULATION_ID, USER_ID);
         }
       });
       setActiveNetwork(networkIds[0]);
@@ -135,7 +139,7 @@ export default function HomePage() {
   };
 
   const handleAction = (action: 'start' | 'stop' | 'pause' | 'unpause' | 'rm', id: string) => {
-    executeCommand(`docker ${action} ${id}`);
+    executeCommand(`docker ${action} ${id}`, SIMULATION_ID, USER_ID);
   };
 
   const toggleControlPanel = () => setIsControlPanelCollapsed(!isControlPanelCollapsed)
@@ -209,7 +213,7 @@ export default function HomePage() {
 
       {/* Centrally Managed Modals */}
       <ContainerDetailModal container={selectedContainer} open={isContainerDetailModalOpen} onClose={() => setIsContainerDetailModalOpen(false)} onAction={handleAction} onOpenNetworkSelectionModal={() => selectedContainer && handleOpenNetworkSelectionModal(selectedContainer)} onDisconnectNetwork={handleNetworkDisconnect} />
-      <VolumeDetailModal volume={currentSelectedVolume} open={isVolumeDetailModalOpen} onClose={() => setVolumeDetailModalOpen(false)} onRemove={(id) => executeCommand(`docker volume rm ${id}`)} onDisconnect={handleVolumeDisconnect} />
+      <VolumeDetailModal volume={currentSelectedVolume} open={isVolumeDetailModalOpen} onClose={() => setVolumeDetailModalOpen(false)} onRemove={(id) => executeCommand(`docker volume rm ${id}`, SIMULATION_ID, USER_ID)} onDisconnect={handleVolumeDisconnect} />
       <NetworkDetailModal network={selectedNetwork} open={isNetworkDetailModalOpen} onClose={() => setNetworkDetailModalOpen(false)} />
       <ResourceCreationModal type={resourceCreationType} networks={networks || []} open={isResourceCreationModalOpen} onConfirm={handleResourceCreationConfirm} onClose={() => setIsResourceCreationModalOpen(false)} />
       {selectedContainer && <NetworkSelectionModal isOpen={isNetworkSelectionModalOpen} onClose={() => { setIsNetworkSelectionModalOpen(false); setSelectedContainer(null); }} onSelect={handleNetworkConnect} allNetworks={networks} connectedNetworks={Array.isArray(selectedContainer.network) ? selectedContainer.network : [selectedContainer.network]} />}

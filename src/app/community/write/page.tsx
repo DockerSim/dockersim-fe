@@ -3,20 +3,18 @@
 import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import '../../../styles/CommunityWrite.css'
-
-// 백엔드 Enum에 맞춰 타입 수정
-type PostType = 'QUESTION' | 'SIMULATION' | 'TECHNICAL';
+import { communityApi } from '@/api/community'; // communityApi 임포트
+import { PostType } from '@/app/community/page'; // PostType 임포트
 
 export default function CommunityWritePage() {
   const router = useRouter()
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    type: 'QUESTION' as PostType, // 기본값도 Enum에 맞게 수정
+    type: 'QUESTION' as PostType,
     tags: '',
   })
 
-  // API 호출을 위해 async 추가 및 로직 수정
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -29,32 +27,22 @@ export default function CommunityWritePage() {
       return
     }
 
-    // 백엔드 DTO(PostRequest) 형식에 맞게 데이터 가공
     const postData = {
       title: formData.title,
       content: formData.content,
       type: formData.type,
-      // 태그를 '#'이 아닌 ','로 구분하여 전송
       tags: formData.tags.split('#').map(tag => tag.trim()).filter(Boolean).join(','),
     };
 
     try {
-      // fetch를 사용하여 POST API 호출
-      const response = await fetch('/api/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(postData),
-      });
+      const result = await communityApi.createPost(postData); // communityApi.createPost 호출
 
-      if (!response.ok) {
-        const errorResult = await response.json();
-        throw new Error(errorResult.message || '게시글 작성에 실패했습니다.');
+      if (result.code === 'SUCCESS') {
+        alert('게시글이 성공적으로 작성되었습니다!')
+        router.push('/community')
+      } else {
+        throw new Error(result.message || '게시글 작성에 실패했습니다.');
       }
-
-      alert('게시글이 성공적으로 작성되었습니다!')
-      router.push('/community')
 
     } catch (error) {
       console.error('Post creation failed:', error);
@@ -93,7 +81,6 @@ export default function CommunityWritePage() {
             onChange={handleChange}
             className="form-select"
           >
-            {/* 백엔드 Enum에 맞춰 value 수정 */}
             <option value="QUESTION">질문</option>
             <option value="SIMULATION">시뮬레이션</option>
             <option value="TECHNICAL">기술</option>
