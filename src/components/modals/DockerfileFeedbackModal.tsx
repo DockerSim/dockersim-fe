@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import './DockerfileFeedbackModal.css';
-import { useDockerStore } from '../../store/dockerStore';
-import axiosInstance from '../../api/axiosInstance'; // axiosInstance 사용
+import axiosInstance from '../../api/axiosInstance';
 
 interface DockerfileFeedbackModalProps {
   open: boolean;
@@ -10,60 +9,83 @@ interface DockerfileFeedbackModalProps {
 }
 
 const DockerfileFeedbackModal: React.FC<DockerfileFeedbackModalProps> = ({ open, onClose }) => {
-  const { generateComposeFile } = useDockerStore(); // generateComposeFile 가져오기
-  const [beforeText, setBeforeText] = useState(''); // 초기값 변경
-  const [afterText, setAfterText] = useState('');
+  const [dockerfileContent, setDockerfileContent] = useState('');
+  const [feedbackContent, setFeedbackContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (open) {
-      const composeFileContent = generateComposeFile(); // Docker Compose 파일 생성
-      setBeforeText(composeFileContent); // 생성된 내용으로 설정
-      setAfterText('');
+      // 모달이 열릴 때 샘플 Dockerfile 제공
+      const sampleDockerfile = `# Dockerfile 예시
+# 아래 내용을 수정하거나 새로 작성해보세요
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "start"]`;
+
+      setDockerfileContent(sampleDockerfile);
+      setFeedbackContent('');
     }
-  }, [open, generateComposeFile]); // generateComposeFile을 의존성 배열에 추가
+  }, [open]);
 
   const handleGetFeedback = async () => {
+    if (!dockerfileContent.trim()) {
+      alert('Dockerfile 내용을 입력해주세요.');
+      return;
+    }
+
     setIsLoading(true);
-    setAfterText('AI 피드백을 생성 중입니다...');
+    setFeedbackContent('🤖 Gemini AI가 Dockerfile을 분석 중입니다...\n\n이 과정은 몇 초 정도 소요될 수 있습니다.');
 
     try {
+      // DockerFileController의 /api/dockerfiles/feedback 호출
       const response = await axiosInstance.post('/dockerfiles/feedback', {
-        dockerComposeContent: beforeText
+        dockerfileContent: dockerfileContent
       });
 
-      // axiosInstance는 자동으로 인증 토큰을 추가하고 JSON 파싱을 해줍니다
       const result = response.data;
 
-      // 백엔드 응답 형식: { success, data: { feedback, original, optimized, ... }, errorMessage }
+      // 백엔드 응답 형식: { success, data: { original, optimized, analysisMethod, processingTimeMs, errorMessage }, errorMessage }
       if (result.success && result.data) {
         const feedbackData = result.data;
-        let feedbackText = '';
 
-        if (feedbackData.feedback) {
-          feedbackText += `${feedbackData.feedback}\n\n`;
+        if (feedbackData.errorMessage) {
+          setFeedbackContent(`❌ 오류 발생:\n${feedbackData.errorMessage}`);
+          return;
         }
 
+        let feedbackText = '✨ Gemini AI 분석 결과\n\n';
+
         if (feedbackData.optimized) {
-          feedbackText += `=== 최적화된 Docker Compose ===\n${feedbackData.optimized}\n\n`;
+          feedbackText += `📋 최적화된 Dockerfile:\n\n${feedbackData.optimized}\n\n`;
         }
 
         if (feedbackData.analysisMethod) {
-          feedbackText += `분석 방법: ${feedbackData.analysisMethod}\n`;
+          feedbackText += `🔍 분석 방법: ${feedbackData.analysisMethod}\n`;
         }
 
         if (feedbackData.processingTimeMs) {
-          feedbackText += `처리 시간: ${feedbackData.processingTimeMs}ms\n`;
+          feedbackText += `⏱️ 처리 시간: ${feedbackData.processingTimeMs}ms\n`;
         }
 
-        setAfterText(feedbackText || '피드백을 받아오지 못했습니다.');
+        setFeedbackContent(feedbackText || '피드백을 받아오지 못했습니다.');
       } else {
         throw new Error(result.errorMessage || '피드백을 받아오지 못했습니다.');
       }
     } catch (error: any) {
-      console.error('피드백 요청 실패:', error);
+      console.error('Dockerfile 피드백 요청 실패:', error);
       const errorMessage = error.response?.data?.errorMessage || error.message || '알 수 없는 오류가 발생했습니다.';
-      setAfterText(`피드백 요청 중 오류가 발생했습니다:\n${errorMessage}`);
+      setFeedbackContent(`❌ 피드백 요청 중 오류가 발생했습니다:\n\n${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -88,21 +110,23 @@ const DockerfileFeedbackModal: React.FC<DockerfileFeedbackModalProps> = ({ open,
         </div>
         <div className="modal-content" style={{ display: 'flex', flexDirection: 'row' }}>
           <div className="feedback-section">
-            <h4>현재 Docker Compose 파일</h4> {/* 제목 변경 */}
+            <h4>Dockerfile 작성</h4>
             <textarea
               className="feedback-textarea"
-              value={beforeText}
-              readOnly // 읽기 전용으로 변경
-              placeholder="Docker Compose 파일 내용이 여기에 표시됩니다."
+              value={dockerfileContent}
+              onChange={(e) => setDockerfileContent(e.target.value)}
+              placeholder="Dockerfile을 작성해주세요. 예: FROM, RUN, COPY, CMD 등"
+              style={{ fontFamily: 'monospace' }}
             />
           </div>
           <div className="feedback-section">
-            <h4>AI 피드백</h4> {/* 제목 변경 */}
+            <h4>Gemini AI 피드백 및 최적화</h4>
             <textarea
               className="feedback-textarea"
-              value={afterText}
+              value={feedbackContent}
               readOnly
-              placeholder="피드백 결과가 여기에 표시됩니다."
+              placeholder="AI 피드백 받기 버튼을 클릭하면 Gemini AI가 Dockerfile을 분석하고 최적화된 버전을 제공합니다."
+              style={{ fontFamily: 'monospace' }}
             />
           </div>
         </div>
@@ -110,8 +134,8 @@ const DockerfileFeedbackModal: React.FC<DockerfileFeedbackModalProps> = ({ open,
           <button className="action-btn" onClick={onClose}>
             닫기
           </button>
-          <button className="action-btn primary" onClick={handleGetFeedback} disabled={isLoading}>
-            {isLoading ? '분석 중...' : 'AI 피드백 받기'} {/* 버튼 텍스트 변경 */}
+          <button className="action-btn primary" onClick={handleGetFeedback} disabled={isLoading || !dockerfileContent.trim()}>
+            {isLoading ? '🤖 AI 분석 중...' : '🚀 AI 피드백 받기'}
           </button>
         </div>
       </div>

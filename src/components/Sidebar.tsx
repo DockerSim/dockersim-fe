@@ -54,13 +54,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           <span className="icon">💻</span>
           <span className="label">터미널</span>
         </button>
-        <button className="menu-item" onClick={onComposeFileClick} title="컴포즈 파일">
+        <button className="menu-item" onClick={onComposeFileClick} title="Docker Compose 파일 생성">
           <span className="icon">📄</span>
-          <span className="label">컴포즈</span>
+          <span className="label">Compose</span>
         </button>
-        <button className="menu-item" onClick={onDockerfileFeedbackClick} title="도커 파일 피드백">
-          <span className="icon">📝</span>
-          <span className="label">피드백</span>
+        <button className="menu-item" onClick={onDockerfileFeedbackClick} title="Dockerfile AI 피드백">
+          <span className="icon">🤖</span>
+          <span className="label">Dockerfile</span>
         </button>
         <button className="menu-item" onClick={onMissionClick} title="미션">
           <span className="icon">🏆</span>
